@@ -25,7 +25,7 @@ def load_bundle(run: Path) -> tuple[dict[str, Any], Any, Any]:
         raise ValueError("controller contract must be an object")
     if not isinstance(bundle, dict):
         raise ValueError("policy bundle must be an object")
-    if contract.get("schema_version") != 1:
+    if contract.get("schema_version") != 2:
         raise ValueError("unsupported controller contract schema version")
     if bundle.get("schema_version") != 1:
         raise ValueError("unsupported policy bundle schema version")

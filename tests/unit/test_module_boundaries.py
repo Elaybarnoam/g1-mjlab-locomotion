@@ -53,7 +53,7 @@ def test_diagnostics_reject_unsafe_bounds_before_simulator_start() -> None:
 
 @pytest.mark.parametrize(
     ("contract_version", "bundle_version", "message"),
-    [(2, 1, "contract"), (1, 2, "bundle")],
+    [(3, 1, "contract"), (2, 2, "bundle")],
 )
 def test_bundle_loader_rejects_unknown_schema_before_artifact_access(
     tmp_path: Path, contract_version: int, bundle_version: int, message: str
