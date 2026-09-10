@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using this metadata."
+title: "G1 mjlab Locomotion"
+type: software
+authors:
+  - family-names: "Barnoam"
+    given-names: "Elay"
+repository-code: "https://github.com/elaybarnoam/g1-mjlab-locomotion"
+license: MIT
+version: 0.1.0
+date-released: 2026-09-10
+keywords:
+  - reinforcement learning
+  - humanoid robotics
+  - MuJoCo
+  - mjlab
+  - PPO

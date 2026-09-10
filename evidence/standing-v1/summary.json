@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "status": "qualified_for_declared_simulation_scope",
+  "qualification_date": "2026-09-09",
+  "robot": "Unitree G1",
+  "task": "G1-Standing-Flat-v1",
+  "training": {
+    "seeds": [42, 43, 44],
+    "environments": 256,
+    "rollout_steps_per_environment": 24,
+    "updates_per_seed": 1000,
+    "transitions_per_seed": 6144000,
+    "selected_seed": 42,
+    "selected_checkpoint": "model_999.pt"
+  },
+  "hashes": {
+    "checkpoint_sha256": "9541715124c463d5008275f523b0855d6d7ba079c41e964a8bb6a2b74f1ff6ae",
+    "onnx_sha256": "01373e0deb56136a7c758a7a3b341db31c4bad323d54c6657f4b9cb64d0635cb",
+    "controller_contract_sha256": "c313b4e525f8b32cf111155c021a284ce794e25b62b088585da3fcaba84f4546",
+    "compiled_model_sha256": "9294f78097cbe222d1ec06c62492c6bb4b7a18bb13ee8857e33827189006c33f",
+    "mjlab_final_evidence_sha256": "f2dad4d74f47caba9519d293fd3e13793c4f8bba347b7df7f5afaf3625d2db17",
+    "native_final_evidence_sha256": "13c9034df3617c84c86f6e67cd7fa6f74218e48166d07d1c25134e3337c1f807"
+  },
+  "criteria": {
+    "trials": 100,
+    "horizon_seconds": 60.0,
+    "max_drift_m": 0.2,
+    "max_torso_tilt_deg_after_settling": 15.0,
+    "min_pelvis_height_m_after_settling": 0.6,
+    "max_continuous_unsupported_seconds": 0.1,
+    "settling_seconds": 1.0,
+    "finite_state_required": true
+  },
+  "results": {
+    "mjlab_mujoco_warp": {
+      "passed": 100,
+      "planned": 100,
+      "survival_passed": 100,
+      "wilson_95": [0.9630065017930143, 1.0],
+      "median_max_drift_m": 0.021544114,
+      "worst_max_drift_m": 0.040686823427677155,
+      "maximum_torso_tilt_deg": 3.378523349761963,
+      "minimum_post_settling_height_m": 0.7007542252540588
+    },
+    "native_mujoco_onnx": {
+      "passed": 100,
+      "planned": 100
+    },
+    "trajectory_state_parity": {
+      "passed": true,
+      "samples": 31,
+      "max_observation_absolute_error": 5.960464477539063e-8,
+      "max_inference_absolute_error": 4.172325134277344e-7
+    }
+  },
+  "limitations": [
+    "Both evaluation backends use the MuJoCo model family; this is not cross-engine proof.",
+    "No push, broad dynamics randomization, rough terrain, or hardware trial is included.",
+    "The actor uses simulated pelvis-site linear velocity that requires a deployable estimator or replacement.",
+    "Walking is not implemented."
+  ]
+}

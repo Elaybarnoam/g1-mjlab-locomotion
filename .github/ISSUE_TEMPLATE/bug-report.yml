@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible defect in the package or documented workflows.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not include credentials or private paths. Hardware-control and safety reports should
+        follow SECURITY.md when public disclosure could create risk.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Provide the smallest reproducible command and configuration.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Project version or commit
+      placeholder: 0.1.0 or full commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options:
+        - Core/report tooling
+        - Native MuJoCo and ONNX Runtime
+        - mjlab and MuJoCo Warp
+        - Packaging or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, GPU, driver, CUDA, mjlab, MuJoCo, and ONNX Runtime versions.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove secrets and private paths before pasting logs.
+      render: text

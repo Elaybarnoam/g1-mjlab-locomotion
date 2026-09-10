@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Standing-Flat-v1",
+  "run_name": "standing-v1-pilot-unclipped-002",
+  "seed": 42,
+  "num_envs": 256,
+  "max_iterations": 1000,
+  "rollout_steps": 24,
+  "save_interval": 100,
+  "physics_dt": 0.005,
+  "decimation": 4,
+  "episode_length_s": 20.0,
+  "action_clip": null,
+  "device": "cuda:0",
+  "logger": "tensorboard",
+  "video": false
+}

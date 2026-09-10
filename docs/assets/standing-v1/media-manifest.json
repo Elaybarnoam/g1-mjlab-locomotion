@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "selection_rule": "final-test trial 0 from the selected seed-42 model_999 policy",
+  "mode": "deterministic_inference_only",
+  "learning_enabled": false,
+  "backend": "native_mujoco_onnx_cpu",
+  "trial_id": 0,
+  "duration_seconds": 15.0,
+  "fps": 30,
+  "resolution": [960, 720],
+  "checkpoint_sha256": "9541715124c463d5008275f523b0855d6d7ba079c41e964a8bb6a2b74f1ff6ae",
+  "onnx_sha256": "01373e0deb56136a7c758a7a3b341db31c4bad323d54c6657f4b9cb64d0635cb",
+  "scenario_sha256": "f2dad4d74f47caba9519d293fd3e13793c4f8bba347b7df7f5afaf3625d2db17",
+  "files": {
+    "deterministic-standing-trial-000.mp4": {
+      "bytes": 3289506,
+      "sha256": "65f295a3623f9cce5f8c3ed46ac74badc448f844e5e55f8c77c4288dde48ecfc"
+    },
+    "standing-start.png": {
+      "bytes": 379206,
+      "sha256": "54532a883a67977349d270d2703bbd1760dcf2b6161cd9057b011166fee9f1c7"
+    },
+    "standing-middle.png": {
+      "bytes": 383148,
+      "sha256": "d95357c4c5699711b2c05e7cd003601989c5ac9c021460393b83af0a44bf8e68"
+    },
+    "standing-end.png": {
+      "bytes": 356857,
+      "sha256": "9722a6226d665396aebcac8e97e9926e35117d3e3e324d3ca68a57742f366ac5"
+    }
+  },
+  "caption": "Unitree G1 standing under a frozen deterministic ONNX policy in native MuJoCo.",
+  "scientific_role": "qualitative supporting evidence; numerical final suites remain authoritative"
+}

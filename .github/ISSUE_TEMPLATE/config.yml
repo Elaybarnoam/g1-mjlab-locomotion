@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security and safety disclosure
+    url: https://github.com/elaybarnoam/g1-mjlab-locomotion/security/policy
+    about: Report security or safety-sensitive issues using the private process.

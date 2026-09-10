@@ -1,0 +1,39 @@
+name: quality
+
+on:
+  push:
+    branches: [main, "feature/**", "fix/**", "codex/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - name: Install development and native dependencies
+        run: uv sync --locked --group dev --extra native --extra video
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Lint
+        run: uv run ruff check .
+      - name: Type check
+        run: uv run mypy
+      - name: Test
+        run: >-
+          uv run pytest -m "not simulator and not gpu and not slow"
+          --cov --cov-report=term-missing
+      - name: Repository policy
+        run: uv run python scripts/check_repository.py

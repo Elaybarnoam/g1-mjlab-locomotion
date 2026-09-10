@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Standing-Flat-v1",
+  "run_name": "standing-v1-smoke-001",
+  "seed": 42,
+  "num_envs": 16,
+  "max_iterations": 2,
+  "rollout_steps": 24,
+  "save_interval": 1,
+  "physics_dt": 0.005,
+  "decimation": 4,
+  "episode_length_s": 20.0,
+  "action_clip": 1.0,
+  "device": "cuda:0",
+  "logger": "tensorboard",
+  "video": false
+}

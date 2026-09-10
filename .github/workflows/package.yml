@@ -1,0 +1,45 @@
+name: package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --locked --group dev --extra native --extra video
+      - run: uv build
+      - run: uvx twine check dist/*
+      - run: uvx check-wheel-contents dist/*.whl
+      - name: Clean wheel installation
+        shell: bash
+        run: |
+          uv venv .scratch/wheel-smoke --python 3.12
+          uv pip install --python .scratch/wheel-smoke/bin/python "$(find dist -name '*.whl')[native,video]"
+          .scratch/wheel-smoke/bin/python -c "import g1_mjlab; print(g1_mjlab.__version__)"
+          .scratch/wheel-smoke/bin/g1-mjlab validate-config --config configs/standing-v1/train.json
+      - name: Inspect wheel contents
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path("dist").glob("*.whl"))
+          with ZipFile(wheel) as archive:
+              names = archive.namelist()
+          assert any(name.startswith("g1_mjlab/") for name in names)
+          assert not any(name.startswith("humanoid_rl/") for name in names)
+          assert any(name.endswith("LICENSE") for name in names)
+          assert any(name.endswith("THIRD_PARTY_NOTICES.md") for name in names)
+          PY

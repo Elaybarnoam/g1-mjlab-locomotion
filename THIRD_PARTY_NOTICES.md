@@ -1,0 +1,28 @@
+# Third-party notices
+
+This project is MIT-licensed. It integrates with, but does not relicense, the projects below.
+Unless explicitly stated, dependencies are installed separately and are not vendored in the
+source distribution.
+
+| Component | Pinned basis | License | Use |
+| --- | --- | --- | --- |
+| [mjlab](https://github.com/mujocolab/mjlab) | commit `8ee51fbcf806a7419189f706d9e394cbeb7790fa`, version 1.6.0 | Apache-2.0 | Training environment and G1 task/model provider |
+| [MuJoCo](https://github.com/google-deepmind/mujoco) | 3.11.0 | Apache-2.0 | Native simulation and viewer |
+| [MuJoCo Warp](https://github.com/google-deepmind/mujoco_warp) | 3.11.0 | Apache-2.0 | Batched GPU simulation through mjlab |
+| [NVIDIA Warp](https://github.com/NVIDIA/warp) | 1.14.0 | Apache-2.0 | GPU simulation dependency |
+| [RSL-RL](https://github.com/leggedrobotics/rsl_rl) | 5.5.0 | BSD-3-Clause | PPO/GAE implementation |
+| [PyTorch](https://github.com/pytorch/pytorch) | 2.9.0+cu128 in the qualified run | BSD-3-Clause | Neural-network runtime |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime) | 1.24.3 for native playback | MIT | Exported-policy inference |
+| [NumPy](https://github.com/numpy/numpy) | 2.5.1 for native playback | BSD-3-Clause | Numerical arrays |
+| [ImageIO](https://github.com/imageio/imageio) | 2.37.0 | BSD-2-Clause | Video writing |
+| [ImageIO-FFmpeg](https://github.com/imageio/imageio-ffmpeg) | 0.6.0 | BSD-2-Clause | MP4 encoding helper |
+
+The Unitree G1 model and visual geometry shown in the curated experiment media are loaded through
+the pinned mjlab asset package. This repository does not distribute the model mesh files, a
+compiled MuJoCo model, or Unitree trademarks as standalone assets. The screenshots and video are
+experiment outputs and identify the depicted robot; no affiliation with or endorsement by Unitree,
+the mjlab developers, Google DeepMind, NVIDIA, ETH Zurich, or OpenAI is implied.
+
+Dependency wheels may include additional notices. Their installed license files remain
+authoritative. Before redistributing a dependency or robot asset inside this repository or a
+release archive, review and include all license and notice files shipped by that component.
