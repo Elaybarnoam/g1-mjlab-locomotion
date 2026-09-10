@@ -23,6 +23,13 @@ def test_qualified_summary_is_internally_consistent() -> None:
         * summary["training"]["rollout_steps_per_environment"]
         * summary["training"]["updates_per_seed"]
     )
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert summary["qualification_date"] in readme
+    assert f"**{summary['results']['mjlab_mujoco_warp']['passed']}/100**" in readme
+    assert f"{summary['training']['transitions_per_seed']:,}" in readme
+    assert summary["hashes"]["checkpoint_sha256"] in (
+        ROOT / "docs/evaluation-and-evidence.md"
+    ).read_text(encoding="utf-8")
 
 
 def test_curated_media_matches_manifest() -> None:

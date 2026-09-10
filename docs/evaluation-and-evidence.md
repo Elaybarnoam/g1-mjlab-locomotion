@@ -30,6 +30,15 @@ error `4.18e-7`.
 record. It contains hashes for the private executable evidence but not the checkpoint, ONNX model,
 compiled model, or raw scenario states themselves.
 
+| Bound artifact | SHA-256 |
+| --- | --- |
+| Selected checkpoint | `9541715124c463d5008275f523b0855d6d7ba079c41e964a8bb6a2b74f1ff6ae` |
+| ONNX actor and normalizer | `01373e0deb56136a7c758a7a3b341db31c4bad323d54c6657f4b9cb64d0635cb` |
+| Controller contract | `c313b4e525f8b32cf111155c021a284ce794e25b62b088585da3fcaba84f4546` |
+| Compiled MuJoCo model | `9294f78097cbe222d1ec06c62492c6bb4b7a18bb13ee8857e33827189006c33f` |
+| Final mjlab evidence | `f2dad4d74f47caba9519d293fd3e13793c4f8bba347b7df7f5afaf3625d2db17` |
+| Final native evidence | `13c9034df3617c84c86f6e67cd7fa6f74218e48166d07d1c25134e3337c1f807` |
+
 ## Interpretation
 
 The result qualifies nominal flat-ground standing within the tested reset distribution. It does not

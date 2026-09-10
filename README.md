@@ -13,7 +13,7 @@ occurs during playback._
 
 ## Current verified result
 
-Standing-v1 is qualified for the declared flat-ground simulation scope as of 2026-09-10.
+Standing-v1 was qualified for the declared flat-ground simulation scope on 2026-09-09.
 
 | Evidence | Result |
 | --- | ---: |
@@ -73,8 +73,8 @@ semantics.
 
 ## Install
 
-The lightweight package contains configuration, evidence, reporting, and orchestration code. It
-does not initialize CUDA during import.
+The lightweight wheel contains reporting and orchestration code; canonical configuration and
+reviewed evidence live in the source repository. Importing the package does not initialize CUDA.
 
 ```console
 git clone https://github.com/elaybarnoam/g1-mjlab-locomotion.git

@@ -17,10 +17,12 @@ uv run pytest -m "not simulator and not gpu and not slow" --cov --cov-report=ter
 
 ## Training setup
 
-The `train` extra pins the exact mjlab Git revision and the qualified Torch, MuJoCo Warp, Warp, and
-RSL-RL versions. CUDA wheel selection is platform-specific; confirm that the installed PyTorch
-build reports `2.9.0+cu128` and supports the GPU before training. Do not install a Linux display
-driver inside WSL when the Windows host supplies WSL CUDA support.
+The evidence lock records the exact historical qualification runtime. The default `train` extra
+keeps the same mjlab, MuJoCo Warp, Warp, and RSL-RL versions but uses the security-maintained Torch
+2.13 line; this avoids known advisories in Torch 2.9.0 and is validated by a separate CUDA smoke
+run. It is not a claim that the historical 100-trial evidence was regenerated. Confirm that Torch
+supports the GPU before training. Do not install a Linux display driver inside WSL when the Windows
+host supplies WSL CUDA support.
 
 ```console
 uv sync --group dev --extra train

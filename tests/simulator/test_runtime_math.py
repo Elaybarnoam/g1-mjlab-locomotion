@@ -1,4 +1,4 @@
-"""CPU tests using the pinned learning runtime; skipped in artifact-only installs."""
+"""Simulator-adapter tests using the pinned learning runtime."""
 
 from types import SimpleNamespace
 from unittest.mock import Mock

@@ -26,9 +26,15 @@ MJLAB_REVISION = "8ee51fbcf806a7419189f706d9e394cbeb7790fa"
 
 def doctor(output: Path) -> dict[str, Any]:
     """Exercise Torch and mjlab imports and write a machine-readable diagnosis."""
-    import mujoco
-    import torch
-    import warp
+    try:
+        import mjlab  # noqa: F401
+        import mujoco
+        import torch
+        import warp
+    except ModuleNotFoundError as error:
+        raise RuntimeError(
+            "doctor requires the Linux training stack; install with `uv sync --extra train`"
+        ) from error
 
     started = time.monotonic()
     cuda = torch.cuda.is_available()
