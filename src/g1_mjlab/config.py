@@ -137,7 +137,7 @@ def _validate(data: Mapping[str, Any]) -> ResolvedRunConfig:
     if cfg.device not in {"cuda:0", "cpu"}:
         raise ValueError("device must be 'cuda:0' or 'cpu'")
     if cfg.logger != "tensorboard":
-        raise ValueError("Plan 01 requires local tensorboard logging")
+        raise ValueError("standing-v1 requires local TensorBoard logging")
     if not cfg.task_id:
         raise ValueError("task_id cannot be empty")
     if not cfg.run_name or any(

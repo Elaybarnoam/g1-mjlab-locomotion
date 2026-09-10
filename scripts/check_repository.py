@@ -61,6 +61,35 @@ def tracked_files() -> list[Path]:
     return [ROOT / value.decode() for value in result.stdout.split(b"\0") if value]
 
 
+def check_git_history() -> None:
+    """Reject prohibited names and oversized blobs anywhere in reachable history."""
+    result = subprocess.run(
+        ["git", "rev-list", "--objects", "--all"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    for line in result.stdout.splitlines():
+        object_id, separator, name = line.partition(" ")
+        if not separator:
+            continue
+        normalized = name.replace("\\", "/")
+        if normalized.startswith(PROHIBITED_PREFIXES) or normalized.endswith(PROHIBITED_SUFFIXES):
+            raise SystemExit(f"prohibited historical path: {normalized}")
+        size = subprocess.run(
+            ["git", "cat-file", "-s", object_id],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="ascii",
+        )
+        if int(size.stdout) > MAX_GIT_FILE_BYTES:
+            raise SystemExit(f"historical blob exceeds {MAX_GIT_FILE_BYTES} bytes: {normalized}")
+
+
 def check_media() -> None:
     media_root = ROOT / "docs" / "assets" / "standing-v1"
     manifest = json.loads((media_root / "media-manifest.json").read_text(encoding="utf-8"))
@@ -108,6 +137,7 @@ def main() -> int:
                     raise SystemExit(f"private absolute path in {relative}: {pattern.pattern}")
     check_media()
     check_markdown_links()
+    check_git_history()
     print(f"repository policy passed for {len(files)} tracked files")
     return 0
 

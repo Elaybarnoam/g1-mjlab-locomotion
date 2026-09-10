@@ -26,9 +26,10 @@ standing task + controller adapter
   data and pure logic.
 - `standing_task.py` owns the versioned standing MDP.
 - `training.py`, `runtime.py`, and `campaign.py` own simulator lifecycle, PPO orchestration, bounded
-  retries, and telemetry.
+  retries, and telemetry; `diagnostics.py` owns bounded control and checkpoint probes.
 - `deployment.py` owns frozen-bundle integrity, native observation/action reconstruction, ONNX
-  inference, evaluation, recording, and interactive playback.
+  inference, evaluation, and transfer parity. `native_media.py` owns recording and interactive
+  playback.
 - `reporting/` reads non-executable artifacts and renders offline HTML without importing mjlab.
 
 ## Durable seams
