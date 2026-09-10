@@ -4,6 +4,7 @@ import pytest
 
 from g1_mjlab.cli import parser
 from g1_mjlab.config import load_config
+from g1_mjlab.deployment import load_bundle
 from g1_mjlab.deployment import play_native as legacy_play_native
 from g1_mjlab.deployment import record_native_video as legacy_record_native_video
 from g1_mjlab.diagnostics import diagnose_standing
@@ -48,3 +49,20 @@ def test_diagnostics_reject_unsafe_bounds_before_simulator_start() -> None:
     config = load_config(Path("configs/standing-v1/smoke.json"))
     with pytest.raises(ValueError, match="1..4 trials"):
         diagnose_standing(config, Path("model.pt"), Path("output"), trials=5)
+
+
+@pytest.mark.parametrize(
+    ("contract_version", "bundle_version", "message"),
+    [(2, 1, "contract"), (1, 2, "bundle")],
+)
+def test_bundle_loader_rejects_unknown_schema_before_artifact_access(
+    tmp_path: Path, contract_version: int, bundle_version: int, message: str
+) -> None:
+    (tmp_path / "contract.json").write_text(
+        f'{{"schema_version": {contract_version}}}', encoding="utf-8"
+    )
+    (tmp_path / "policy-bundle.json").write_text(
+        f'{{"schema_version": {bundle_version}}}', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match=message):
+        load_bundle(tmp_path)
