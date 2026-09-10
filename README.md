@@ -81,7 +81,7 @@ git clone https://github.com/elaybarnoam/g1-mjlab-locomotion.git
 cd g1-mjlab-locomotion
 uv sync --group dev --extra native --extra video
 uv run g1-mjlab validate-config --config configs/standing-v1/train.json
-uv run pytest
+uv run pytest -m "not simulator and not gpu and not slow" --cov --cov-report=term-missing
 ```
 
 Training uses the exact mjlab revision recorded in `pyproject.toml` and

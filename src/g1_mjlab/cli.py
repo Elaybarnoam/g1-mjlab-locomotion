@@ -1,4 +1,4 @@
-"""Command line interface for Plan 01 mjlab workflows."""
+"""Command-line entry point for supported G1 mjlab workflows."""
 
 from __future__ import annotations
 
@@ -126,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(evaluate_native(args.run, args.scenarios, args.output), indent=2))
         return 0
     if args.command == "record-native":
-        from .deployment import record_native_video
+        from .native_media import record_native_video
 
         print(
             json.dumps(
@@ -145,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     if args.command == "play-native":
-        from .deployment import play_native
+        from .native_media import play_native
 
         play_native(args.run, args.scenarios, trial_id=args.trial_id)
         return 0
@@ -204,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     if args.command == "diagnose-standing":
-        from .runtime import diagnose_standing
+        from .diagnostics import diagnose_standing
 
         config = load_config(args.config)
         result = diagnose_standing(
@@ -218,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     if args.command == "diagnose-checkpoints":
-        from .runtime import diagnose_checkpoints
+        from .diagnostics import diagnose_checkpoints
 
         config = load_config(args.config)
         result = diagnose_checkpoints(

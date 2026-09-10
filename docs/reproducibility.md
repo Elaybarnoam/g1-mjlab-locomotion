@@ -12,7 +12,7 @@ The qualified training runtime used Ubuntu 24.04 under WSL2, Python 3.13.15, mjl
 ```console
 uv sync --group dev --extra native --extra video
 uv run g1-mjlab validate-config --config configs/standing-v1/train.json
-uv run pytest
+uv run pytest -m "not simulator and not gpu and not slow" --cov --cov-report=term-missing
 ```
 
 ## Training setup
