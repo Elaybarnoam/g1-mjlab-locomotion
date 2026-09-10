@@ -18,63 +18,10 @@ from typing import Any
 from .artifacts import RunStore, read_jsonl, sha256_file, snapshot_source
 from .checkpoints import checkpoint_index, ordered_checkpoints
 from .config import PpoProfile, ResolvedRunConfig, StandingRewardProfile
+from .environment import build_standing_train_config
 from .evaluation import StandingCriteria, TrialAccumulator, wilson_interval
 
 MJLAB_REVISION = "8ee51fbcf806a7419189f706d9e394cbeb7790fa"
-
-
-def _standing_train_config(
-    config: ResolvedRunConfig,
-    log_root: Path,
-    *,
-    randomized_reset: bool = True,
-    reward_profile: StandingRewardProfile | None = None,
-    ppo_profile: PpoProfile | None = None,
-) -> Any:
-    import mjlab.tasks  # noqa: F401
-    from mjlab.envs import mdp as envs_mdp
-    from mjlab.managers.reward_manager import RewardTermCfg
-    from mjlab.scripts.train import TrainConfig
-
-    from .standing_task import TASK_ID, configure_stance, register_standing_task
-
-    register_standing_task()
-
-    cfg = TrainConfig.from_task(config.task_id)
-    cfg.env.scene.num_envs = config.num_envs
-    cfg.env.episode_length_s = config.episode_length_s
-    cfg.env.sim.mujoco.timestep = config.physics_dt
-    cfg.env.decimation = config.decimation
-    cfg.env.seed = config.seed
-    configure_stance(cfg.env, randomized_reset=randomized_reset)
-    if config.task_id == TASK_ID:
-        cfg.env.rewards["termination"].weight = -5.0 / config.control_dt
-    if reward_profile is not None:
-        if reward_profile.alive_reward_rate:
-            cfg.env.rewards["alive"] = RewardTermCfg(
-                func=envs_mdp.is_alive,
-                weight=reward_profile.alive_reward_rate,
-            )
-        if reward_profile.termination_penalty:
-            cfg.env.rewards["termination"] = RewardTermCfg(
-                func=envs_mdp.is_terminated,
-                weight=reward_profile.termination_weight(config.control_dt),
-            )
-    cfg.agent.seed = config.seed
-    cfg.agent.num_steps_per_env = config.rollout_steps
-    cfg.agent.max_iterations = config.max_iterations
-    cfg.agent.save_interval = config.save_interval
-    cfg.agent.clip_actions = config.action_clip
-    if ppo_profile is not None:
-        distribution_cfg = cfg.agent.actor.distribution_cfg
-        if distribution_cfg is None:
-            raise ValueError("standing actor must define an action distribution")
-        distribution_cfg["init_std"] = ppo_profile.initial_action_std
-    cfg.agent.experiment_name = "g1_standing"
-    cfg.agent.run_name = config.run_name
-    cfg.agent.logger = "tensorboard"
-    cfg.agent.upload_model = False
-    return replace(cfg, log_root=str(log_root), gpu_ids=[0])
 
 
 def doctor(output: Path) -> dict[str, Any]:
@@ -183,7 +130,7 @@ def train(
         (run_dir / "source.json").write_text(
             json.dumps(snapshot, indent=2) + "\n", encoding="utf-8"
         )
-        train_cfg = _standing_train_config(
+        train_cfg = build_standing_train_config(
             config,
             run_dir / "upstream",
             reward_profile=reward_profile,
@@ -325,7 +272,7 @@ def evaluate(
         raise FileExistsError(f"evaluation output is not empty: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
     eval_config = replace(config, seed=seed, num_envs=trials, episode_length_s=horizon_s)
-    train_cfg = _standing_train_config(eval_config, output_dir)
+    train_cfg = build_standing_train_config(eval_config, output_dir)
     train_cfg.env.auto_reset = False
     env = ManagerBasedRlEnv(cfg=train_cfg.env, device=config.device, render_mode=None)
     accumulators = [
@@ -441,3 +388,38 @@ def evaluate(
         json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return result
+
+
+def diagnose_standing(
+    config: ResolvedRunConfig,
+    checkpoint: Path,
+    output_dir: Path,
+    *,
+    onnx_path: Path | None = None,
+    trials: int = 4,
+    horizon_s: float = 3.0,
+) -> dict[str, Any]:
+    """Compatibility entry point; implementation lives in :mod:`diagnostics`."""
+    from .diagnostics import diagnose_standing as diagnose
+
+    return diagnose(
+        config,
+        checkpoint,
+        output_dir,
+        onnx_path=onnx_path,
+        trials=trials,
+        horizon_s=horizon_s,
+    )
+
+
+def diagnose_checkpoints(
+    config: ResolvedRunConfig,
+    checkpoints: list[Path],
+    output_dir: Path,
+    *,
+    horizon_s: float = 3.0,
+) -> dict[str, Any]:
+    """Compatibility entry point; implementation lives in :mod:`diagnostics`."""
+    from .diagnostics import diagnose_checkpoints as diagnose
+
+    return diagnose(config, checkpoints, output_dir, horizon_s=horizon_s)

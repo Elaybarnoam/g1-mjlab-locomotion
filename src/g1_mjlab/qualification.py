@@ -255,10 +255,10 @@ def supported_step_probe(
 def qualify_controller(config: ResolvedRunConfig, output: Path) -> dict[str, Any]:
     from mjlab.envs import ManagerBasedRlEnv
 
-    from .runtime import _standing_train_config
+    from .environment import build_standing_train_config
 
     output.mkdir(parents=True, exist_ok=False)
-    cfg = _standing_train_config(replace(config, num_envs=1), output, randomized_reset=False)
+    cfg = build_standing_train_config(replace(config, num_envs=1), output, randomized_reset=False)
     cfg.env.auto_reset = False
     env = ManagerBasedRlEnv(cfg=cfg.env, device=config.device, render_mode=None)
     try:

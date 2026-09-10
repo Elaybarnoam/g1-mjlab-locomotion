@@ -93,6 +93,7 @@ omit = [
   "src/g1_mjlab/cli.py",
   "src/g1_mjlab/deployment.py",
   "src/g1_mjlab/diagnostics.py",
+  "src/g1_mjlab/environment.py",
   "src/g1_mjlab/native_media.py",
   "src/g1_mjlab/qualification.py",
   "src/g1_mjlab/rl_adapter.py",

@@ -11,7 +11,7 @@ from typing import Any
 
 from .artifacts import sha256_file
 from .config import ResolvedRunConfig
-from .runtime import _standing_train_config
+from .environment import build_standing_train_config
 
 
 def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
@@ -41,7 +41,7 @@ def _diagnostic_case(
     from mjlab.tasks.registry import load_runner_cls
 
     case_config = replace(config, num_envs=trials, episode_length_s=horizon_s)
-    train_cfg = _standing_train_config(
+    train_cfg = build_standing_train_config(
         case_config, output_dir / case_name, randomized_reset=randomized_reset
     )
     train_cfg.env.auto_reset = False

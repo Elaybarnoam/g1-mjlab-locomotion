@@ -45,12 +45,12 @@ def freeze_selected_policy(config: ResolvedRunConfig, run: Path) -> dict[str, An
     from mjlab.envs import ManagerBasedRlEnv
     from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 
-    from .runtime import _standing_train_config
+    from .environment import build_standing_train_config
 
     selection = json.loads((run / "selection.json").read_text(encoding="utf-8"))
     checkpoint = run / "checkpoints" / selection["selected_checkpoint"]
     checkpoint.resolve(strict=True)
-    train_cfg = _standing_train_config(replace(config, num_envs=1), run / "freeze")
+    train_cfg = build_standing_train_config(replace(config, num_envs=1), run / "freeze")
     env = ManagerBasedRlEnv(cfg=train_cfg.env, device=config.device, render_mode=None)
     try:
         wrapped = RslRlVecEnvWrapper(env, clip_actions=config.action_clip)
@@ -304,7 +304,7 @@ def check_transfer_parity(config: ResolvedRunConfig, run: Path, output: Path) ->
     from mjlab.envs import ManagerBasedRlEnv
     from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 
-    from .runtime import _standing_train_config
+    from .environment import build_standing_train_config
 
     contract, native_model, onnx = load_bundle(run)
     bundle = json.loads((run / "policy-bundle.json").read_text(encoding="utf-8"))
@@ -312,7 +312,7 @@ def check_transfer_parity(config: ResolvedRunConfig, run: Path, output: Path) ->
     if sha256_file(checkpoint) != bundle["checkpoint_sha256"]:
         raise ValueError("PyTorch checkpoint integrity mismatch")
     output.mkdir(parents=True, exist_ok=False)
-    cfg = _standing_train_config(replace(config, num_envs=1, seed=10043), output)
+    cfg = build_standing_train_config(replace(config, num_envs=1, seed=10043), output)
     cfg.env.auto_reset = True
     env = ManagerBasedRlEnv(cfg=cfg.env, device=config.device, render_mode=None)
     samples = []
@@ -389,3 +389,36 @@ def check_transfer_parity(config: ResolvedRunConfig, run: Path, output: Path) ->
         json.dumps(result, indent=2, allow_nan=False) + "\n", encoding="utf-8"
     )
     return result
+
+
+def record_native_video(
+    run: Path,
+    scenarios: Path,
+    output: Path,
+    *,
+    trial_id: int = 0,
+    duration_s: float = 15.0,
+    fps: int = 30,
+    width: int = 960,
+    height: int = 720,
+) -> dict[str, Any]:
+    """Compatibility entry point; implementation lives in :mod:`native_media`."""
+    from .native_media import record_native_video as record
+
+    return record(
+        run,
+        scenarios,
+        output,
+        trial_id=trial_id,
+        duration_s=duration_s,
+        fps=fps,
+        width=width,
+        height=height,
+    )
+
+
+def play_native(run: Path, scenarios: Path, *, trial_id: int = 0) -> None:
+    """Compatibility entry point; implementation lives in :mod:`native_media`."""
+    from .native_media import play_native as play
+
+    play(run, scenarios, trial_id=trial_id)
