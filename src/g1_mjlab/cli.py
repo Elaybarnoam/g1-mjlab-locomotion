@@ -27,6 +27,17 @@ def parser() -> argparse.ArgumentParser:
     preview_motion.add_argument("--reference", required=True, type=Path)
     preview_motion.add_argument("--model-xml", required=True, type=Path)
     preview_motion.add_argument("--output", required=True, type=Path)
+    probe_walking = commands.add_parser("probe-walking")
+    probe_walking.add_argument("--config", required=True, type=Path)
+    probe_walking.add_argument("--output", required=True, type=Path)
+    probe_walking.add_argument("--steps", type=int, default=100)
+    probe_walking.add_argument("--num-envs", type=int)
+    probe_walking.add_argument("--zero-actions", action="store_true")
+    select_parallel = commands.add_parser("select-walking-parallelism")
+    select_parallel.add_argument("--probes", required=True, type=Path, nargs="+")
+    select_parallel.add_argument("--repeats", required=True, type=int)
+    select_parallel.add_argument("--minimum-free-ratio", type=float, default=0.2)
+    select_parallel.add_argument("--output", required=True, type=Path)
     install = commands.add_parser("install-policy")
     install.add_argument("name", choices=("standing-v1",))
     install.add_argument("--output", type=Path)
@@ -142,6 +153,39 @@ def main(argv: list[str] | None = None) -> int:
                 sort_keys=True,
             )
         )
+        return 0
+    if args.command == "probe-walking":
+        from .walking_diagnostics import run_walking_probe
+
+        overrides = {"num_envs": args.num_envs} if args.num_envs is not None else None
+        probe_config = load_config(args.config, overrides)
+        print(
+            json.dumps(
+                run_walking_probe(
+                    probe_config,
+                    args.output,
+                    steps=args.steps,
+                    reference_actions=not args.zero_actions,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "select-walking-parallelism":
+        from .walking_diagnostics import select_parallelism
+
+        probes = [json.loads(path.read_text(encoding="utf-8")) for path in args.probes]
+        result = select_parallelism(
+            probes,
+            repeats=args.repeats,
+            minimum_free_ratio=args.minimum_free_ratio,
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     if args.command == "install-policy":
         from .policy_distribution import install_policy

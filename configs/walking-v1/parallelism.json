@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Walking-Flat-v1",
+  "selected_num_envs": 256,
+  "rollout_steps": 24,
+  "transitions_per_update": 6144,
+  "selection_rule": "fastest of 1, 16, 64, 128, and 256 environments passing both fresh-process repeats with at least 20% free VRAM",
+  "minimum_free_ratio": 0.8385924284366877,
+  "mean_measured_transitions_per_second": 6493.180575901667,
+  "probe_steps": 25,
+  "repeats": 2,
+  "qualification_date": "2026-09-11",
+  "runtime_lock": "runtime-lock.json",
+  "evidence": "../../evidence/walking-v1/controller-feasibility.json"
+}
