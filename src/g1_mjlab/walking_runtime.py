@@ -30,6 +30,7 @@ def evaluate_walking(
     trials: int,
     seed: int,
     criteria: WalkingCriteria | None = None,
+    video: bool = False,
 ) -> dict[str, Any]:
     """Run deterministic actor means and retain each first episode before reset."""
     get_task(config.task_id).require(TaskCapability.WALKING_EVALUATION)
@@ -60,7 +61,10 @@ def evaluate_walking(
     )
     train_cfg = build_train_config(eval_config, output, randomized_reset=False)
     train_cfg.env.auto_reset = False
-    env = ManagerBasedRlEnv(cfg=train_cfg.env, device=config.device, render_mode=None)
+    env = ManagerBasedRlEnv(
+        cfg=train_cfg.env, device=config.device, render_mode="rgb_array" if video else None
+    )
+    video_frames: list[np.ndarray] = []
     records: list[dict[str, Any]] = [
         {
             "command": [],
@@ -102,6 +106,11 @@ def evaluate_walking(
                 command.set_requested_forward_speed(requested)
                 actions = policy(observations)
                 observations, _, dones, _ = wrapped.step(actions)
+                if video and step % 2 == 0:
+                    frame = env.render()
+                    if frame is not None:
+                        array = np.asarray(frame)
+                        video_frames.append(array[0] if array.ndim == 4 else array)
                 root_quaternion = robot.data.root_link_quat_w
                 upright_z = 1 - 2 * (
                     torch.square(root_quaternion[:, 1]) + torch.square(root_quaternion[:, 2])
@@ -202,6 +211,24 @@ def evaluate_walking(
         "passed_both": passed,
         "trials": trials_out,
     }
+    if video:
+        if not video_frames:
+            raise RuntimeError("walking video requested but renderer produced no frames")
+        import imageio.v2 as imageio
+
+        video_path = output / "deterministic.mp4"
+        with imageio.get_writer(
+            video_path, fps=25, codec="libx264", quality=8, macro_block_size=None
+        ) as writer:
+            for frame in video_frames:
+                writer.append_data(frame)  # type: ignore[attr-defined]
+        result["video"] = {
+            "path": video_path.name,
+            "sha256": sha256_file(video_path),
+            "fps": 25,
+            "frame_count": len(video_frames),
+            "mode": "deterministic actor mean; learning disabled; real-time encoding",
+        }
     (output / "summary.json").write_text(
         json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8"
     )

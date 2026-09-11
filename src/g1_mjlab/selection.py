@@ -38,10 +38,10 @@ def score_walking(summary: dict[str, Any]) -> tuple[int, int, float, float, floa
     return (
         int(summary["passed_both"]),
         sum(bool(item["functional_passed"]) for item in trials),
-        -median(values("command_rms_m_s", missing=float("inf"))),
+        -median(values("command_rms_m_s", missing=1e9)),
         median(values("alternation_ratio", missing=0.0)),
         -median(values("tiny_step_fraction", missing=1.0)),
-        -median(values("stance_slip_rms_m_s", missing=float("inf"))),
+        -median(values("stance_slip_rms_m_s", missing=1e9)),
         checkpoint_iteration(Path(summary["checkpoint"])),
     )
 
@@ -82,9 +82,16 @@ def select_checkpoint(run: Path) -> dict[str, Any]:
         ],
         "phase": "development",
         "not_final_test": True,
+        "qualified": (
+            int(selected.get("passed_both", -1)) == len(selected["trials"])
+            if walking
+            else int(selected.get("passed", -1)) == len(selected["trials"])
+        ),
     }
     shutil.copy2(selected_path, run / "evaluation" / "summary.json")
-    (run / "selection.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    (run / "selection.json").write_text(
+        json.dumps(result, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+    )
     index_path = run / "checkpoints" / "index.json"
     index = json.loads(index_path.read_text(encoding="utf-8"))
     index["best_development"] = selected["checkpoint"]

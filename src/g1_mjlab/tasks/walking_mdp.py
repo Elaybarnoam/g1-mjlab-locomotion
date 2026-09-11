@@ -96,7 +96,7 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         self.blend = torch.zeros(self.num_envs, device=self.device)
         self.walking = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reference_distance_m = torch.zeros(self.num_envs, device=self.device)
-        self.metrics["command_error_m_s"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["command_filter_error_m_s"] = torch.zeros(self.num_envs, device=self.device)
 
     @property
     def command(self) -> torch.Tensor:
@@ -130,7 +130,9 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         return cast(dict[str, float], super().reset(env_ids))
 
     def _update_metrics(self) -> None:
-        self.metrics["command_error_m_s"] = torch.abs(self._requested[:, 0] - self._applied[:, 0])
+        self.metrics["command_filter_error_m_s"] = torch.abs(
+            self._requested[:, 0] - self._applied[:, 0]
+        )
 
     def _resample_command(self, env_ids: torch.Tensor) -> None:
         standing = torch.rand(len(env_ids), device=self.device) < self.cfg.standing_fraction
@@ -205,6 +207,22 @@ def phase_cos(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
 
 def walk_blend(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
     return _command(env, command_name).blend[:, None]
+
+
+def track_linear_velocity(
+    env: ManagerBasedRlEnv,
+    std: float,
+    command_name: str,
+    asset_cfg: SceneEntityCfg = _ROBOT,
+) -> torch.Tensor:
+    """Match upstream velocity reward while logging the physical tracking error."""
+    robot: Entity = env.scene[asset_cfg.name]
+    command = _command(env, command_name).command
+    actual = robot.data.root_link_lin_vel_b
+    error = torch.sum(torch.square(command[:, :2] - actual[:, :2]), dim=1)
+    error += torch.square(actual[:, 2])
+    env.extras["log"]["Errors/base_linear_velocity_rms_m_s"] = torch.sqrt(error).mean()
+    return torch.exp(-error / std**2)
 
 
 def reference_joint_pose(

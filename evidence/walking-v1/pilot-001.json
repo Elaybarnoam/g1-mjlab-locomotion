@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Walking-Flat-v1",
+  "run_id": "walking-v1-pilot-001",
+  "seed": 42,
+  "updates": 1000,
+  "num_envs": 256,
+  "rollout_steps": 24,
+  "total_transitions": 6144000,
+  "wall_seconds": 1151.365482427,
+  "completed": true,
+  "all_losses_parameters_and_recorded_gradients_finite": true,
+  "final_checkpoint": "model_999.pt",
+  "final_checkpoint_sha256": "6d01eab2faaaff690667fc743459491f7ce4b04fe246c1814a84aabc6de55743",
+  "development_evaluations": [
+    {"checkpoint": "model_100.pt", "passed_both": 0, "mean_survival_s": 1.46, "maximum_steps": 0, "mean_command_rms_m_s": null},
+    {"checkpoint": "model_300.pt", "passed_both": 0, "mean_survival_s": 1.94, "maximum_steps": 0, "mean_command_rms_m_s": null},
+    {"checkpoint": "model_500.pt", "passed_both": 0, "mean_survival_s": 15.0, "maximum_steps": 5, "mean_command_rms_m_s": 1.060614869281184},
+    {"checkpoint": "model_700.pt", "passed_both": 0, "mean_survival_s": 15.0, "maximum_steps": 0, "mean_command_rms_m_s": 1.0619989941590973},
+    {"checkpoint": "model_900.pt", "passed_both": 0, "mean_survival_s": 15.0, "maximum_steps": 4, "mean_command_rms_m_s": 1.066132673318268},
+    {"checkpoint": "model_999.pt", "passed_both": 0, "mean_survival_s": 15.0, "maximum_steps": 0, "mean_command_rms_m_s": 1.06616593372164}
+  ],
+  "best_development_checkpoint": "model_500.pt",
+  "best_development_checkpoint_sha256": "f288aa643212dd4e384e974c2e6d50f6a6976b1478f883333b8735914b1c9507",
+  "qualified": false,
+  "diagnostic_trial": {
+    "survived_seconds": 15.0,
+    "completed_steps": 6,
+    "command_rms_m_s": 1.0572904401241026,
+    "median_step_length_m": 0.02251370996236801,
+    "cadence_steps_s": 0.544464609800363,
+    "alternation_ratio": 0.0,
+    "tiny_step_fraction": 1.0,
+    "stop_speed_rms_m_s": 0.02761858287261419,
+    "violations": ["cadence", "command_tracking", "nonalternating_steps", "shuffling"]
+  },
+  "video": {
+    "path": "docs/assets/walking-v1/pilot-001-shuffling.mp4",
+    "sha256": "c19f512328d306ea72c82db39db40280f51fec75882595ad8c869b8afbe22ae1",
+    "fps": 25,
+    "frames": 375,
+    "real_time": true,
+    "deterministic_actor_mean": true
+  },
+  "diagnosis": "PPO learned stable zero-command standing and controlled stopping but did not learn commanded forward locomotion. Sparse/weak physical velocity reward and style terms were dominated; extending the unchanged run is not justified."
+}

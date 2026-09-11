@@ -108,6 +108,7 @@ def parser() -> argparse.ArgumentParser:
     evaluate_walking.add_argument("--output", required=True, type=Path)
     evaluate_walking.add_argument("--trials", type=int, default=16)
     evaluate_walking.add_argument("--seed", type=int, default=10042)
+    evaluate_walking.add_argument("--video", action="store_true")
     diagnose = commands.add_parser("diagnose-standing")
     diagnose.add_argument("--config", required=True, type=Path)
     diagnose.add_argument("--checkpoint", required=True, type=Path)
@@ -246,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
                     args.output,
                     trials=args.trials,
                     seed=args.seed,
+                    video=args.video,
                 ),
                 indent=2,
                 sort_keys=True,

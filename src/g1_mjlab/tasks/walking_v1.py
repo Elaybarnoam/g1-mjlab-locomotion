@@ -155,7 +155,7 @@ def register_task() -> None:
     env.curriculum = {}
     env.rewards = {
         "track_linear_velocity": RewardTermCfg(
-            func=mdp.track_linear_velocity,
+            func=walking_mdp.track_linear_velocity,
             weight=weight["track_linear_velocity"],
             params={"command_name": "twist", "std": 0.35},
         ),

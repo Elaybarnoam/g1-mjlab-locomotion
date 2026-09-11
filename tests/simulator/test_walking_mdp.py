@@ -72,5 +72,9 @@ def test_walking_mdp_has_finite_batched_short_rollout() -> None:
         )
         assert reported_rate * env.step_dt == pytest.approx(float(rewards[0]), abs=1e-5)
         assert termination_count < 4
+        assert "Errors/base_linear_velocity_rms_m_s" in env.extras["log"]
+        command = env.command_manager.get_term("twist")
+        assert "command_filter_error_m_s" in command.metrics
+        assert "command_error_m_s" not in command.metrics
     finally:
         env.close()
