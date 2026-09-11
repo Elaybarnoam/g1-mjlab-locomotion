@@ -86,7 +86,7 @@ _TASKS = {
         implementation_module="g1_mjlab.tasks.walking_v1",
         capabilities=frozenset(),
         unavailable_reason=(
-            "the walking-v1 command/phase and observation/action contract are not yet defined"
+            "the walking-v1 simulator MDP and reward terms are not yet implemented"
         ),
     ),
 }

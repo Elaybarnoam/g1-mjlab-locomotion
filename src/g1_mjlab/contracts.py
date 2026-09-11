@@ -32,6 +32,10 @@ class PolicyContract:
     control_dt: float
     action_semantics: str
     actuator_semantics: str
+    task_id: str = ""
+    layout_id: str = ""
+    command_semantics: str = ""
+    phase_semantics: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -62,6 +66,8 @@ def validate_contract(contract: PolicyContract) -> None:
         raise ValueError("action names must be unique")
     if set(contract.action_names) - set(contract.joint_names):
         raise ValueError("every action must reference a model joint")
+    if bool(contract.task_id) != bool(contract.layout_id):
+        raise ValueError("task_id and layout_id must either both be set or both be empty")
     for fields in (contract.actor_fields, contract.critic_fields):
         expected = 0
         for field in fields:

@@ -161,6 +161,7 @@ not a safe interchange format for untrusted files.
 - [Using published policies](docs/using-published-policies.md)
 - [Limitations and roadmap](docs/limitations-and-roadmap.md)
 - [Walking reference provenance and audit](docs/walking-reference.md)
+- [Walking-v1 command, phase, and policy contract](docs/walking-control-contract.md)
 
 ## Contributing and license
 

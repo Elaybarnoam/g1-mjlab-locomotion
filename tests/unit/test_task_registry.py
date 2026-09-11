@@ -29,7 +29,7 @@ def test_walking_descriptor_fails_closed_until_control_contract_exists() -> None
 
     assert task.config_directory == "walking-v1"
     assert task.experiment_name == "g1_walking"
-    with pytest.raises(TaskCapabilityError, match="command/phase"):
+    with pytest.raises(TaskCapabilityError, match="simulator MDP"):
         task.require(TaskCapability.TRAIN)
 
 
@@ -62,5 +62,5 @@ def test_unavailable_training_fails_before_simulator_import(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(TaskCapabilityError, match="command/phase"):
+    with pytest.raises(TaskCapabilityError, match="simulator MDP"):
         build_train_config(load_config(source), tmp_path / "logs")
