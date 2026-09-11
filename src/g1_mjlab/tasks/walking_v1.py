@@ -155,6 +155,12 @@ def _configure_locomotion_bootstrap(env: Any) -> None:
         "effort",
     ):
         env.rewards[name].weight = 0.0
+    # Contact/height gates are evaluation criteria, not bootstrap terminations. Early random
+    # policies routinely touch a knee or dip below the final height threshold; resetting there
+    # collapses rollouts before PPO can learn recovery. Retain non-finite termination as a safety
+    # guard in addition to the pinned timeout/fall conditions.
+    env.terminations.pop("low_height", None)
+    env.terminations.pop("forbidden_ground_contact", None)
 
 
 def _configure_reference_style(env: Any) -> None:

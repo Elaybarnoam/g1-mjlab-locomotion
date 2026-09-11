@@ -7,6 +7,13 @@ locomotion rewards, ordinary dynamic resets, and deterministic 0→0.6→0 m/s s
 A two-update GPU smoke completed with finite gradients and changing actor/critic parameters. This
 proves the learning path only; the 6,000-update campaign and gait qualification remain outstanding.
 
+The first long bootstrap attempt exposed one additional boundary error: final-evaluation
+`low_height` and `forbidden_ground_contact` gates were also terminating training episodes. At update
+534 the mean episode was only about 14 control steps and these two terms dominated resets, so the
+run was stopped. Bootstrap now retains timeout, 70-degree fall, and non-finite-state termination;
+height and non-foot-contact remain strict deterministic evaluation failures. This matches the
+learning/qualification separation while preserving the numerical safety guard.
+
 ## Decision
 
 Train a robust command-conditioned G1 locomotion policy using the pinned mjlab velocity-task

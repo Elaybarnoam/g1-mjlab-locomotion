@@ -95,6 +95,7 @@ def test_bootstrap_profile_uses_nominal_actions_and_upstream_locomotion_rewards(
     assert cfg.rewards["foot_slip"].weight == pytest.approx(-0.1)
     assert cfg.rewards["soft_landing"].weight == pytest.approx(-1e-5)
     assert cfg.rewards["termination"].weight == 0
+    assert set(cfg.terminations) == {"time_out", "fell_over", "nonfinite_state"}
 
 
 def test_reference_only_profile_changes_only_command_reset_curriculum() -> None:

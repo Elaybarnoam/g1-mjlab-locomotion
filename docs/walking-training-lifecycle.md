@@ -25,6 +25,11 @@ angular momentum, joint limits, action rate, foot clearance, swing height, slip,
 self-collision. Ordinary reset, push, friction, encoder-bias, and center-of-mass randomization remain
 enabled during training and are disabled in deterministic evaluation.
 
+Bootstrap terminates on timeout, a 70-degree fall, or non-finite simulator state. Minimum pelvis
+height and non-foot ground contacts remain measured qualification failures but do not truncate early
+learning rollouts; applying those final gates during the first attempt collapsed the mean episode to
+roughly 14 control steps by update 534 and prevented useful credit assignment.
+
 The declared 6,000-update run contains 36,864,000 transitions at 256 environments × 24 steps. It is
 a bounded campaign, not evidence of success. Checkpoints are evaluated on the 0→0.6→0 m/s schedule;
 only a functional locomotion checkpoint may become the source of reference-style fine-tuning.
