@@ -84,10 +84,11 @@ _TASKS = {
         config_directory="walking-v1",
         experiment_name="g1_walking",
         implementation_module="g1_mjlab.tasks.walking_v1",
-        capabilities=frozenset(),
+        capabilities=frozenset({TaskCapability.TRAIN}),
         unavailable_reason=(
-            "the walking-v1 simulator MDP and reward terms are not yet implemented"
+            "walking evaluation, native inference, and controller qualification are not yet implemented"
         ),
+        termination_penalty=-10.0,
     ),
 }
 

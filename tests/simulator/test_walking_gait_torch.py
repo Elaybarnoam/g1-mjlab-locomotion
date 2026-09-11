@@ -2,9 +2,15 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import torch
 
-from g1_mjlab.motion.gait import CommandProfile, GaitState, step_gait_numpy, step_gait_torch
+torch = pytest.importorskip("torch")
+
+from g1_mjlab.motion.gait import (  # noqa: E402
+    CommandProfile,
+    GaitState,
+    step_gait_numpy,
+    step_gait_torch,
+)
 
 
 @pytest.mark.simulator

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "name": "walking-reference-stage1-v1",
+  "reference_id": "nvidia-soma-g1-neutral-walk-a057-cycle-v1",
+  "aggregation": "All nonterminal terms are rates multiplied by control_dt=0.02. Termination is a one-time event value divided by control_dt in the manager configuration.",
+  "terms": {
+    "track_linear_velocity": {"weight": 2.0, "raw": "exp(-(||v_xy-command_xy||^2+v_z^2)/0.35^2)", "unit": "1", "mask": "always"},
+    "track_angular_velocity": {"weight": 0.5, "raw": "exp(-((w_z-command_yaw)^2+||w_xy||^2)/0.35^2)", "unit": "1", "mask": "always"},
+    "upright": {"weight": 1.0, "raw": "exp(-||projected_gravity_xy||^2/0.35^2)", "unit": "1", "mask": "always"},
+    "reference_joint_pose": {"weight": 2.0, "raw": "exp(-mean((q-q_ref_blended)^2)/0.20^2)", "unit": "1", "mask": "stand target blends with walk target"},
+    "reference_joint_velocity": {"weight": 0.25, "raw": "exp(-mean((qdot-blend*qdot_ref)^2)/1.5^2)", "unit": "1", "mask": "stand target blends with walk target"},
+    "reference_foot_position": {"weight": 1.0, "raw": "blend*exp(-mean(||p_foot_body-p_ref_root_relative||^2)/0.12^2)", "unit": "1", "mask": "walk blend"},
+    "reference_contact_timing": {"weight": 0.5, "raw": "blend*mean(actual_contact==reference_contact)", "unit": "1", "mask": "walk blend"},
+    "foot_slip": {"weight": -0.5, "raw": "sum(contact*||v_foot_xy||^2)", "unit": "m^2/s^2", "mask": "applied command > 0.05"},
+    "crouch": {"weight": -5.0, "raw": "relu(0.62-pelvis_height)^2", "unit": "m^2", "mask": "always"},
+    "dof_pos_limits": {"weight": -1.0, "raw": "mjlab soft joint-limit violation", "unit": "rad", "mask": "always"},
+    "action_rate_l2": {"weight": -0.02, "raw": "||action_t-action_t-1||^2", "unit": "1", "mask": "always"},
+    "effort": {"weight": -0.0002, "raw": "mean(qfrc_actuator^2)", "unit": "N^2*m^2", "mask": "always"},
+    "self_collisions": {"weight": -1.0, "raw": "self-contact force above 10 N", "unit": "event", "mask": "always"},
+    "termination": {"weight": -10.0, "raw": "one on true terminal, zero on timeout", "unit": "event", "mask": "once"}
+  }
+}

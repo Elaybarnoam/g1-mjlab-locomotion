@@ -101,6 +101,8 @@ omit = [
   "src/g1_mjlab/environment.py",
   "src/g1_mjlab/native_media.py",
   "src/g1_mjlab/motion/preparation.py",
+  "src/g1_mjlab/tasks/walking_mdp.py",
+  "src/g1_mjlab/tasks/walking_v1.py",
   "src/g1_mjlab/qualification.py",
   "src/g1_mjlab/rl_adapter.py",
   "src/g1_mjlab/runtime.py",
