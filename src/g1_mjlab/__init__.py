@@ -1,4 +1,4 @@
-"""G1 standing research workflow built on mjlab.
+"""G1 standing and walking research workflows built on mjlab.
 
 Importing this package is deliberately CPU-only. Simulator imports live in
 ``g1_mjlab.runtime`` and are loaded only by commands that need them.

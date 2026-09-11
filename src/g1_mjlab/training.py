@@ -78,7 +78,7 @@ def execute_training(
     from mjlab.utils.os import dump_yaml
     from mjlab.utils.torch import configure_torch_backends
 
-    from .rl_adapter import StandingVecEnvWrapper
+    from .rl_adapter import MjlabVecEnvWrapper
     from .runtime import harvest_tensorboard
 
     configure_torch_backends(allow_tf32=True, deterministic=False)
@@ -105,7 +105,7 @@ def execute_training(
         + "\n",
         encoding="utf-8",
     )
-    log_dir = run_dir / "upstream" / "g1_standing" / config.run_name
+    log_dir = run_dir / "upstream" / train_cfg.agent.experiment_name / config.run_name
     log_dir.mkdir(parents=True, exist_ok=False)
     agent_cfg = asdict(train_cfg.agent)
     dump_yaml(log_dir / "params" / "agent.yaml", agent_cfg)
@@ -113,7 +113,7 @@ def execute_training(
     env = ManagerBasedRlEnv(cfg=train_cfg.env, device=config.device, render_mode=None)
     runner: Any = None
     try:
-        wrapped = StandingVecEnvWrapper(env, clip_actions=config.action_clip)
+        wrapped = MjlabVecEnvWrapper(env, clip_actions=config.action_clip)
         resolved_contract(env, config, run_dir)
         (run_dir / "mdp.json").write_text(
             json.dumps(

@@ -119,10 +119,15 @@ def list_files(root: Path) -> Iterable[Path]:
     return (path for path in root.rglob("*") if path.is_file())
 
 
-def snapshot_source(project: Path, destination: Path) -> dict[str, Any]:
+def snapshot_source(
+    project: Path,
+    destination: Path,
+    *,
+    config_directory: str = "standing-v1",
+) -> dict[str, Any]:
     """Archive project-owned implementation, including untracked source files."""
     paths = [project / "pyproject.toml"]
-    for directory in ("src/g1_mjlab", "tests", "configs/standing-v1"):
+    for directory in ("src/g1_mjlab", "tests", f"configs/{config_directory}"):
         paths.extend(
             path
             for path in (project / directory).rglob("*")

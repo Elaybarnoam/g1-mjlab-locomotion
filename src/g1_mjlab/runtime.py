@@ -18,8 +18,9 @@ from typing import Any
 from .artifacts import RunStore, read_jsonl, sha256_file, snapshot_source
 from .checkpoints import checkpoint_index, ordered_checkpoints
 from .config import PpoProfile, ResolvedRunConfig, StandingRewardProfile
-from .environment import build_standing_train_config
+from .environment import build_train_config
 from .evaluation import StandingCriteria, TrialAccumulator, wilson_interval
+from .tasks import TaskCapability, get_task
 
 MJLAB_REVISION = "8ee51fbcf806a7419189f706d9e394cbeb7790fa"
 
@@ -98,6 +99,7 @@ def train(
     resume: Path | None = None,
 ) -> Path:
     """Execute one bounded upstream training run and finalize local evidence."""
+    task = get_task(config.task_id).require(TaskCapability.TRAIN)
     from .training import execute_training
 
     if resume is not None:
@@ -132,11 +134,15 @@ def train(
         )
     store.transition("starting")
     try:
-        snapshot = snapshot_source(Path(__file__).resolve().parents[2], run_dir / "source.zip")
+        snapshot = snapshot_source(
+            Path(__file__).resolve().parents[2],
+            run_dir / "source.zip",
+            config_directory=task.config_directory,
+        )
         (run_dir / "source.json").write_text(
             json.dumps(snapshot, indent=2) + "\n", encoding="utf-8"
         )
-        train_cfg = build_standing_train_config(
+        train_cfg = build_train_config(
             config,
             run_dir / "upstream",
             reward_profile=reward_profile,
@@ -254,6 +260,7 @@ def evaluate(
     phase: str = "development",
 ) -> dict[str, Any]:
     """Measure first episodes before reset; these are development trials."""
+    get_task(config.task_id).require(TaskCapability.STANDING_EVALUATION)
     import torch
     from mjlab.envs import ManagerBasedRlEnv
     from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
@@ -278,7 +285,7 @@ def evaluate(
         raise FileExistsError(f"evaluation output is not empty: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
     eval_config = replace(config, seed=seed, num_envs=trials, episode_length_s=horizon_s)
-    train_cfg = build_standing_train_config(eval_config, output_dir)
+    train_cfg = build_train_config(eval_config, output_dir)
     train_cfg.env.auto_reset = False
     env = ManagerBasedRlEnv(cfg=train_cfg.env, device=config.device, render_mode=None)
     accumulators = [

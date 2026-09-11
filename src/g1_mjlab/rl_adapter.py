@@ -5,7 +5,7 @@ from typing import Any
 from mjlab.rl import RslRlVecEnvWrapper
 
 
-class StandingVecEnvWrapper(RslRlVecEnvWrapper):  # type: ignore[misc]
+class MjlabVecEnvWrapper(RslRlVecEnvWrapper):  # type: ignore[misc]
     """True termination takes precedence over a coincident time-limit timeout.
 
     RSL-RL's stored-current-value timeout compensation is otherwise unchanged.
@@ -17,3 +17,7 @@ class StandingVecEnvWrapper(RslRlVecEnvWrapper):  # type: ignore[misc]
         if "time_outs" in extras:
             extras["time_outs"] = extras["time_outs"] & ~self.env.reset_terminated
         return obs, rewards, dones, extras
+
+
+# Compatibility alias for the published standing-v1 package API.
+StandingVecEnvWrapper = MjlabVecEnvWrapper
