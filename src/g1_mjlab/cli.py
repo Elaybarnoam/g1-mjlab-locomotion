@@ -101,6 +101,13 @@ def parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--seed", type=int, default=10042)
     evaluate.add_argument("--min-height-m", type=float, default=0.60)
     evaluate.add_argument("--phase", choices=("development", "final"), default="development")
+    evaluate_walking = commands.add_parser("evaluate-walking")
+    evaluate_walking.add_argument("--config", required=True, type=Path)
+    evaluate_walking.add_argument("--checkpoint", required=True, type=Path)
+    evaluate_walking.add_argument("--schedule", required=True, type=Path)
+    evaluate_walking.add_argument("--output", required=True, type=Path)
+    evaluate_walking.add_argument("--trials", type=int, default=16)
+    evaluate_walking.add_argument("--seed", type=int, default=10042)
     diagnose = commands.add_parser("diagnose-standing")
     diagnose.add_argument("--config", required=True, type=Path)
     diagnose.add_argument("--checkpoint", required=True, type=Path)
@@ -226,6 +233,24 @@ def main(argv: list[str] | None = None) -> int:
         from .qualification import qualify_controller
 
         print(json.dumps(qualify_controller(load_config(args.config), args.output), indent=2))
+        return 0
+    if args.command == "evaluate-walking":
+        from .walking_runtime import evaluate_walking
+
+        print(
+            json.dumps(
+                evaluate_walking(
+                    load_config(args.config),
+                    args.checkpoint,
+                    args.schedule,
+                    args.output,
+                    trials=args.trials,
+                    seed=args.seed,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "evaluate-native":
         from .deployment import evaluate_native

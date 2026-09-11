@@ -31,7 +31,8 @@ def test_walking_descriptor_exposes_training_but_not_unimplemented_workflows() -
     assert task.critic_size == 114
     assert task.layout_id == "g1-walking-actor-v1"
     task.require(TaskCapability.TRAIN)
-    with pytest.raises(TaskCapabilityError, match="evaluation"):
+    task.require(TaskCapability.WALKING_EVALUATION)
+    with pytest.raises(TaskCapabilityError, match="native inference"):
         task.require(TaskCapability.NATIVE_INFERENCE)
 
 

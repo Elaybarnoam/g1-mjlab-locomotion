@@ -23,6 +23,7 @@ class TaskCapabilityError(ValueError):
 class TaskCapability(StrEnum):
     TRAIN = "train"
     STANDING_EVALUATION = "standing_evaluation"
+    WALKING_EVALUATION = "walking_evaluation"
     NATIVE_INFERENCE = "native_inference"
     CONTROLLER_QUALIFICATION = "controller_qualification"
 
@@ -93,9 +94,9 @@ _TASKS = {
         layout_id="g1-walking-actor-v1",
         actor_size=102,
         critic_size=114,
-        capabilities=frozenset({TaskCapability.TRAIN}),
+        capabilities=frozenset({TaskCapability.TRAIN, TaskCapability.WALKING_EVALUATION}),
         unavailable_reason=(
-            "walking evaluation, native inference, and controller qualification are not yet implemented"
+            "walking native inference and controller qualification are not yet implemented"
         ),
         termination_penalty=-10.0,
     ),

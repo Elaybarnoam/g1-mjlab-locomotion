@@ -106,6 +106,12 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
     def requested_command(self) -> torch.Tensor:
         return self._requested
 
+    def set_requested_forward_speed(self, speed_m_s: float) -> None:
+        """Set one validated evaluation command for every resident environment."""
+        validated = self.profile.validate_requested(np.asarray([[speed_m_s, 0.0, 0.0]]))
+        self._requested.zero_()
+        self._requested[:, 0] = float(validated[0, 0])
+
     @property
     def phase_features(self) -> torch.Tensor:
         angle = 2 * torch.pi * self.phase

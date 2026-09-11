@@ -26,27 +26,57 @@ def score(summary: dict[str, Any]) -> tuple[int, int, float, float, int]:
     )
 
 
+def score_walking(summary: dict[str, Any]) -> tuple[int, int, float, float, float, float, int]:
+    """Required gates, command tracking, declared gait quality, then iteration."""
+    trials = summary["trials"]
+    if not trials or summary.get("phase") != "development":
+        raise ValueError("walking checkpoint selection requires development trials")
+
+    def values(name: str, *, missing: float) -> list[float]:
+        return [float(item[name]) if item.get(name) is not None else missing for item in trials]
+
+    return (
+        int(summary["passed_both"]),
+        sum(bool(item["functional_passed"]) for item in trials),
+        -median(values("command_rms_m_s", missing=float("inf"))),
+        median(values("alternation_ratio", missing=0.0)),
+        -median(values("tiny_step_fraction", missing=1.0)),
+        -median(values("stance_slip_rms_m_s", missing=float("inf"))),
+        checkpoint_iteration(Path(summary["checkpoint"])),
+    )
+
+
 def select_checkpoint(run: Path) -> dict[str, Any]:
-    evaluations = []
+    all_summaries = []
     for path in sorted((run / "evaluation").glob("*/summary.json")):
         summary = json.loads(path.read_text(encoding="utf-8"))
-        if summary.get("schema_version") == 2:
-            evaluations.append((path, summary))
+        all_summaries.append((path, summary))
+    walking = any(summary.get("task_id") == "G1-Walking-Flat-v1" for _, summary in all_summaries)
+    score_fn = score_walking if walking else score
+    evaluations = [
+        (path, summary)
+        for path, summary in all_summaries
+        if (walking and summary.get("task_id") == "G1-Walking-Flat-v1")
+        or (not walking and summary.get("schema_version") == 2)
+    ]
     if not evaluations:
-        raise ValueError("no version-2 development evaluations found")
-    selected_path, selected = max(evaluations, key=lambda item: score(item[1]))
+        raise ValueError("no compatible development evaluations found")
+    selected_path, selected = max(evaluations, key=lambda item: score_fn(item[1]))
+    rule = (
+        "combined functional/style gates, functional gates, command error, gait quality, later iteration"
+        if walking
+        else "strict passes, survival passes, lower median drift, lower median tilt, later iteration"
+    )
     result = {
         "schema_version": 1,
-        "rule": (
-            "strict passes, survival passes, lower median drift, lower median tilt, later iteration"
-        ),
+        "rule": rule,
         "selected_checkpoint": selected["checkpoint"],
-        "selected_score": score(selected),
+        "selected_score": score_fn(selected),
         "evaluations": [
             {
                 "path": str(path.relative_to(run)),
                 "checkpoint": summary["checkpoint"],
-                "score": score(summary),
+                "score": score_fn(summary),
             }
             for path, summary in evaluations
         ],
