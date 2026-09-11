@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from g1_mjlab.artifacts import snapshot_source
-from g1_mjlab.config import load_config
+from g1_mjlab.config import WalkingTrainingProfile, load_config
 from g1_mjlab.runtime import summarize_training_metrics
 from g1_mjlab.training import (
     validate_actor_initialization,
@@ -51,6 +51,30 @@ def test_resume_rejects_changed_action_semantics(tmp_path: Path) -> None:
     validate_resume(replace(config, max_iterations=20), checkpoint, None, None)
     with pytest.raises(ValueError, match="action_clip"):
         validate_resume(replace(config, action_clip=None), checkpoint, None, None)
+
+
+def test_resume_compares_json_normalized_walking_profile(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_config(root / "configs/walking-v1/bootstrap-smoke.json")
+    profile = WalkingTrainingProfile(
+        schema_version=1,
+        name="bootstrap",
+        standing_fraction=0.1,
+        reference_initialization=False,
+        randomize_phase=True,
+        objective="locomotion_bootstrap",
+        forward_speed_range_m_s=(0.4, 0.8),
+    )
+    run = tmp_path / "run"
+    (run / "checkpoints").mkdir(parents=True)
+    checkpoint = run / "checkpoints" / "model_400.pt"
+    checkpoint.touch()
+    (run / "config.json").write_text(json.dumps(config.to_dict()), encoding="utf-8")
+    (run / "walking-profile.json").write_text(
+        json.dumps(profile.to_dict()), encoding="utf-8"
+    )
+
+    validate_resume(config, checkpoint, None, None, profile)
 
 
 def test_actor_initialization_requires_same_task_and_is_not_resume(tmp_path: Path) -> None:

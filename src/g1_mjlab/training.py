@@ -84,7 +84,10 @@ def validate_resume(
             raise ValueError(f"resume changes {name}")
     path = root / "walking-profile.json"
     old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
-    if old != (walking_profile.to_dict() if walking_profile else None):
+    current = (
+        json.loads(json.dumps(walking_profile.to_dict())) if walking_profile is not None else None
+    )
+    if old != current:
         raise ValueError("resume changes walking-profile")
 
 
