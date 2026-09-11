@@ -24,12 +24,12 @@ def record_native_video(
     height: int = 720,
 ) -> dict[str, Any]:
     """Record a deterministic ONNX rollout without constructing a learner."""
+    if duration_s <= 0 or fps <= 0 or width <= 0 or height <= 0:
+        raise ValueError("duration, fps, width and height must be positive")
     import imageio.v2 as imageio
     import mujoco
     import numpy as np
 
-    if duration_s <= 0 or fps <= 0 or width <= 0 or height <= 0:
-        raise ValueError("duration, fps, width and height must be positive")
     reference = json.loads(scenarios.read_text(encoding="utf-8"))
     if reference.get("schema_version") != 2:
         raise ValueError("requires version-2 scenario evidence")

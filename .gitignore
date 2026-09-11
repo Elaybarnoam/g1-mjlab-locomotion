@@ -18,6 +18,7 @@ build/
 *.egg-info/
 artifacts/
 runs/
+policies/
 logs/
 checkpoints/
 wandb/
