@@ -70,9 +70,7 @@ def test_resume_compares_json_normalized_walking_profile(tmp_path: Path) -> None
     checkpoint = run / "checkpoints" / "model_400.pt"
     checkpoint.touch()
     (run / "config.json").write_text(json.dumps(config.to_dict()), encoding="utf-8")
-    (run / "walking-profile.json").write_text(
-        json.dumps(profile.to_dict()), encoding="utf-8"
-    )
+    (run / "walking-profile.json").write_text(json.dumps(profile.to_dict()), encoding="utf-8")
 
     validate_resume(config, checkpoint, None, None, profile)
 
