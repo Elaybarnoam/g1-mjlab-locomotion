@@ -10,7 +10,7 @@ diagram.
 At each 20 ms policy step the host performs one canonical update:
 
 1. Read the requested command `[vx, vy, yaw_rate]` in the yaw-aligned body frame.
-2. Validate that `vy = 0`, `yaw_rate = 0`, and `vx` is either 0 or 1.163811593 m/s.
+2. Validate that `vy = 0`, `yaw_rate = 0`, and `0 <= vx <= 1.163811593 m/s`.
 3. Rate-limit the applied command: acceleration is 0.6 m/s² and deceleration is 0.8 m/s².
 4. Update the walking mode with hysteresis: enter at 0.15 m/s and leave at 0.05 m/s.
 5. Move the stand/walk blend toward that mode by at most 0.02 per policy step (1.0/s).
@@ -22,10 +22,10 @@ Phase does not jump to zero on stop or restart. At zero applied speed it freezes
 unwrapped distance keeps the reference root continuous across any number of phase wraps; a clip
 boundary must never reset or teleport simulator state.
 
-The public command profile is `configs/walking-v1/commands.json`. The deterministic development
-timeline is `configs/walking-v1/development-schedule.json`: stand for 2 s, request nominal walking
-for 10 s, then request standing for 3 s. Intermediate applied speeds exist only during the ramps.
-They are not yet claimed as sustained supported speeds.
+The public command profile is `configs/walking-v1/commands.json`. Bootstrap training samples moving
+commands uniformly from 0.4 to 0.8 m/s, with 10% zero-command worlds. The bootstrap development
+timeline requests 0.6 m/s between two standing segments. These speeds are training and development
+targets, not a public policy claim until qualification passes.
 
 ## Actor vector (102 float32 scalars)
 
@@ -57,8 +57,14 @@ deployed actor.
 ## Action and state reconstruction
 
 The output order is the exact 29-joint order in the motion manifest and G1 model. Each output is a
-normalized joint-position offset; W04/W05 will resolve the per-joint scales, nominal positions,
-limits and PD feasibility. No torque policy and no second PD layer are introduced.
+normalized joint-position offset around the model's nominal pose:
+
+```text
+q_target[j] = q_nominal[j] + action_scale[j] * actor_output[j]
+```
+
+The motion reference affects phase observations and later style rewards, not the action center. No
+torque policy and no second PD layer are introduced.
 
 A nonstationary scenario must save root position and normalized WXYZ orientation, all three
 world-frame root linear velocity components, all three world-frame angular velocity components,

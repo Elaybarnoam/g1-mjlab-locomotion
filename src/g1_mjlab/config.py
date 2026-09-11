@@ -103,6 +103,8 @@ class WalkingTrainingProfile:
     standing_fraction: float
     reference_initialization: bool
     randomize_phase: bool
+    objective: str = "reference_style"
+    forward_speed_range_m_s: tuple[float, float] | None = None
     velocity_tracking_std_m_s: float | None = None
     forward_progress_weight: float | None = None
     reference_foot_position_std_m: float | None = None
@@ -246,13 +248,21 @@ def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
         raise ValueError("walking profile root must be an object")
     expected = set(WalkingTrainingProfile.__dataclass_fields__)
     required = expected - {
+        "objective",
+        "forward_speed_range_m_s",
         "velocity_tracking_std_m_s",
         "forward_progress_weight",
         "reference_foot_position_std_m",
     }
     if not required.issubset(raw) or not set(raw).issubset(expected):
         raise ValueError("walking profile fields do not match schema")
-    profile = WalkingTrainingProfile(**raw)
+    values = dict(raw)
+    if "forward_speed_range_m_s" in values:
+        speed_range = values["forward_speed_range_m_s"]
+        if not isinstance(speed_range, list) or len(speed_range) != 2:
+            raise ValueError("forward_speed_range_m_s must contain [minimum, maximum]")
+        values["forward_speed_range_m_s"] = tuple(speed_range)
+    profile = WalkingTrainingProfile(**values)
     if profile.schema_version != 1:
         raise ValueError("only walking profile schema_version 1 is supported")
     if not profile.name or any(
@@ -271,14 +281,26 @@ def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
         profile.randomize_phase, bool
     ):
         raise ValueError("walking reset flags must be boolean")
+    if profile.objective not in {"locomotion_bootstrap", "reference_style"}:
+        raise ValueError("walking objective must be 'locomotion_bootstrap' or 'reference_style'")
+    if profile.forward_speed_range_m_s is not None:
+        low, high = profile.forward_speed_range_m_s
+        if (
+            isinstance(low, bool)
+            or isinstance(high, bool)
+            or not all(isinstance(value, (int, float)) for value in (low, high))
+            or not all(math.isfinite(value) for value in (low, high))
+            or low <= 0
+            or high < low
+        ):
+            raise ValueError("forward_speed_range_m_s must contain finite positive ordered values")
     if profile.velocity_tracking_std_m_s is not None and (
         not math.isfinite(profile.velocity_tracking_std_m_s)
         or profile.velocity_tracking_std_m_s <= 0
     ):
         raise ValueError("velocity_tracking_std_m_s must be positive and finite")
     if profile.forward_progress_weight is not None and (
-        not math.isfinite(profile.forward_progress_weight)
-        or profile.forward_progress_weight < 0
+        not math.isfinite(profile.forward_progress_weight) or profile.forward_progress_weight < 0
     ):
         raise ValueError("forward_progress_weight must be finite and non-negative")
     if profile.reference_foot_position_std_m is not None and (

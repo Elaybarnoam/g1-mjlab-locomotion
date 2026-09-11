@@ -65,13 +65,16 @@ def walking_policy_contract() -> PolicyContract:
         physics_dt=0.005,
         control_dt=0.02,
         action_semantics=(
-            "29 normalized residual joint-position offsets around the phase-aligned "
-            "stand/walk reference pose"
+            "29 normalized joint-position offsets around the robot nominal pose: "
+            "q_target = q_nominal + per_joint_scale * action"
         ),
         actuator_semantics="one built-in position actuator; PD is applied exactly once",
         task_id=TASK_ID,
         layout_id="g1-walking-actor-v1",
-        command_semantics="[vx, vy, yaw_rate] in yaw-aligned body frame; v1 supports vx=0 or 1.163811593 m/s and vy=yaw_rate=0",
+        command_semantics=(
+            "[vx, vy, yaw_rate] in yaw-aligned body frame; v1 supports "
+            "0 <= vx <= 1.163811593 m/s and vy=yaw_rate=0"
+        ),
         phase_semantics="phase in [0,1), continuous wrap; rate follows applied vx; retained on stop",
     )
 
@@ -90,16 +93,25 @@ def configure_environment(
     command.randomize_phase = (
         task_profile.randomize_phase if task_profile is not None else randomized_reset
     )
+    env.observations["actor"].enable_corruption = randomized_reset
+    if not randomized_reset:
+        env.events = {}
     if task_profile is not None:
         command.standing_fraction = task_profile.standing_fraction
+        if task_profile.forward_speed_range_m_s is not None:
+            command.moving_speed_min_m_s, command.moving_speed_max_m_s = (
+                task_profile.forward_speed_range_m_s
+            )
+        if task_profile.objective == "locomotion_bootstrap":
+            _configure_locomotion_bootstrap(env)
+        else:
+            _configure_reference_style(env)
         if task_profile.velocity_tracking_std_m_s is not None:
             env.rewards["track_linear_velocity"].params["std"] = (
                 task_profile.velocity_tracking_std_m_s
             )
         if task_profile.forward_progress_weight is not None:
-            env.rewards["commanded_forward_progress"].weight = (
-                task_profile.forward_progress_weight
-            )
+            env.rewards["commanded_forward_progress"].weight = task_profile.forward_progress_weight
         if task_profile.reference_foot_position_std_m is not None:
             env.rewards["reference_foot_position"].params["std_m"] = (
                 task_profile.reference_foot_position_std_m
@@ -109,11 +121,55 @@ def configure_environment(
     )
 
 
+def _configure_locomotion_bootstrap(env: Any) -> None:
+    """Resolve the pinned mjlab G1 flat locomotion objective without style imitation."""
+    weights = {
+        "track_linear_velocity": 2.0,
+        "track_angular_velocity": 2.0,
+        "upright": 1.0,
+        "pose": 1.0,
+        "body_ang_vel": -0.05,
+        "angular_momentum": -0.02,
+        "dof_pos_limits": -1.0,
+        "action_rate_l2": -0.1,
+        "air_time": 0.0,
+        "foot_clearance": -2.0,
+        "foot_swing_height": -0.25,
+        "foot_slip": -0.1,
+        "soft_landing": -1e-5,
+        "self_collisions": -1.0,
+        "termination": 0.0,
+    }
+    for name, value in weights.items():
+        env.rewards[name].weight = value
+    env.rewards["track_linear_velocity"].params["std"] = 0.5
+    env.rewards["track_angular_velocity"].params["std"] = 0.5**0.5
+    env.rewards["upright"].params["std"] = 0.2**0.5
+    for name in (
+        "commanded_forward_progress",
+        "reference_joint_pose",
+        "reference_joint_velocity",
+        "reference_foot_position",
+        "reference_contact_timing",
+        "crouch",
+        "effort",
+    ):
+        env.rewards[name].weight = 0.0
+
+
+def _configure_reference_style(env: Any) -> None:
+    """Enable the versioned imitation terms while retaining locomotion regularizers."""
+    weights = _reward_weights()
+    for name, value in weights.items():
+        env.rewards[name].weight = value
+    control_dt = env.sim.mujoco.timestep * env.decimation
+    env.rewards["termination"].weight = weights["termination"] / control_dt
+
+
 def register_task() -> None:
     from mjlab.envs import mdp as envs_mdp
     from mjlab.managers.observation_manager import ObservationTermCfg
     from mjlab.managers.reward_manager import RewardTermCfg
-    from mjlab.managers.scene_entity_config import SceneEntityCfg
     from mjlab.managers.termination_manager import TerminationTermCfg
     from mjlab.sensor import ContactMatch, ContactSensorCfg
     from mjlab.tasks.registry import list_tasks, register_mjlab_task
@@ -144,17 +200,6 @@ def register_task() -> None:
         resampling_time_range=(4.0, 10.0),
         debug_vis=False,
     )
-    nominal_action = env.actions["joint_pos"]
-    env.actions["joint_pos"] = walking_mdp.ReferenceResidualJointPositionActionCfg(
-        entity_name=nominal_action.entity_name,
-        actuator_names=nominal_action.actuator_names,
-        scale=nominal_action.scale,
-        offset=0.0,
-        preserve_order=nominal_action.preserve_order,
-        clip=nominal_action.clip,
-        use_default_offset=False,
-        command_name="twist",
-    )
     for group in env.observations.values():
         group.terms["phase_sin"] = ObservationTermCfg(
             func=walking_mdp.phase_sin, params={"command_name": "twist"}
@@ -165,8 +210,6 @@ def register_task() -> None:
         group.terms["walk_blend"] = ObservationTermCfg(
             func=walking_mdp.walk_blend, params={"command_name": "twist"}
         )
-    env.observations["actor"].enable_corruption = False
-
     forbidden_ground = ContactSensorCfg(
         name="forbidden_ground_contact",
         primary=ContactMatch(
@@ -182,80 +225,54 @@ def register_task() -> None:
     )
     env.scene.sensors = (env.scene.sensors or ()) + (forbidden_ground,)
 
-    env.events = {}
+    # The upstream velocity curriculum assumes UniformVelocityCommand internals. Walking-v1 owns
+    # its command schedule, so it intentionally keeps the upstream reset/randomization events but
+    # resolves curriculum stages through versioned WalkingTrainingProfile files.
     env.curriculum = {}
-    env.rewards = {
-        "track_linear_velocity": RewardTermCfg(
-            func=walking_mdp.track_linear_velocity,
-            weight=weight["track_linear_velocity"],
-            params={"command_name": "twist", "std": 0.35},
-        ),
-        "commanded_forward_progress": RewardTermCfg(
-            func=walking_mdp.commanded_forward_progress,
-            weight=weight["commanded_forward_progress"],
-            params={"command_name": "twist"},
-        ),
-        "track_angular_velocity": RewardTermCfg(
-            func=mdp.track_angular_velocity,
-            weight=weight["track_angular_velocity"],
-            params={"command_name": "twist", "std": 0.35},
-        ),
-        "upright": RewardTermCfg(
-            func=mdp.upright,
-            weight=weight["upright"],
-            params={
-                "std": 0.35,
-                "asset_cfg": SceneEntityCfg("robot", body_names=("torso_link",)),
-            },
-        ),
-        "reference_joint_pose": RewardTermCfg(
-            func=walking_mdp.reference_joint_pose,
-            weight=weight["reference_joint_pose"],
-            params={"command_name": "twist", "std_rad": 0.20},
-        ),
-        "reference_joint_velocity": RewardTermCfg(
-            func=walking_mdp.reference_joint_velocity,
-            weight=weight["reference_joint_velocity"],
-            params={"command_name": "twist", "std_rad_s": 1.5},
-        ),
-        "reference_foot_position": RewardTermCfg(
-            func=walking_mdp.reference_foot_position,
-            weight=weight["reference_foot_position"],
-            params={"command_name": "twist", "std_m": 0.12},
-        ),
-        "reference_contact_timing": RewardTermCfg(
-            func=walking_mdp.reference_contact_timing,
-            weight=weight["reference_contact_timing"],
-            params={"command_name": "twist", "sensor_name": "feet_ground_contact"},
-        ),
-        "foot_slip": RewardTermCfg(
-            func=mdp.feet_slip,
-            weight=weight["foot_slip"],
-            params={
-                "sensor_name": "feet_ground_contact",
-                "command_name": "twist",
-                "command_threshold": 0.05,
-                "asset_cfg": SceneEntityCfg("robot", site_names=("left_foot", "right_foot")),
-            },
-        ),
-        "crouch": RewardTermCfg(
-            func=walking_mdp.crouch_cost,
-            weight=weight["crouch"],
-            params={"minimum_height_m": 0.62},
-        ),
-        "dof_pos_limits": RewardTermCfg(func=mdp.joint_pos_limits, weight=weight["dof_pos_limits"]),
-        "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=weight["action_rate_l2"]),
-        "effort": RewardTermCfg(func=mean_squared_effort_cost, weight=weight["effort"]),
-        "self_collisions": RewardTermCfg(
-            func=mdp.self_collision_cost,
-            weight=weight["self_collisions"],
-            params={"sensor_name": "self_collision", "force_threshold": 10.0},
-        ),
-        "termination": RewardTermCfg(
-            func=envs_mdp.is_terminated,
-            weight=weight["termination"] / (env.sim.mujoco.timestep * env.decimation),
-        ),
-    }
+    env.rewards["track_linear_velocity"] = RewardTermCfg(
+        func=walking_mdp.track_linear_velocity,
+        weight=weight["track_linear_velocity"],
+        params={"command_name": "twist", "std": 0.35},
+    )
+    env.rewards.update(
+        {
+            "commanded_forward_progress": RewardTermCfg(
+                func=walking_mdp.commanded_forward_progress,
+                weight=weight["commanded_forward_progress"],
+                params={"command_name": "twist"},
+            ),
+            "reference_joint_pose": RewardTermCfg(
+                func=walking_mdp.reference_joint_pose,
+                weight=weight["reference_joint_pose"],
+                params={"command_name": "twist", "std_rad": 0.20},
+            ),
+            "reference_joint_velocity": RewardTermCfg(
+                func=walking_mdp.reference_joint_velocity,
+                weight=weight["reference_joint_velocity"],
+                params={"command_name": "twist", "std_rad_s": 1.5},
+            ),
+            "reference_foot_position": RewardTermCfg(
+                func=walking_mdp.reference_foot_position,
+                weight=weight["reference_foot_position"],
+                params={"command_name": "twist", "std_m": 0.12},
+            ),
+            "reference_contact_timing": RewardTermCfg(
+                func=walking_mdp.reference_contact_timing,
+                weight=weight["reference_contact_timing"],
+                params={"command_name": "twist", "sensor_name": "feet_ground_contact"},
+            ),
+            "crouch": RewardTermCfg(
+                func=walking_mdp.crouch_cost,
+                weight=weight["crouch"],
+                params={"minimum_height_m": 0.62},
+            ),
+            "effort": RewardTermCfg(func=mean_squared_effort_cost, weight=weight["effort"]),
+            "termination": RewardTermCfg(
+                func=envs_mdp.is_terminated,
+                weight=weight["termination"] / (env.sim.mujoco.timestep * env.decimation),
+            ),
+        }
+    )
     env.terminations = {
         "time_out": TerminationTermCfg(func=mdp.time_out, time_out=True),
         "fell_over": TerminationTermCfg(

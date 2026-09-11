@@ -101,7 +101,9 @@ _TASKS = {
         unavailable_reason=(
             "walking native inference and controller qualification are not yet implemented"
         ),
-        termination_penalty=-10.0,
+        # Walking profiles own this value: bootstrap matches the upstream zero penalty while
+        # reference-style fine-tuning uses the versioned per-event penalty.
+        termination_penalty=None,
     ),
 }
 

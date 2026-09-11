@@ -17,27 +17,6 @@ from .config import (
     WalkingTrainingProfile,
 )
 from .qualification import describe, resolved_contract
-from .tasks import WALKING_TASK_ID
-
-
-def initialize_zero_residual_actor(actor: Any) -> dict[str, Any]:
-    """Make a residual actor's initial deterministic command exactly zero."""
-    import torch
-
-    linear_layers = [module for module in actor.modules() if isinstance(module, torch.nn.Linear)]
-    if not linear_layers:
-        raise TypeError("walking actor has no linear output layer")
-    output = linear_layers[-1]
-    with torch.no_grad():
-        output.weight.zero_()
-        if output.bias is not None:
-            output.bias.zero_()
-    return {
-        "mode": "zero-residual-output-layer",
-        "output_features": output.out_features,
-        "weight_nonzero": int(torch.count_nonzero(output.weight)),
-        "bias_nonzero": int(torch.count_nonzero(output.bias)) if output.bias is not None else None,
-    }
 
 
 def configure_transferred_action_std(
@@ -293,13 +272,6 @@ def execute_training(
                 json.dumps(initialization, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
-        elif config.task_id == WALKING_TASK_ID:
-            initialization = initialize_zero_residual_actor(runner.alg.actor)
-            (run_dir / "actor-initialization.json").write_text(
-                json.dumps(initialization, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
-            runner.save(str(run_dir / "initial-policy.pt"))
         initial_actor = {
             name: value.detach().cpu().clone()
             for name, value in runner.alg.actor.named_parameters()

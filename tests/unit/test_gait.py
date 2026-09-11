@@ -28,11 +28,11 @@ def profile() -> CommandProfile:
     )
 
 
-def test_command_profile_accepts_stop_and_nominal_forward_only(profile: CommandProfile) -> None:
+def test_command_profile_accepts_supported_forward_range_only(profile: CommandProfile) -> None:
     profile.validate_requested(np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]))
-
-    with pytest.raises(ValueError, match="forward speed"):
-        profile.validate_requested(np.array([[0.5, 0.0, 0.0]]))
+    profile.validate_requested(np.array([[0.5, 0.0, 0.0]]))
+    with pytest.raises(ValueError, match="supported forward range"):
+        profile.validate_requested(np.array([[1.1, 0.0, 0.0]]))
     with pytest.raises(ValueError, match="lateral and yaw"):
         profile.validate_requested(np.array([[1.0, 0.1, 0.0]]))
 

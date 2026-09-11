@@ -19,3 +19,5 @@ def test_walking_contract_has_exact_actor_critic_and_action_dimensions() -> None
     ]
     assert contract.task_id == "G1-Walking-Flat-v1"
     assert contract.layout_id == "g1-walking-actor-v1"
+    assert "nominal" in contract.action_semantics
+    assert "reference" not in contract.action_semantics

@@ -58,10 +58,43 @@ def test_walking_mdp_resolves_only_declared_terms() -> None:
         "effort",
         "self_collisions",
         "termination",
+        "pose",
+        "body_ang_vel",
+        "angular_momentum",
+        "air_time",
+        "foot_clearance",
+        "foot_swing_height",
+        "soft_landing",
     }
     assert "forbidden_ground_contact" in cfg.terminations
     control_dt = cfg.sim.mujoco.timestep * cfg.decimation
     assert cfg.rewards["termination"].weight * control_dt == pytest.approx(-10.0)
+
+
+def test_bootstrap_profile_uses_nominal_actions_and_upstream_locomotion_rewards() -> None:
+    root = Path(__file__).parents[2]
+    run = load_config(root / "configs" / "walking-v1" / "bootstrap-smoke.json")
+    profile = load_walking_training_profile(
+        root / "configs" / "walking-v1" / "bootstrap-profile.json"
+    )
+
+    cfg = build_train_config(run, root / ".runtime", walking_profile=profile).env
+
+    assert cfg.actions["joint_pos"].use_default_offset is True
+    assert cfg.rewards["reference_joint_pose"].weight == 0
+    assert cfg.rewards["reference_contact_timing"].weight == 0
+    assert cfg.rewards["track_linear_velocity"].weight == pytest.approx(2.0)
+    assert cfg.rewards["track_linear_velocity"].params["std"] == pytest.approx(0.5)
+    assert cfg.rewards["track_angular_velocity"].weight == pytest.approx(2.0)
+    assert cfg.rewards["pose"].weight == pytest.approx(1.0)
+    assert cfg.rewards["body_ang_vel"].weight == pytest.approx(-0.05)
+    assert cfg.rewards["angular_momentum"].weight == pytest.approx(-0.02)
+    assert cfg.rewards["action_rate_l2"].weight == pytest.approx(-0.1)
+    assert cfg.rewards["foot_clearance"].weight == pytest.approx(-2.0)
+    assert cfg.rewards["foot_swing_height"].weight == pytest.approx(-0.25)
+    assert cfg.rewards["foot_slip"].weight == pytest.approx(-0.1)
+    assert cfg.rewards["soft_landing"].weight == pytest.approx(-1e-5)
+    assert cfg.rewards["termination"].weight == 0
 
 
 def test_reference_only_profile_changes_only_command_reset_curriculum() -> None:
@@ -113,10 +146,9 @@ def test_reference_profile_resets_moving_worlds_to_sampled_reference() -> None:
         torch.testing.assert_close(robot.data.joint_pos, command.joint_position, atol=2e-5, rtol=0)
         torch.testing.assert_close(robot.data.joint_vel, command.joint_velocity, atol=2e-5, rtol=0)
         action = env.action_manager.get_term("joint_pos")
-        action.process_actions(torch.zeros((env.num_envs, 29), device=env.device))
         torch.testing.assert_close(
-            action.joint_position_target,
-            command.joint_position,
+            action.offset,
+            robot.data.default_joint_pos,
             atol=2e-5,
             rtol=0,
         )

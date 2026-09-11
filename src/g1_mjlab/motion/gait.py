@@ -17,7 +17,7 @@ BoolArray = npt.NDArray[np.bool_]
 
 @dataclass(frozen=True, slots=True)
 class CommandProfile:
-    """V1 supports stop or one audited gait speed; ramps may pass intermediate speeds."""
+    """V1 supports stop and forward speeds up to the audited reference speed."""
 
     reference_speed_m_s: float
     cycle_duration_s: float
@@ -52,12 +52,10 @@ class CommandProfile:
             raise ValueError("requested command must have finite shape (num_envs, 3)")
         if not np.allclose(requested[:, 1:], 0.0, atol=1e-12):
             raise ValueError("walking-v1 does not support lateral and yaw commands")
-        valid_forward = np.isclose(requested[:, 0], 0.0, atol=1e-12) | np.isclose(
-            requested[:, 0], self.reference_speed_m_s, atol=1e-9
-        )
+        valid_forward = (requested[:, 0] >= 0.0) & (requested[:, 0] <= self.reference_speed_m_s)
         if not np.all(valid_forward):
             raise ValueError(
-                "walking-v1 requested forward speed must be zero or the audited reference speed"
+                "walking-v1 requested forward speed must be within the supported forward range"
             )
         return requested
 
@@ -172,9 +170,7 @@ def step_gait_torch(
         profile.acceleration_m_s2,
         profile.deceleration_m_s2,
     )
-    applied = applied_command + torch.clamp(
-        delta, min=-rate * dt_command, max=rate * dt_command
-    )
+    applied = applied_command + torch.clamp(delta, min=-rate * dt_command, max=rate * dt_command)
     walking_next = torch.where(
         walking,
         applied[:, 0] > profile.stand_threshold_m_s,

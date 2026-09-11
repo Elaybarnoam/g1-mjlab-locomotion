@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import torch
 from mjlab.entity import Entity
-from mjlab.envs.mdp.actions import JointPositionAction, JointPositionActionCfg
 from mjlab.managers.command_manager import CommandTerm, CommandTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
@@ -36,6 +35,8 @@ class WalkingCommandCfg(CommandTermCfg):  # type: ignore[misc]
     standing_fraction: float = 0.2
     randomize_phase: bool = True
     reference_initialization: bool = True
+    moving_speed_min_m_s: float | None = None
+    moving_speed_max_m_s: float | None = None
 
     def build(self, env: ManagerBasedRlEnv) -> WalkingCommand:
         return WalkingCommand(self, env)
@@ -60,6 +61,12 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         self.profile.validate()
         if not 0 <= cfg.standing_fraction <= 1:
             raise ValueError("standing_fraction must be in [0, 1]")
+        low = cfg.moving_speed_min_m_s or cfg.reference_speed_m_s
+        high = cfg.moving_speed_max_m_s or cfg.reference_speed_m_s
+        if low <= 0 or high < low or high > cfg.reference_speed_m_s:
+            raise ValueError(
+                "moving speed range must be positive, ordered, and at most reference speed"
+            )
         with np.load(cfg.motion_file, allow_pickle=False) as motion:
             fps = float(motion["fps"][0])
             if not np.isclose(fps, 1.0 / env.step_dt):
@@ -142,16 +149,17 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
 
     def _resample_command(self, env_ids: torch.Tensor) -> None:
         standing = torch.rand(len(env_ids), device=self.device) < self.cfg.standing_fraction
+        low = self.cfg.moving_speed_min_m_s or self.cfg.reference_speed_m_s
+        high = self.cfg.moving_speed_max_m_s or self.cfg.reference_speed_m_s
+        moving_speed = torch.empty(len(env_ids), device=self.device).uniform_(low, high)
         self._requested[env_ids] = 0
         self._requested[env_ids, 0] = torch.where(
             standing,
             0.0,
-            self.cfg.reference_speed_m_s,
+            moving_speed,
         )
 
-    def compute(
-        self, dt: float | torch.Tensor, env_ids: torch.Tensor | None = None
-    ) -> None:
+    def compute(self, dt: float | torch.Tensor, env_ids: torch.Tensor | None = None) -> None:
         """Advance using the manager-provided dt, including zero-dt reset worlds."""
         self._command_dt = dt
         super().compute(dt, env_ids)
@@ -204,44 +212,6 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
     def foot_contact(self) -> torch.Tensor:
         lower, _, _ = self._frame_blend()
         return self.reference_contact[lower]
-
-
-@dataclass(kw_only=True)
-class ReferenceResidualJointPositionActionCfg(JointPositionActionCfg):  # type: ignore[misc]
-    """Joint targets centered on the current stand/walk reference pose."""
-
-    command_name: str
-
-    def build(self, env: ManagerBasedRlEnv) -> ReferenceResidualJointPositionAction:
-        return ReferenceResidualJointPositionAction(self, env)
-
-
-class ReferenceResidualJointPositionAction(JointPositionAction):  # type: ignore[misc]
-    """Apply normalized policy residuals around a phase-aligned reference."""
-
-    cfg: ReferenceResidualJointPositionActionCfg
-
-    def __init__(self, cfg: ReferenceResidualJointPositionActionCfg, env: ManagerBasedRlEnv):
-        super().__init__(cfg, env)
-        self._command = _command(env, cfg.command_name)
-
-    @property
-    def joint_position_target(self) -> torch.Tensor:
-        return self._processed_actions
-
-    def process_actions(self, actions: torch.Tensor) -> None:
-        self._raw_actions[:] = actions
-        default = self._entity.data.default_joint_pos[:, self._target_ids]
-        reference = self._command.joint_position[:, self._target_ids]
-        blend = self._command.blend[:, None]
-        center = default * (1 - blend) + reference * blend
-        self._processed_actions = center + self._raw_actions * self._scale
-        if self.cfg.clip is not None:
-            self._processed_actions = torch.clamp(
-                self._processed_actions,
-                min=self._clip[:, :, 0],
-                max=self._clip[:, :, 1],
-            )
 
 
 def _command(env: ManagerBasedRlEnv, command_name: str) -> WalkingCommand:

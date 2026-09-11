@@ -39,9 +39,7 @@ def evaluate_walking(
         raise ValueError("walking evaluation requires 1..256 trials and a held-out seed")
     checkpoint = checkpoint.resolve(strict=True)
     if initialization not in {"standing", "reference", "reference-fixed"}:
-        raise ValueError(
-            "walking initialization must be standing, reference, or reference-fixed"
-        )
+        raise ValueError("walking initialization must be standing, reference, or reference-fixed")
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"evaluation output is not empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
@@ -65,9 +63,7 @@ def evaluate_walking(
         config, seed=seed, num_envs=trials, episode_length_s=horizon_s + config.control_dt
     )
     if initialization == "standing":
-        evaluation_profile = WalkingTrainingProfile(
-            1, "evaluation-standing", 1.0, False, False
-        )
+        evaluation_profile = WalkingTrainingProfile(1, "evaluation-standing", 1.0, False, False)
     else:
         randomize_phase = initialization == "reference"
         evaluation_profile = WalkingTrainingProfile(

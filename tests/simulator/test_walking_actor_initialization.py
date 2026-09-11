@@ -6,30 +6,7 @@ torch = pytest.importorskip("torch")
 
 from g1_mjlab.training import (  # noqa: E402
     configure_transferred_action_std,
-    initialize_zero_residual_actor,
 )
-
-
-@pytest.mark.simulator
-def test_zero_residual_initialization_changes_only_actor_output_layer() -> None:
-    actor = torch.nn.Sequential(
-        torch.nn.Linear(3, 8),
-        torch.nn.ELU(),
-        torch.nn.Linear(8, 2),
-    )
-    hidden_weight = actor[0].weight.detach().clone()
-
-    metadata = initialize_zero_residual_actor(actor)
-
-    torch.testing.assert_close(actor[0].weight, hidden_weight)
-    assert torch.count_nonzero(actor[2].weight) == 0
-    assert torch.count_nonzero(actor[2].bias) == 0
-    assert metadata == {
-        "mode": "zero-residual-output-layer",
-        "output_features": 2,
-        "weight_nonzero": 0,
-        "bias_nonzero": 0,
-    }
 
 
 @pytest.mark.simulator

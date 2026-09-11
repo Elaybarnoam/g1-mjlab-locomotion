@@ -2,6 +2,11 @@
 
 Status: accepted development decision; no walking policy is qualified yet.
 
+Implementation status: the nominal-action bootstrap profile, 0.4–0.8 m/s command sampling, pinned
+locomotion rewards, ordinary dynamic resets, and deterministic 0→0.6→0 m/s schedule are implemented.
+A two-update GPU smoke completed with finite gradients and changing actor/critic parameters. This
+proves the learning path only; the 6,000-update campaign and gait qualification remain outstanding.
+
 ## Decision
 
 Train a robust command-conditioned G1 locomotion policy using the pinned mjlab velocity-task

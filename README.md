@@ -11,10 +11,11 @@ built on [mjlab](https://github.com/mujocolab/mjlab), MuJoCo Warp, native MuJoCo
 _Click the image for a 15-second deterministic native-MuJoCo playback. No learning or exploration
 occurs during playback._
 
-Walking-v1 is under development. Its first legally redistributable, hash-bound G1 gait reference
-and real-time kinematic preview are now available in
-[Walking reference provenance and audit](docs/walking-reference.md). This is input data for the
-next control and PPO stages—not a walking-policy result.
+Walking-v1 is under development and has no qualified downloadable policy yet. Its nominal-action
+locomotion bootstrap, 0.4–0.8 m/s command distribution, PPO smoke path, legally redistributable gait
+reference, and frozen anti-shuffle evaluator are implemented. See the
+[walking method decision](docs/walking-method-decision.md); this is infrastructure and experiment
+evidence, not a walking-policy result.
 
 ## Run the trained policy
 
@@ -163,6 +164,8 @@ not a safe interchange format for untrusted files.
 - [Walking reference provenance and audit](docs/walking-reference.md)
 - [Walking-v1 command, phase, and policy contract](docs/walking-control-contract.md)
 - [Walking-v1 MDP and incentive design](docs/walking-mdp.md)
+- [Walking method decision and bootstrap](docs/walking-method-decision.md)
+- [Walking PPO lifecycle](docs/walking-training-lifecycle.md)
 
 ## Contributing and license
 

@@ -133,3 +133,28 @@ def test_walking_training_profile_is_strict_and_hashable(tmp_path: Path) -> None
     assert profile.forward_progress_weight == 1.0
     assert profile.reference_foot_position_std_m == 0.3
     assert len(profile.sha256) == 64
+
+
+def test_walking_bootstrap_profile_is_explicit_and_validated(tmp_path: Path) -> None:
+    path = tmp_path / "bootstrap.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "name": "locomotion-bootstrap",
+                "objective": "locomotion_bootstrap",
+                "standing_fraction": 0.1,
+                "reference_initialization": False,
+                "randomize_phase": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    profile = load_walking_training_profile(path)
+
+    assert profile.objective == "locomotion_bootstrap"
+
+    path.write_text(path.read_text().replace("locomotion_bootstrap", "unknown"))
+    with pytest.raises(ValueError, match="objective"):
+        load_walking_training_profile(path)
