@@ -21,9 +21,13 @@ The Unitree G1 model and visual geometry shown in the curated experiment media a
 the pinned [mjlab G1 asset directory](https://github.com/mujocolab/mjlab/tree/8ee51fbcf806a7419189f706d9e394cbeb7790fa/src/mjlab/asset_zoo/robots/unitree_g1),
 introduced in mjlab's Apache-2.0-licensed initial public release. The source tree identifies no
 separate asset license or notice for that directory. On that documented basis, the project retains
-the unaltered simulation screenshots and video as attributed experiment output. This repository
-does not distribute the model mesh files, a compiled MuJoCo model, or Unitree trademarks as
-standalone assets. The media identifies the depicted robot; no affiliation with or endorsement by
+the unaltered simulation screenshots and video as attributed experiment output. Git does not store
+the model mesh files, compiled MuJoCo model, or Unitree trademarks as standalone assets. The
+`standing-v1-inference.zip` release includes the exact compiled model required for reproducible
+playback and reproduces the
+[published Unitree G1 binary-redistribution license](https://github.com/google-deepmind/mujoco_menagerie/blob/main/unitree_g1/LICENSE)
+inside the archive.
+The media identifies the depicted robot; no affiliation with or endorsement by
 Unitree, the mjlab developers, Google DeepMind, NVIDIA, ETH Zurich, or OpenAI is implied.
 
 Dependency wheels may include additional notices. Their installed license files remain

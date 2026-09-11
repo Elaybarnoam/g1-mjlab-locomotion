@@ -14,6 +14,12 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
     validate = commands.add_parser("validate-config")
     validate.add_argument("--config", required=True, type=Path)
+    install = commands.add_parser("install-policy")
+    install.add_argument("name", choices=("standing-v1",))
+    install.add_argument("--output", type=Path)
+    installed_play = commands.add_parser("play-policy")
+    installed_play.add_argument("--policy", required=True, type=Path)
+    installed_play.add_argument("--trial-id", type=int, default=0)
     doctor = commands.add_parser("doctor")
     doctor.add_argument("--output", required=True, type=Path)
     qualify = commands.add_parser("qualify-controller")
@@ -93,6 +99,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "validate-config":
         config = load_config(args.config)
         print(json.dumps(config.to_dict(), indent=2, sort_keys=True))
+        return 0
+    if args.command == "install-policy":
+        from .policy_distribution import install_policy
+
+        output = args.output or Path("policies") / args.name
+        print(json.dumps(install_policy(args.name, output), indent=2, sort_keys=True))
+        return 0
+    if args.command == "play-policy":
+        from .native_media import play_native
+
+        play_native(args.policy, args.policy / "scenarios.json", trial_id=args.trial_id)
         return 0
     if args.command == "doctor":
         from .runtime import doctor

@@ -11,6 +11,23 @@ built on [mjlab](https://github.com/mujocolab/mjlab), MuJoCo Warp, native MuJoCo
 _Click the image for a 15-second deterministic native-MuJoCo playback. No learning or exploration
 occurs during playback._
 
+## Run the trained policy
+
+The `standing-v1` release runs deterministically in native MuJoCo on CPU. It does not start PPO or
+require a training GPU.
+
+```console
+git clone --branch v0.2.0 https://github.com/Elaybarnoam/g1-mjlab-locomotion.git
+cd g1-mjlab-locomotion
+uv sync --extra native
+uv run g1-mjlab install-policy standing-v1
+uv run g1-mjlab play-policy --policy policies/standing-v1
+```
+
+The installer cryptographically verifies the release archive and every runtime artifact before an
+atomic installation. See [Using published policies](docs/using-published-policies.md) for bundle
+contents, custom locations, and the separately distributed resumable training checkpoint.
+
 ## Current verified result
 
 Standing-v1 was qualified for the declared flat-ground simulation scope on 2026-09-09.
@@ -30,7 +47,8 @@ Standing-v1 was qualified for the declared flat-ground simulation scope on 2026-
 
 The evidence summary and media hashes are committed under [`evidence/standing-v1`](evidence/standing-v1)
 and [`docs/assets/standing-v1`](docs/assets/standing-v1/media-manifest.json). Raw training artifacts,
-checkpoints, compiled models, and machine-private paths are intentionally excluded from Git.
+executable policies, compiled models, and machine-private paths are excluded from Git. Qualified
+policy binaries are versioned separately as GitHub Release assets.
 
 ## What this proves—and what it does not
 
@@ -134,6 +152,7 @@ not a safe interchange format for untrusted files.
 - [Policy inputs, actions, and PD controller](docs/controller-contract.md)
 - [Evaluation protocol and evidence](docs/evaluation-and-evidence.md)
 - [Reproducibility and clean setup](docs/reproducibility.md)
+- [Using published policies](docs/using-published-policies.md)
 - [Limitations and roadmap](docs/limitations-and-roadmap.md)
 
 ## Contributing and license

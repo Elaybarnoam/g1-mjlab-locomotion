@@ -22,6 +22,11 @@ def test_compatibility_entry_points_remain_importable() -> None:
 
 
 def test_cli_routes_to_new_module_commands() -> None:
+    assert parser().parse_args(["install-policy", "standing-v1"]).command == "install-policy"
+    assert (
+        parser().parse_args(["play-policy", "--policy", "policies/standing-v1"]).command
+        == "play-policy"
+    )
     assert (
         parser()
         .parse_args(
