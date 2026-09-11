@@ -88,7 +88,9 @@ def parser() -> argparse.ArgumentParser:
     train.add_argument("--config", required=True, type=Path)
     train.add_argument("--reward-profile", type=Path)
     train.add_argument("--ppo-profile", type=Path)
-    train.add_argument("--resume", type=Path)
+    continuation = train.add_mutually_exclusive_group()
+    continuation.add_argument("--resume", type=Path)
+    continuation.add_argument("--initialize-actor", type=Path)
     train.add_argument("--output", required=True, type=Path)
     evaluate = commands.add_parser("evaluate")
     evaluate.add_argument("--config", required=True, type=Path)
@@ -217,6 +219,7 @@ def main(argv: list[str] | None = None) -> int:
             reward_profile=reward_profile,
             ppo_profile=ppo_profile,
             resume=args.resume,
+            initialize_actor=args.initialize_actor,
         )
         return 0
     if args.command == "qualify-controller":

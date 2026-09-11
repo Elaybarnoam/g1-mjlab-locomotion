@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Walking-Flat-v1",
+  "run_id": "walking-v1-smoke-001",
+  "updates": 2,
+  "num_envs": 256,
+  "steps_per_environment": 24,
+  "transitions_per_update": 6144,
+  "total_transitions": 12288,
+  "completed": true,
+  "all_losses_finite": true,
+  "all_recorded_gradients_finite": true,
+  "actor_parameter_delta_l2": 0.7143861217212252,
+  "critic_parameter_delta_l2": 0.7123646749906533,
+  "optimizer_state_entries": 17,
+  "checkpoint": "model_1.pt",
+  "checkpoint_sha256": "215f4e316ca6abd687bafe51c1eb718282d8bd6ae80844c528741cb0962db537",
+  "onnx_sha256": "96e02814a54442b7b84059ad076a58c3c06c9e9679c5b171a2bc0c6e81facbe2",
+  "full_resume": {
+    "completed": true,
+    "restored_iteration": 1,
+    "first_new_iteration": 2,
+    "additional_updates": 1,
+    "checkpoint": "model_2.pt",
+    "checkpoint_sha256": "e80dda1c5068960446bbb094d246b405aca2a66ac9f76a24cb7d859ea4556e2b"
+  },
+  "actor_initialization": {
+    "completed": true,
+    "source_checkpoint_sha256": "215f4e316ca6abd687bafe51c1eb718282d8bd6ae80844c528741cb0962db537",
+    "output_checkpoint": "model_0.pt",
+    "output_checkpoint_sha256": "94d2e2069d739f95b4b14a2a6f080a3250cf4451154c3439ed7370b60a17097b",
+    "fresh_components": ["critic", "optimizer", "iteration", "environment_state"]
+  },
+  "behavior_status": "learning path verified; gait not evaluated or qualified",
+  "observed_risk": "At update 1, mean reward was -9.18 and termination telemetry was fall-heavy. Two updates are intentionally insufficient for behavior claims."
+}

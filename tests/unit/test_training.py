@@ -7,7 +7,8 @@ import pytest
 
 from g1_mjlab.artifacts import snapshot_source
 from g1_mjlab.config import load_config
-from g1_mjlab.training import validate_resume
+from g1_mjlab.runtime import summarize_training_metrics
+from g1_mjlab.training import validate_actor_initialization, validate_resume
 
 
 def test_source_snapshot_includes_untracked_implementation(tmp_path: Path) -> None:
@@ -46,3 +47,34 @@ def test_resume_rejects_changed_action_semantics(tmp_path: Path) -> None:
     validate_resume(replace(config, max_iterations=20), checkpoint, None, None)
     with pytest.raises(ValueError, match="action_clip"):
         validate_resume(replace(config, action_clip=None), checkpoint, None, None)
+
+
+def test_actor_initialization_requires_same_task_and_is_not_resume(tmp_path: Path) -> None:
+    config = load_config(Path(__file__).resolve().parents[2] / "configs/standing-v1/smoke.json")
+    run = tmp_path / "source"
+    (run / "checkpoints").mkdir(parents=True)
+    checkpoint = run / "checkpoints" / "model_1.pt"
+    checkpoint.touch()
+    (run / "config.json").write_text(json.dumps(config.to_dict()), encoding="utf-8")
+
+    metadata = validate_actor_initialization(config, checkpoint)
+
+    assert metadata["mode"] == "actor-and-actor-normalizer-only"
+    with pytest.raises(ValueError, match="same task"):
+        validate_actor_initialization(replace(config, task_id="G1-Walking-Flat-v1"), checkpoint)
+
+
+def test_training_metric_summary_requires_finite_losses_for_every_update() -> None:
+    records = [
+        {"update": update, "metric": metric, "value": value}
+        for update in (0, 1)
+        for metric, value in (
+            ("Loss/value", 0.5),
+            ("Loss/surrogate", -0.1),
+            ("Loss/entropy", 4.0),
+        )
+    ]
+    assert summarize_training_metrics(records, expected_updates=2)["all_losses_finite"]
+    records[-1]["value"] = float("nan")
+    with pytest.raises(FloatingPointError, match="non-finite"):
+        summarize_training_metrics(records, expected_updates=2)

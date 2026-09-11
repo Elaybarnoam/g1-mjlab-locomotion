@@ -145,7 +145,7 @@ def test_interruption_salvages_flushed_metrics_and_checkpoint(tmp_path, monkeypa
 
     config = load_config(Path(__file__).resolve().parents[2] / "configs/standing-v1/smoke.json")
 
-    def interrupted(config, train_cfg, run_dir, resume=None):
+    def interrupted(config, train_cfg, run_dir, resume=None, initialize_actor=None):
         log = run_dir / "upstream" / "fake"
         (log / "params").mkdir(parents=True)
         (log / "params" / "agent.yaml").write_text("{}", encoding="utf-8")

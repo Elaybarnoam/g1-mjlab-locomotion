@@ -14,6 +14,7 @@ from typing import Any
 
 from .artifacts import sha256_file
 from .config import ResolvedRunConfig
+from .tasks import get_task
 
 
 def canonical_hash(value: dict[str, Any]) -> str:
@@ -85,8 +86,14 @@ def resolved_contract(env: Any, config: ResolvedRunConfig, output: Path) -> dict
             )
             offset += size
         observations[group] = fields
-    if sum(item["size"] for item in observations["actor"]) != 99:
-        raise ValueError("actor dimensions changed; version the deployment interface")
+    task = get_task(config.task_id)
+    actor_size = sum(item["size"] for item in observations["actor"])
+    critic_size = sum(item["size"] for item in observations["critic"])
+    if actor_size != task.actor_size or critic_size != task.critic_size:
+        raise ValueError(
+            f"resolved observation dimensions {(actor_size, critic_size)} do not match "
+            f"task contract {(task.actor_size, task.critic_size)}; version the interface"
+        )
     sensors = []
     for index in range(model.nsensor):
         sensors.append(
@@ -101,6 +108,8 @@ def resolved_contract(env: Any, config: ResolvedRunConfig, output: Path) -> dict
         )
     contract = {
         "schema_version": 2,
+        "task_id": task.task_id,
+        "layout_id": task.layout_id,
         "robot": "Unitree G1 29-DOF",
         "config_sha256": config.sha256,
         "joint_names": names,

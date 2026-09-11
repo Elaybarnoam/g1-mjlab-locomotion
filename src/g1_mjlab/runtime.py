@@ -25,6 +25,35 @@ from .tasks import TaskCapability, get_task
 MJLAB_REVISION = "8ee51fbcf806a7419189f706d9e394cbeb7790fa"
 
 
+def summarize_training_metrics(
+    records: list[dict[str, Any]], *, expected_updates: int
+) -> dict[str, Any]:
+    """Fail closed when PPO's required loss telemetry is missing or non-finite."""
+    required = ("Loss/value", "Loss/surrogate", "Loss/entropy")
+    losses = [record for record in records if record.get("metric") in required]
+    seen = {
+        (int(record["update"]), str(record["metric"]))
+        for record in losses
+        if isinstance(record.get("update"), int)
+    }
+    updates = sorted({update for update, _ in seen})
+    expected = {(update, metric) for update in updates for metric in required}
+    if len(updates) != expected_updates:
+        raise RuntimeError("PPO loss telemetry does not cover the requested update count")
+    if seen != expected:
+        raise RuntimeError("PPO loss telemetry is incomplete for the requested updates")
+    if not all(math.isfinite(float(record["value"])) for record in losses):
+        raise FloatingPointError("PPO emitted a non-finite loss")
+    return {
+        "schema_version": 1,
+        "updates": expected_updates,
+        "update_indices": updates,
+        "required_loss_metrics": list(required),
+        "all_losses_finite": True,
+        "losses": losses,
+    }
+
+
 def doctor(output: Path) -> dict[str, Any]:
     """Exercise Torch and mjlab imports and write a machine-readable diagnosis."""
     try:
@@ -97,15 +126,22 @@ def train(
     reward_profile: StandingRewardProfile | None = None,
     ppo_profile: PpoProfile | None = None,
     resume: Path | None = None,
+    initialize_actor: Path | None = None,
 ) -> Path:
     """Execute one bounded upstream training run and finalize local evidence."""
     task = get_task(config.task_id).require(TaskCapability.TRAIN)
     from .training import execute_training
 
+    if resume is not None and initialize_actor is not None:
+        raise ValueError("resume and initialize_actor are mutually exclusive")
     if resume is not None:
         from .training import validate_resume
 
         validate_resume(config, resume, reward_profile, ppo_profile)
+    if initialize_actor is not None:
+        from .training import validate_actor_initialization
+
+        validate_actor_initialization(config, initialize_actor)
 
     store = RunStore.create(
         run_dir,
@@ -153,12 +189,28 @@ def train(
             encoding="utf-8",
         )
         store.transition("running")
-        execute_training(config, train_cfg, run_dir, resume=resume)
+        execute_training(
+            config,
+            train_cfg,
+            run_dir,
+            resume=resume,
+            initialize_actor=initialize_actor,
+        )
         logs = sorted((run_dir / "upstream").rglob("params/agent.yaml"))
         if not logs:
             raise RuntimeError("training returned without an upstream run directory")
         log_dir = logs[-1].parent.parent
         metric_count = harvest_tensorboard(log_dir, store)
+        metric_records, truncated = read_jsonl(run_dir / "metrics" / "metrics.jsonl")
+        if truncated:
+            raise ValueError("metric journal has a partial tail after training")
+        learning_summary = summarize_training_metrics(
+            metric_records, expected_updates=config.max_iterations
+        )
+        (run_dir / "learning-summary.json").write_text(
+            json.dumps(learning_summary, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
         checkpoints = ordered_checkpoints(log_dir)
         for checkpoint in checkpoints:
             shutil.copy2(checkpoint, run_dir / "checkpoints" / checkpoint.name)

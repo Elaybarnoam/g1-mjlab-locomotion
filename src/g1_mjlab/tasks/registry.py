@@ -35,6 +35,9 @@ class TaskDefinition:
     config_directory: str
     experiment_name: str
     implementation_module: str
+    layout_id: str
+    actor_size: int
+    critic_size: int
     capabilities: frozenset[TaskCapability]
     unavailable_reason: str | None = None
     termination_penalty: float | None = None
@@ -69,6 +72,9 @@ _TASKS = {
         config_directory="standing-v1",
         experiment_name="g1_standing",
         implementation_module="g1_mjlab.tasks.standing_v1",
+        layout_id="g1-standing-actor-v1",
+        actor_size=99,
+        critic_size=111,
         capabilities=frozenset(
             {
                 TaskCapability.TRAIN,
@@ -84,6 +90,9 @@ _TASKS = {
         config_directory="walking-v1",
         experiment_name="g1_walking",
         implementation_module="g1_mjlab.tasks.walking_v1",
+        layout_id="g1-walking-actor-v1",
+        actor_size=102,
+        critic_size=114,
         capabilities=frozenset({TaskCapability.TRAIN}),
         unavailable_reason=(
             "walking evaluation, native inference, and controller qualification are not yet implemented"
