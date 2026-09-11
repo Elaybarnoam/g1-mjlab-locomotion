@@ -8,7 +8,11 @@ import pytest
 from g1_mjlab.artifacts import snapshot_source
 from g1_mjlab.config import load_config
 from g1_mjlab.runtime import summarize_training_metrics
-from g1_mjlab.training import validate_actor_initialization, validate_resume
+from g1_mjlab.training import (
+    validate_actor_initialization,
+    validate_fine_tune_initialization,
+    validate_resume,
+)
 
 
 def test_source_snapshot_includes_untracked_implementation(tmp_path: Path) -> None:
@@ -62,6 +66,21 @@ def test_actor_initialization_requires_same_task_and_is_not_resume(tmp_path: Pat
     assert metadata["mode"] == "actor-and-actor-normalizer-only"
     with pytest.raises(ValueError, match="same task"):
         validate_actor_initialization(replace(config, task_id="G1-Walking-Flat-v1"), checkpoint)
+
+
+def test_fine_tune_declares_full_learner_state_with_fresh_iteration(tmp_path: Path) -> None:
+    config = load_config(Path(__file__).resolve().parents[2] / "configs/standing-v1/smoke.json")
+    run = tmp_path / "source"
+    (run / "checkpoints").mkdir(parents=True)
+    checkpoint = run / "checkpoints" / "model_7.pt"
+    checkpoint.touch()
+    (run / "config.json").write_text(json.dumps(config.to_dict()), encoding="utf-8")
+
+    metadata = validate_fine_tune_initialization(config, checkpoint)
+
+    assert metadata["mode"] == "full-learner-state-fine-tune"
+    assert metadata["source_iteration"] == 7
+    assert metadata["fresh_components"] == ["iteration", "environment_state"]
 
 
 def test_training_metric_summary_requires_finite_losses_for_every_update() -> None:

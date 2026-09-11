@@ -17,7 +17,12 @@ from typing import Any
 
 from .artifacts import RunStore, read_jsonl, sha256_file, snapshot_source
 from .checkpoints import checkpoint_index, ordered_checkpoints
-from .config import PpoProfile, ResolvedRunConfig, StandingRewardProfile
+from .config import (
+    PpoProfile,
+    ResolvedRunConfig,
+    StandingRewardProfile,
+    WalkingTrainingProfile,
+)
 from .environment import build_train_config
 from .evaluation import StandingCriteria, TrialAccumulator, wilson_interval
 from .tasks import TaskCapability, get_task
@@ -127,21 +132,27 @@ def train(
     ppo_profile: PpoProfile | None = None,
     resume: Path | None = None,
     initialize_actor: Path | None = None,
+    fine_tune: Path | None = None,
+    walking_profile: WalkingTrainingProfile | None = None,
 ) -> Path:
     """Execute one bounded upstream training run and finalize local evidence."""
     task = get_task(config.task_id).require(TaskCapability.TRAIN)
     from .training import execute_training
 
-    if resume is not None and initialize_actor is not None:
-        raise ValueError("resume and initialize_actor are mutually exclusive")
+    if sum(value is not None for value in (resume, initialize_actor, fine_tune)) > 1:
+        raise ValueError("resume, initialize_actor, and fine_tune are mutually exclusive")
     if resume is not None:
         from .training import validate_resume
 
-        validate_resume(config, resume, reward_profile, ppo_profile)
+        validate_resume(config, resume, reward_profile, ppo_profile, walking_profile)
     if initialize_actor is not None:
         from .training import validate_actor_initialization
 
         validate_actor_initialization(config, initialize_actor)
+    if fine_tune is not None:
+        from .training import validate_fine_tune_initialization
+
+        validate_fine_tune_initialization(config, fine_tune)
 
     store = RunStore.create(
         run_dir,
@@ -151,6 +162,7 @@ def train(
             "config_sha256": config.sha256,
             "reward_profile_sha256": reward_profile.sha256 if reward_profile else None,
             "ppo_profile_sha256": ppo_profile.sha256 if ppo_profile else None,
+            "walking_profile_sha256": walking_profile.sha256 if walking_profile else None,
             "max_iterations": config.max_iterations,
             **source,
         },
@@ -168,6 +180,11 @@ def train(
             json.dumps(ppo_profile.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+    if walking_profile is not None:
+        (run_dir / "walking-profile.json").write_text(
+            json.dumps(walking_profile.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     store.transition("starting")
     try:
         snapshot = snapshot_source(
@@ -183,6 +200,7 @@ def train(
             run_dir / "upstream",
             reward_profile=reward_profile,
             ppo_profile=ppo_profile,
+            walking_profile=walking_profile,
         )
         (run_dir / "algorithm.json").write_text(
             json.dumps(asdict(train_cfg.agent), indent=2, sort_keys=True) + "\n",
@@ -195,6 +213,8 @@ def train(
             run_dir,
             resume=resume,
             initialize_actor=initialize_actor,
+            fine_tune=fine_tune,
+            ppo_profile=ppo_profile,
         )
         logs = sorted((run_dir / "upstream").rglob("params/agent.yaml"))
         if not logs:

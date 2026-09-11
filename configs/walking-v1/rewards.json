@@ -5,6 +5,7 @@
   "aggregation": "All nonterminal terms are rates multiplied by control_dt=0.02. Termination is a one-time event value divided by control_dt in the manager configuration.",
   "terms": {
     "track_linear_velocity": {"weight": 2.0, "raw": "exp(-(||v_xy-command_xy||^2+v_z^2)/0.35^2)", "unit": "1", "mask": "always"},
+    "commanded_forward_progress": {"weight": 0.0, "raw": "clip(applied_vx/reference_speed,0,1)*clip(actual_vx/reference_speed,-1,1.5)", "unit": "1", "mask": "applied forward command"},
     "track_angular_velocity": {"weight": 0.5, "raw": "exp(-((w_z-command_yaw)^2+||w_xy||^2)/0.35^2)", "unit": "1", "mask": "always"},
     "upright": {"weight": 1.0, "raw": "exp(-||projected_gravity_xy||^2/0.35^2)", "unit": "1", "mask": "always"},
     "reference_joint_pose": {"weight": 2.0, "raw": "exp(-mean((q-q_ref_blended)^2)/0.20^2)", "unit": "1", "mask": "stand target blends with walk target"},

@@ -209,7 +209,9 @@ def prepare_reference(
                 foot_speed[:, side],
                 enter_height_m=0.04,
                 exit_height_m=0.065,
-                max_stance_speed_m_s=0.8,
+                # An ankle body's horizontal speed includes articulated foot roll;
+                # it is not the ground contact point's slip velocity.
+                max_stance_speed_m_s=None,
                 minimum_frames=max(2, round(output_fps * 0.04)),
             )
             for side in range(2)
@@ -266,6 +268,8 @@ def prepare_reference(
                 and audit.root_orientation_seam_rad <= 0.05
                 and audit.contact_seam_matches
                 and np.all(contacts.sum(axis=0) > 0)
+                and not np.any(~np.any(contacts, axis=1))
+                and np.any(np.all(contacts, axis=1))
             ),
         },
         "npz_sha256": hashlib.sha256(output_npz.read_bytes()).hexdigest(),

@@ -60,7 +60,10 @@ def run_walking_probe(
     from mjlab.envs import ManagerBasedRlEnv
 
     from .environment import build_train_config
-    from .tasks.walking_mdp import WalkingCommand
+    from .tasks.walking_mdp import (
+        ReferenceResidualJointPositionAction,
+        WalkingCommand,
+    )
 
     train_cfg = build_train_config(config, output.parent / "unused", randomized_reset=True)
     command_cfg = train_cfg.env.commands["twist"]
@@ -101,7 +104,12 @@ def run_walking_probe(
                 robot.data.default_joint_pos * (1 - command.blend[:, None])
                 + command.joint_position * command.blend[:, None]
             )
-            raw_action = (target - action_term.offset) / action_term.scale
+            if reference_actions and isinstance(
+                action_term, ReferenceResidualJointPositionAction
+            ):
+                raw_action = torch.zeros_like(target)
+            else:
+                raw_action = (target - action_term.offset) / action_term.scale
             action = raw_action if reference_actions else torch.zeros_like(raw_action)
             if config.action_clip is not None:
                 action = torch.clamp(action, -config.action_clip, config.action_clip)

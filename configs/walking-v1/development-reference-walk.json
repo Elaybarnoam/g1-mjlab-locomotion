@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "name": "reference-start-walk-v1",
+  "reference_id": "nvidia-soma-g1-neutral-walk-a057-cycle-v1",
+  "segments": [
+    {"duration_s": 10.0, "forward_speed_m_s": 1.16381159304071}
+  ]
+}

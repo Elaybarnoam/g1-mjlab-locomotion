@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "name": "stage16-heading-corrected-balanced-progress",
+  "standing_fraction": 0.5,
+  "reference_initialization": false,
+  "randomize_phase": false,
+  "velocity_tracking_std_m_s": 0.5,
+  "forward_progress_weight": 0.2,
+  "reference_foot_position_std_m": 0.3
+}

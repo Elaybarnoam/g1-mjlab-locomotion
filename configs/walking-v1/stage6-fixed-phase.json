@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "name": "stage6-reference-fixed-phase",
+  "standing_fraction": 0.0,
+  "reference_initialization": true,
+  "randomize_phase": false
+}

@@ -40,7 +40,7 @@
       "bodies": ["left_ankle_roll_link", "right_ankle_roll_link"],
       "enter_height_m": 0.04,
       "exit_height_m": 0.065,
-      "maximum_horizontal_stance_speed_m_s": 0.8,
+      "horizontal_speed_filter": "disabled because ankle-body speed includes articulated foot roll and is not contact-point slip",
       "minimum_duration_s": 0.04
     },
     "model": {
@@ -58,7 +58,7 @@
   "assets": [
     {
       "path": "reference/g1-walk-a057-cycle.npz",
-      "sha256": "1a260b2e2c29fc7edff331e1f1896aa06df4be3f62429d388a7e7a69e2986c26",
+      "sha256": "028eae4a2a8163dae515891cb31a8f015b9e47e2f3e13d84669dd3fa7e91d06e",
       "bytes": 90304
     }
   ],

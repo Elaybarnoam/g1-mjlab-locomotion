@@ -152,7 +152,7 @@ def step_gait_torch(
     requested_command: Any,
     profile: CommandProfile,
     *,
-    dt: float,
+    dt: Any,
 ) -> tuple[Any, Any, Any, Any, Any]:
     """Vectorized Torch equivalent; intentionally imports Torch only inside GPU runtime."""
     import torch
@@ -162,13 +162,19 @@ def step_gait_torch(
         raise ValueError("requested command must have shape (num_envs, 3)")
     # Requested values are validated when the GPU-resident schedule is created. Do not add a
     # tensor-to-host truth conversion here: this function is called in the per-control-step path.
+    dt_vector = torch.as_tensor(dt, dtype=applied_command.dtype, device=applied_command.device)
+    if dt_vector.ndim > 1 or (dt_vector.ndim == 1 and dt_vector.shape[0] != phase.shape[0]):
+        raise ValueError("dt must be scalar or contain one value per environment")
+    dt_command = dt_vector[:, None] if dt_vector.ndim == 1 else dt_vector
     delta = requested_command - applied_command
     rate = torch.where(
         delta >= 0,
         profile.acceleration_m_s2,
         profile.deceleration_m_s2,
     )
-    applied = applied_command + torch.clamp(delta, min=-rate * dt, max=rate * dt)
+    applied = applied_command + torch.clamp(
+        delta, min=-rate * dt_command, max=rate * dt_command
+    )
     walking_next = torch.where(
         walking,
         applied[:, 0] > profile.stand_threshold_m_s,
@@ -176,11 +182,13 @@ def step_gait_torch(
     )
     target = walking_next.to(dtype=blend.dtype)
     blend_next = blend + torch.clamp(
-        target - blend, min=-profile.blend_rate_s * dt, max=profile.blend_rate_s * dt
+        target - blend,
+        min=-profile.blend_rate_s * dt_vector,
+        max=profile.blend_rate_s * dt_vector,
     )
     phase_rate = applied[:, 0] / (profile.reference_speed_m_s * profile.cycle_duration_s)
-    phase_next = torch.remainder(phase + dt * phase_rate, 1.0)
-    reference_distance_next = reference_distance_m + applied[:, 0] * dt
+    phase_next = torch.remainder(phase + dt_vector * phase_rate, 1.0)
+    reference_distance_next = reference_distance_m + applied[:, 0] * dt_vector
     return applied, phase_next, blend_next, walking_next, reference_distance_next
 
 

@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "name": "stage2-reference-only",
+  "standing_fraction": 0.0,
+  "reference_initialization": true,
+  "randomize_phase": true
+}

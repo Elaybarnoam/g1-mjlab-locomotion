@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 
 from .artifacts import sha256_file
-from .config import ResolvedRunConfig
+from .config import ResolvedRunConfig, WalkingTrainingProfile
 from .motion.gait import load_command_profile, load_command_schedule
 from .tasks import TaskCapability, get_task
 from .walking_evaluation import (
@@ -31,12 +31,17 @@ def evaluate_walking(
     seed: int,
     criteria: WalkingCriteria | None = None,
     video: bool = False,
+    initialization: str = "standing",
 ) -> dict[str, Any]:
     """Run deterministic actor means and retain each first episode before reset."""
     get_task(config.task_id).require(TaskCapability.WALKING_EVALUATION)
     if not 1 <= trials <= 256 or seed < 0 or seed == config.seed:
         raise ValueError("walking evaluation requires 1..256 trials and a held-out seed")
     checkpoint = checkpoint.resolve(strict=True)
+    if initialization not in {"standing", "reference", "reference-fixed"}:
+        raise ValueError(
+            "walking initialization must be standing, reference, or reference-fixed"
+        )
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"evaluation output is not empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
@@ -59,8 +64,28 @@ def evaluate_walking(
     eval_config = replace(
         config, seed=seed, num_envs=trials, episode_length_s=horizon_s + config.control_dt
     )
-    train_cfg = build_train_config(eval_config, output, randomized_reset=False)
-    train_cfg.env.auto_reset = False
+    if initialization == "standing":
+        evaluation_profile = WalkingTrainingProfile(
+            1, "evaluation-standing", 1.0, False, False
+        )
+    else:
+        randomize_phase = initialization == "reference"
+        evaluation_profile = WalkingTrainingProfile(
+            1,
+            "evaluation-reference-random" if randomize_phase else "evaluation-reference-fixed",
+            0.0,
+            True,
+            randomize_phase,
+        )
+    train_cfg = build_train_config(
+        eval_config,
+        output,
+        randomized_reset=False,
+        walking_profile=evaluation_profile,
+    )
+    # Simulator-managed reset avoids MuJoCo-Warp partial-reset instability. Each record below is
+    # frozen at its first termination and deliberately excludes the returned post-reset frame.
+    train_cfg.env.auto_reset = True
     env = ManagerBasedRlEnv(
         cfg=train_cfg.env, device=config.device, render_mode="rgb_array" if video else None
     )
@@ -105,7 +130,7 @@ def evaluate_walking(
                 requested = next(speed for end, speed in boundaries if step < end)
                 command.set_requested_forward_speed(requested)
                 actions = policy(observations)
-                observations, _, dones, _ = wrapped.step(actions)
+                observations, _, _, _ = wrapped.step(actions)
                 if video and step % 2 == 0:
                     frame = env.render()
                     if frame is not None:
@@ -138,6 +163,9 @@ def evaluate_walking(
                 for index, record in enumerate(records):
                     if record["terminated"]:
                         continue
+                    if bool(frame_values[-1][index]):
+                        record["terminated"] = True
+                        continue
                     keys = (
                         "command",
                         "speed",
@@ -151,7 +179,6 @@ def evaluate_walking(
                     )
                     for key, values in zip(keys, frame_values[:-1], strict=True):
                         record[key].append(values[index])
-                    record["terminated"] = bool(frame_values[-1][index])
                 if all(bool(record["terminated"]) for record in records):
                     break
     finally:
@@ -203,6 +230,7 @@ def evaluate_walking(
         "checkpoint": checkpoint.name,
         "checkpoint_sha256": sha256_file(checkpoint),
         "schedule": schedule.name,
+        "initialization": initialization,
         "schedule_sha256": sha256_file(schedule_path),
         "criteria": asdict(criteria),
         "criteria_status": "frozen before pilot; development only",

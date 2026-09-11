@@ -64,7 +64,10 @@ def walking_policy_contract() -> PolicyContract:
         action_names=G1_JOINT_NAMES,
         physics_dt=0.005,
         control_dt=0.02,
-        action_semantics="29 normalized position offsets around the nominal G1 pose",
+        action_semantics=(
+            "29 normalized residual joint-position offsets around the phase-aligned "
+            "stand/walk reference pose"
+        ),
         actuator_semantics="one built-in position actuator; PD is applied exactly once",
         task_id=TASK_ID,
         layout_id="g1-walking-actor-v1",
@@ -73,19 +76,41 @@ def walking_policy_contract() -> PolicyContract:
     )
 
 
-def configure_environment(env: Any, *, randomized_reset: bool = True) -> None:
+def configure_environment(
+    env: Any, *, randomized_reset: bool = True, task_profile: Any = None
+) -> None:
+    from ..config import WalkingTrainingProfile
     from .walking_mdp import WalkingCommandCfg
 
     command = env.commands["twist"]
     if not isinstance(command, WalkingCommandCfg):
         raise TypeError("walking-v1 requires WalkingCommandCfg")
-    command.randomize_phase = randomized_reset
-    env.events["reset_walking_state"].params["reference_initialization"] = randomized_reset
+    if task_profile is not None and not isinstance(task_profile, WalkingTrainingProfile):
+        raise TypeError("walking-v1 requires WalkingTrainingProfile")
+    command.randomize_phase = (
+        task_profile.randomize_phase if task_profile is not None else randomized_reset
+    )
+    if task_profile is not None:
+        command.standing_fraction = task_profile.standing_fraction
+        if task_profile.velocity_tracking_std_m_s is not None:
+            env.rewards["track_linear_velocity"].params["std"] = (
+                task_profile.velocity_tracking_std_m_s
+            )
+        if task_profile.forward_progress_weight is not None:
+            env.rewards["commanded_forward_progress"].weight = (
+                task_profile.forward_progress_weight
+            )
+        if task_profile.reference_foot_position_std_m is not None:
+            env.rewards["reference_foot_position"].params["std_m"] = (
+                task_profile.reference_foot_position_std_m
+            )
+    command.reference_initialization = (
+        task_profile.reference_initialization if task_profile is not None else randomized_reset
+    )
 
 
 def register_task() -> None:
     from mjlab.envs import mdp as envs_mdp
-    from mjlab.managers.event_manager import EventTermCfg
     from mjlab.managers.observation_manager import ObservationTermCfg
     from mjlab.managers.reward_manager import RewardTermCfg
     from mjlab.managers.scene_entity_config import SceneEntityCfg
@@ -115,8 +140,20 @@ def register_task() -> None:
         walk_threshold_m_s=0.15,
         standing_fraction=0.2,
         randomize_phase=True,
+        reference_initialization=True,
         resampling_time_range=(4.0, 10.0),
         debug_vis=False,
+    )
+    nominal_action = env.actions["joint_pos"]
+    env.actions["joint_pos"] = walking_mdp.ReferenceResidualJointPositionActionCfg(
+        entity_name=nominal_action.entity_name,
+        actuator_names=nominal_action.actuator_names,
+        scale=nominal_action.scale,
+        offset=0.0,
+        preserve_order=nominal_action.preserve_order,
+        clip=nominal_action.clip,
+        use_default_offset=False,
+        command_name="twist",
     )
     for group in env.observations.values():
         group.terms["phase_sin"] = ObservationTermCfg(
@@ -145,19 +182,18 @@ def register_task() -> None:
     )
     env.scene.sensors = (env.scene.sensors or ()) + (forbidden_ground,)
 
-    env.events = {
-        "reset_walking_state": EventTermCfg(
-            func=walking_mdp.reset_walking_state,
-            mode="reset",
-            params={"command_name": "twist", "reference_initialization": True},
-        )
-    }
+    env.events = {}
     env.curriculum = {}
     env.rewards = {
         "track_linear_velocity": RewardTermCfg(
             func=walking_mdp.track_linear_velocity,
             weight=weight["track_linear_velocity"],
             params={"command_name": "twist", "std": 0.35},
+        ),
+        "commanded_forward_progress": RewardTermCfg(
+            func=walking_mdp.commanded_forward_progress,
+            weight=weight["commanded_forward_progress"],
+            params={"command_name": "twist"},
         ),
         "track_angular_velocity": RewardTermCfg(
             func=mdp.track_angular_velocity,

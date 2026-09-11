@@ -8,13 +8,13 @@
   },
   "all_values_finite": true,
   "contact_frames": {
-    "left": 16,
-    "right": 18
+    "left": 22,
+    "right": 36
   },
   "contact_seam_matches": true,
-  "double_support_frames": 0,
+  "double_support_frames": 4,
   "duration_s": 1.06,
-  "flight_frames": 20,
+  "flight_frames": 0,
   "forward_speed_m_s": 1.16381159304071,
   "joint_limit_constrained_samples": 4,
   "joint_limit_safety_margin_rad": 0.02,
@@ -25,7 +25,7 @@
   "max_joint_limit_adjustment_rad": 0.01999996375780258,
   "minimum_joint_limit_margin_rad": 0.020000004696845985,
   "npz_bytes": 90304,
-  "npz_sha256": "1a260b2e2c29fc7edff331e1f1896aa06df4be3f62429d388a7e7a69e2986c26",
+  "npz_sha256": "028eae4a2a8163dae515891cb31a8f015b9e47e2f3e13d84669dd3fa7e91d06e",
   "output_fps": 50.0,
   "output_frames": 54,
   "root_height_range_m": [

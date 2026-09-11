@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "name": "walking-reference-residual-zero-entropy",
+  "initial_action_std": 0.2,
+  "entropy_coef": 0.0
+}

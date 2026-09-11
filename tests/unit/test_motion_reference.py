@@ -100,6 +100,19 @@ def test_contact_derivation_uses_hysteresis_and_minimum_duration() -> None:
     np.testing.assert_array_equal(contacts, [True, True, True, True, True, True])
 
 
+def test_contact_derivation_can_ignore_ankle_speed_during_foot_roll() -> None:
+    contacts = derive_foot_contacts(
+        np.array([0.01, 0.02, 0.01]),
+        np.array([2.0, 3.0, 2.0]),
+        enter_height_m=0.02,
+        exit_height_m=0.03,
+        max_stance_speed_m_s=None,
+        minimum_frames=1,
+    )
+
+    np.testing.assert_array_equal(contacts, [True, True, True])
+
+
 def test_periodic_audit_removes_forward_root_displacement_from_seam() -> None:
     joint = np.zeros((5, 29))
     joint[-1] = 0.01
@@ -159,4 +172,6 @@ def test_public_walking_reference_matches_manifest_and_audit() -> None:
         assert np.all(np.isfinite(reference["joint_vel"]))
     audit = json.loads((config / manifest.raw["audit_path"]).read_text(encoding="utf-8"))
     assert audit["acceptance"]["passed"] is True
+    assert audit["flight_frames"] == 0
+    assert audit["double_support_frames"] > 0
     assert audit["npz_sha256"] == manifest.assets[0].sha256

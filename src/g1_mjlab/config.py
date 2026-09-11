@@ -82,6 +82,30 @@ class PpoProfile:
     schema_version: int
     name: str
     initial_action_std: float
+    entropy_coef: float | None = None
+    reset_action_std_on_transfer: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @property
+    def sha256(self) -> str:
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class WalkingTrainingProfile:
+    """One explicit command, reset, and reward curriculum stage for walking-v1."""
+
+    schema_version: int
+    name: str
+    standing_fraction: float
+    reference_initialization: bool
+    randomize_phase: bool
+    velocity_tracking_std_m_s: float | None = None
+    forward_progress_weight: float | None = None
+    reference_foot_position_std_m: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -190,8 +214,9 @@ def load_ppo_profile(path: Path) -> PpoProfile:
     if not isinstance(raw, dict):
         raise ValueError("PPO profile root must be an object")
     expected = set(PpoProfile.__dataclass_fields__)
+    required = expected - {"entropy_coef", "reset_action_std_on_transfer"}
     unknown = set(raw) - expected
-    missing = expected - set(raw)
+    missing = required - set(raw)
     if unknown or missing:
         raise ValueError(
             f"PPO profile fields mismatch; missing={sorted(missing)}, unknown={sorted(unknown)}"
@@ -206,4 +231,59 @@ def load_ppo_profile(path: Path) -> PpoProfile:
         raise ValueError("PPO profile name must contain only letters, digits, '-' and '_'")
     if not math.isfinite(profile.initial_action_std) or profile.initial_action_std <= 0:
         raise ValueError("initial_action_std must be positive and finite")
+    if profile.entropy_coef is not None and (
+        not math.isfinite(profile.entropy_coef) or profile.entropy_coef < 0
+    ):
+        raise ValueError("entropy_coef must be finite and non-negative")
+    if not isinstance(profile.reset_action_std_on_transfer, bool):
+        raise ValueError("reset_action_std_on_transfer must be a boolean")
+    return profile
+
+
+def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("walking profile root must be an object")
+    expected = set(WalkingTrainingProfile.__dataclass_fields__)
+    required = expected - {
+        "velocity_tracking_std_m_s",
+        "forward_progress_weight",
+        "reference_foot_position_std_m",
+    }
+    if not required.issubset(raw) or not set(raw).issubset(expected):
+        raise ValueError("walking profile fields do not match schema")
+    profile = WalkingTrainingProfile(**raw)
+    if profile.schema_version != 1:
+        raise ValueError("only walking profile schema_version 1 is supported")
+    if not profile.name or any(
+        char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        for char in profile.name
+    ):
+        raise ValueError("walking profile name must contain only letters, digits, '-' and '_'")
+    if (
+        isinstance(profile.standing_fraction, bool)
+        or not isinstance(profile.standing_fraction, (int, float))
+        or not math.isfinite(profile.standing_fraction)
+        or not 0 <= profile.standing_fraction <= 1
+    ):
+        raise ValueError("standing_fraction must be finite in [0, 1]")
+    if not isinstance(profile.reference_initialization, bool) or not isinstance(
+        profile.randomize_phase, bool
+    ):
+        raise ValueError("walking reset flags must be boolean")
+    if profile.velocity_tracking_std_m_s is not None and (
+        not math.isfinite(profile.velocity_tracking_std_m_s)
+        or profile.velocity_tracking_std_m_s <= 0
+    ):
+        raise ValueError("velocity_tracking_std_m_s must be positive and finite")
+    if profile.forward_progress_weight is not None and (
+        not math.isfinite(profile.forward_progress_weight)
+        or profile.forward_progress_weight < 0
+    ):
+        raise ValueError("forward_progress_weight must be finite and non-negative")
+    if profile.reference_foot_position_std_m is not None and (
+        not math.isfinite(profile.reference_foot_position_std_m)
+        or profile.reference_foot_position_std_m <= 0
+    ):
+        raise ValueError("reference_foot_position_std_m must be positive and finite")
     return profile

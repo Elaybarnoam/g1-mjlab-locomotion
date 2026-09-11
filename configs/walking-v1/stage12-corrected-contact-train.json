@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Walking-Flat-v1",
+  "run_name": "walking-v1-stage12-corrected-contact-001",
+  "seed": 47,
+  "num_envs": 256,
+  "max_iterations": 1200,
+  "rollout_steps": 24,
+  "save_interval": 100,
+  "physics_dt": 0.005,
+  "decimation": 4,
+  "episode_length_s": 15.0,
+  "action_clip": null,
+  "device": "cuda:0",
+  "logger": "tensorboard",
+  "video": false
+}

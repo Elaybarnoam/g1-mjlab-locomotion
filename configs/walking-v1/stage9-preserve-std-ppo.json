@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "name": "stage9-preserve-transferred-std",
+  "initial_action_std": 0.2,
+  "entropy_coef": 0.0,
+  "reset_action_std_on_transfer": false
+}

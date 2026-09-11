@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from g1_mjlab.config import load_config, load_ppo_profile, load_reward_profile
+from g1_mjlab.config import (
+    load_config,
+    load_ppo_profile,
+    load_reward_profile,
+    load_walking_training_profile,
+)
 
 
 def _data() -> dict[str, object]:
@@ -83,3 +88,48 @@ def test_ppo_profile_is_strict_and_positive(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert load_ppo_profile(path).initial_action_std == 0.2
+    assert load_ppo_profile(path).entropy_coef is None
+    assert load_ppo_profile(path).reset_action_std_on_transfer is True
+
+
+def test_ppo_profile_can_preserve_transferred_action_std(tmp_path: Path) -> None:
+    path = tmp_path / "ppo.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "name": "preserve-std",
+                "initial_action_std": 0.2,
+                "entropy_coef": 0.0,
+                "reset_action_std_on_transfer": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    profile = load_ppo_profile(path)
+
+    assert profile.reset_action_std_on_transfer is False
+
+
+def test_walking_training_profile_is_strict_and_hashable(tmp_path: Path) -> None:
+    path = tmp_path / "walking.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "name": "reference-only",
+                "standing_fraction": 0.0,
+                "reference_initialization": True,
+                "randomize_phase": True,
+                "forward_progress_weight": 1.0,
+                "reference_foot_position_std_m": 0.3,
+            }
+        ),
+        encoding="utf-8",
+    )
+    profile = load_walking_training_profile(path)
+    assert profile.standing_fraction == 0
+    assert profile.forward_progress_weight == 1.0
+    assert profile.reference_foot_position_std_m == 0.3
+    assert len(profile.sha256) == 64

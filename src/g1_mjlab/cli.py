@@ -6,7 +6,12 @@ import argparse
 import json
 from pathlib import Path
 
-from .config import load_config, load_ppo_profile, load_reward_profile
+from .config import (
+    load_config,
+    load_ppo_profile,
+    load_reward_profile,
+    load_walking_training_profile,
+)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -88,9 +93,11 @@ def parser() -> argparse.ArgumentParser:
     train.add_argument("--config", required=True, type=Path)
     train.add_argument("--reward-profile", type=Path)
     train.add_argument("--ppo-profile", type=Path)
+    train.add_argument("--walking-profile", type=Path)
     continuation = train.add_mutually_exclusive_group()
     continuation.add_argument("--resume", type=Path)
     continuation.add_argument("--initialize-actor", type=Path)
+    continuation.add_argument("--fine-tune", type=Path)
     train.add_argument("--output", required=True, type=Path)
     evaluate = commands.add_parser("evaluate")
     evaluate.add_argument("--config", required=True, type=Path)
@@ -109,6 +116,11 @@ def parser() -> argparse.ArgumentParser:
     evaluate_walking.add_argument("--trials", type=int, default=16)
     evaluate_walking.add_argument("--seed", type=int, default=10042)
     evaluate_walking.add_argument("--video", action="store_true")
+    evaluate_walking.add_argument(
+        "--initialization",
+        choices=("standing", "reference", "reference-fixed"),
+        default="standing",
+    )
     diagnose = commands.add_parser("diagnose-standing")
     diagnose.add_argument("--config", required=True, type=Path)
     diagnose.add_argument("--checkpoint", required=True, type=Path)
@@ -219,6 +231,9 @@ def main(argv: list[str] | None = None) -> int:
         config = load_config(args.config)
         reward_profile = load_reward_profile(args.reward_profile) if args.reward_profile else None
         ppo_profile = load_ppo_profile(args.ppo_profile) if args.ppo_profile else None
+        walking_profile = (
+            load_walking_training_profile(args.walking_profile) if args.walking_profile else None
+        )
         project_root = Path(__file__).resolve().parents[2]
         train(
             config,
@@ -228,6 +243,8 @@ def main(argv: list[str] | None = None) -> int:
             ppo_profile=ppo_profile,
             resume=args.resume,
             initialize_actor=args.initialize_actor,
+            fine_tune=args.fine_tune,
+            walking_profile=walking_profile,
         )
         return 0
     if args.command == "qualify-controller":
@@ -248,6 +265,7 @@ def main(argv: list[str] | None = None) -> int:
                     trials=args.trials,
                     seed=args.seed,
                     video=args.video,
+                    initialization=args.initialization,
                 ),
                 indent=2,
                 sort_keys=True,

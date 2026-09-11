@@ -264,7 +264,7 @@ def derive_foot_contacts(
     *,
     enter_height_m: float,
     exit_height_m: float,
-    max_stance_speed_m_s: float,
+    max_stance_speed_m_s: float | None,
     minimum_frames: int,
 ) -> BoolArray:
     """Derive one foot's contact state using hysteresis and debounce duration."""
@@ -275,14 +275,21 @@ def derive_foot_contacts(
     if enter_height_m > exit_height_m:
         raise MotionValidationError("contact enter height must not exceed exit height")
     output = np.empty(height.shape, dtype=np.bool_)
-    state = bool(height[0] <= enter_height_m and speed[0] <= max_stance_speed_m_s)
+    speed_allowed = (
+        np.ones_like(speed, dtype=np.bool_)
+        if max_stance_speed_m_s is None
+        else speed <= max_stance_speed_m_s
+    )
+    state = bool(height[0] <= enter_height_m and speed_allowed[0])
     pending = state
     count = 0
-    for index, (sample_height, sample_speed) in enumerate(zip(height, speed, strict=True)):
+    for index, (sample_height, sample_speed_allowed) in enumerate(
+        zip(height, speed_allowed, strict=True)
+    ):
         candidate = state
-        if state and (sample_height >= exit_height_m or sample_speed > max_stance_speed_m_s):
+        if state and (sample_height >= exit_height_m or not sample_speed_allowed):
             candidate = False
-        elif not state and sample_height <= enter_height_m and sample_speed <= max_stance_speed_m_s:
+        elif not state and sample_height <= enter_height_m and sample_speed_allowed:
             candidate = True
         if candidate == state:
             count = 0

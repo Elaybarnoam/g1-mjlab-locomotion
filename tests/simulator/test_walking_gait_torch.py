@@ -46,3 +46,29 @@ def test_torch_gait_step_matches_numpy_without_host_state_updates() -> None:
     np.testing.assert_allclose(blend.numpy(), numpy_state.blend)
     np.testing.assert_array_equal(walking.numpy(), numpy_state.walking)
     np.testing.assert_allclose(reference_distance.numpy(), numpy_state.reference_distance_m)
+
+
+@pytest.mark.simulator
+def test_torch_gait_step_respects_per_environment_zero_dt() -> None:
+    profile = CommandProfile(1.0, 1.0, 10.0, 10.0, 10.0, 0.05, 0.15)
+    applied = torch.ones((2, 3), dtype=torch.float64)
+    applied[:, 1:] = 0
+    phase = torch.tensor([0.25, 0.25], dtype=torch.float64)
+    blend = torch.ones(2, dtype=torch.float64)
+    walking = torch.ones(2, dtype=torch.bool)
+    distance = torch.tensor([1.0, 1.0], dtype=torch.float64)
+    requested = applied.clone()
+
+    next_state = step_gait_torch(
+        applied,
+        phase,
+        blend,
+        walking,
+        distance,
+        requested,
+        profile,
+        dt=torch.tensor([0.0, 0.02], dtype=torch.float64),
+    )
+
+    torch.testing.assert_close(next_state[1], torch.tensor([0.25, 0.27], dtype=torch.float64))
+    torch.testing.assert_close(next_state[4], torch.tensor([1.0, 1.02], dtype=torch.float64))

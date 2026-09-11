@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import torch
 from mjlab.entity import Entity
+from mjlab.envs.mdp.actions import JointPositionAction, JointPositionActionCfg
 from mjlab.managers.command_manager import CommandTerm, CommandTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
@@ -34,6 +35,7 @@ class WalkingCommandCfg(CommandTermCfg):  # type: ignore[misc]
     walk_threshold_m_s: float
     standing_fraction: float = 0.2
     randomize_phase: bool = True
+    reference_initialization: bool = True
 
     def build(self, env: ManagerBasedRlEnv) -> WalkingCommand:
         return WalkingCommand(self, env)
@@ -96,6 +98,7 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         self.blend = torch.zeros(self.num_envs, device=self.device)
         self.walking = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reference_distance_m = torch.zeros(self.num_envs, device=self.device)
+        self._command_dt: float | torch.Tensor = 0.0
         self.metrics["command_filter_error_m_s"] = torch.zeros(self.num_envs, device=self.device)
 
     @property
@@ -127,7 +130,10 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
             self.phase[env_ids].uniform_(0.0, 1.0)
         else:
             self.phase[env_ids] = 0
-        return cast(dict[str, float], super().reset(env_ids))
+        extras = cast(dict[str, float], super().reset(env_ids))
+        if self.cfg.reference_initialization:
+            _write_walking_state(self._env, env_ids, self, reference_initialization=True)
+        return extras
 
     def _update_metrics(self) -> None:
         self.metrics["command_filter_error_m_s"] = torch.abs(
@@ -143,8 +149,18 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
             self.cfg.reference_speed_m_s,
         )
 
+    def compute(
+        self, dt: float | torch.Tensor, env_ids: torch.Tensor | None = None
+    ) -> None:
+        """Advance using the manager-provided dt, including zero-dt reset worlds."""
+        self._command_dt = dt
+        super().compute(dt, env_ids)
+
     def _update_command(self, env_ids: torch.Tensor | None) -> None:
         ids: Any = slice(None) if env_ids is None else env_ids
+        dt = self._command_dt
+        if isinstance(dt, torch.Tensor) and env_ids is not None and dt.ndim == 1:
+            dt = dt[env_ids]
         values = step_gait_torch(
             self._applied[ids],
             self.phase[ids],
@@ -153,7 +169,7 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
             self.reference_distance_m[ids],
             self._requested[ids],
             self.profile,
-            dt=self._env.step_dt,
+            dt=dt,
         )
         (
             self._applied[ids],
@@ -188,6 +204,44 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
     def foot_contact(self) -> torch.Tensor:
         lower, _, _ = self._frame_blend()
         return self.reference_contact[lower]
+
+
+@dataclass(kw_only=True)
+class ReferenceResidualJointPositionActionCfg(JointPositionActionCfg):  # type: ignore[misc]
+    """Joint targets centered on the current stand/walk reference pose."""
+
+    command_name: str
+
+    def build(self, env: ManagerBasedRlEnv) -> ReferenceResidualJointPositionAction:
+        return ReferenceResidualJointPositionAction(self, env)
+
+
+class ReferenceResidualJointPositionAction(JointPositionAction):  # type: ignore[misc]
+    """Apply normalized policy residuals around a phase-aligned reference."""
+
+    cfg: ReferenceResidualJointPositionActionCfg
+
+    def __init__(self, cfg: ReferenceResidualJointPositionActionCfg, env: ManagerBasedRlEnv):
+        super().__init__(cfg, env)
+        self._command = _command(env, cfg.command_name)
+
+    @property
+    def joint_position_target(self) -> torch.Tensor:
+        return self._processed_actions
+
+    def process_actions(self, actions: torch.Tensor) -> None:
+        self._raw_actions[:] = actions
+        default = self._entity.data.default_joint_pos[:, self._target_ids]
+        reference = self._command.joint_position[:, self._target_ids]
+        blend = self._command.blend[:, None]
+        center = default * (1 - blend) + reference * blend
+        self._processed_actions = center + self._raw_actions * self._scale
+        if self.cfg.clip is not None:
+            self._processed_actions = torch.clamp(
+                self._processed_actions,
+                min=self._clip[:, :, 0],
+                max=self._clip[:, :, 1],
+            )
 
 
 def _command(env: ManagerBasedRlEnv, command_name: str) -> WalkingCommand:
@@ -225,6 +279,26 @@ def track_linear_velocity(
     return torch.exp(-error / std**2)
 
 
+def commanded_forward_progress(
+    env: ManagerBasedRlEnv,
+    command_name: str,
+    asset_cfg: SceneEntityCfg = _ROBOT,
+) -> torch.Tensor:
+    """Provide bounded, non-saturating progress only while forward motion is requested."""
+    command = _command(env, command_name)
+    robot: Entity = env.scene[asset_cfg.name]
+    reference_speed = command.cfg.reference_speed_m_s
+    command_fraction = torch.clamp(command.command[:, 0] / reference_speed, 0.0, 1.0)
+    normalized_velocity = torch.clamp(
+        robot.data.root_link_lin_vel_b[:, 0] / reference_speed,
+        min=-1.0,
+        max=1.5,
+    )
+    progress = command_fraction * normalized_velocity
+    env.extras["log"]["Metrics/commanded_forward_progress"] = progress.mean()
+    return progress
+
+
 def reference_joint_pose(
     env: ManagerBasedRlEnv,
     command_name: str,
@@ -254,6 +328,16 @@ def reference_joint_velocity(
     return torch.exp(-error / std_rad_s**2)
 
 
+def heading_frame_delta(
+    world_delta: torch.Tensor, root_quaternion_wxyz: torch.Tensor
+) -> torch.Tensor:
+    """Rotate batched world-frame vectors into each root's yaw-only frame."""
+    quaternion = torch.nn.functional.normalize(root_quaternion_wxyz, dim=-1)
+    heading = yaw_quat(quaternion)
+    repeated = heading[:, None, :].expand(-1, world_delta.shape[1], -1)
+    return quat_apply_inverse(repeated, world_delta)
+
+
 class reference_foot_position:
     def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRlEnv):
         command = _command(env, cfg.params["command_name"])
@@ -277,12 +361,12 @@ class reference_foot_position:
         robot: Entity = env.scene["robot"]
         root = robot.data.root_link_pos_w
         simulated_delta_w = robot.data.body_link_pos_w[:, self._robot_ids] - root[:, None, :]
-        heading = yaw_quat(robot.data.root_link_quat_w)
-        heading_repeated = heading[:, None, :].expand(-1, len(self._robot_ids), -1)
-        simulated_b = quat_apply_inverse(heading_repeated, simulated_delta_w)
+        simulated_b = heading_frame_delta(simulated_delta_w, robot.data.root_link_quat_w)
         reference_body = command.interpolate(command.reference_body_position)
-        reference_delta = reference_body[:, self._reference_ids] - reference_body[:, 0:1]
-        error = torch.mean(torch.sum(torch.square(simulated_b - reference_delta), dim=2), dim=1)
+        reference_delta_w = reference_body[:, self._reference_ids] - reference_body[:, 0:1]
+        reference_quaternion = command.interpolate(command.reference_body_quaternion)[:, 0]
+        reference_b = heading_frame_delta(reference_delta_w, reference_quaternion)
+        error = torch.mean(torch.sum(torch.square(simulated_b - reference_b), dim=2), dim=1)
         env.extras["log"]["Errors/reference_foot_position_rms_m"] = torch.sqrt(error).mean()
         return torch.exp(-error / std_m**2) * command.blend
 
@@ -339,6 +423,15 @@ def reset_walking_state(
     if env_ids is None:
         env_ids = torch.arange(env.num_envs, device=env.device)
     command = _command(env, command_name)
+    _write_walking_state(env, env_ids, command, reference_initialization)
+
+
+def _write_walking_state(
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor,
+    command: WalkingCommand,
+    reference_initialization: bool,
+) -> None:
     robot: Entity = env.scene["robot"]
     default_root = robot.data.default_root_state[env_ids].clone()
     default_root[:, :3] += env.scene.env_origins[env_ids]
