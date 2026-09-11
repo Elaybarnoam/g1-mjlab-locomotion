@@ -616,6 +616,9 @@ version = "0.2.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
+motion = [
+    { name = "numpy" },
+]
 native = [
     { name = "mujoco" },
     { name = "numpy" },
@@ -640,6 +643,7 @@ dev = [
     { name = "build" },
     { name = "check-wheel-contents" },
     { name = "mypy" },
+    { name = "numpy" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -654,6 +658,7 @@ requires-dist = [
     { name = "mjlab", marker = "extra == 'train'", git = "https://github.com/mujocolab/mjlab.git?rev=8ee51fbcf806a7419189f706d9e394cbeb7790fa" },
     { name = "mujoco", marker = "extra == 'native'", specifier = "~=3.11.0" },
     { name = "mujoco-warp", marker = "extra == 'train'", specifier = "==3.11.0" },
+    { name = "numpy", marker = "extra == 'motion'", specifier = ">=2.0,<3" },
     { name = "numpy", marker = "extra == 'native'", specifier = ">=2.0,<3" },
     { name = "onnxruntime", marker = "extra == 'native'", specifier = ">=1.24,<2" },
     { name = "onnxruntime", marker = "extra == 'train'", specifier = ">=1.24,<2" },
@@ -661,13 +666,14 @@ requires-dist = [
     { name = "torch", marker = "extra == 'train'", specifier = "==2.13.0" },
     { name = "warp-lang", marker = "extra == 'train'", specifier = "==1.14.0" },
 ]
-provides-extras = ["native", "video", "train"]
+provides-extras = ["motion", "native", "video", "train"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "build", specifier = ">=1.3,<2" },
     { name = "check-wheel-contents", specifier = ">=0.6,<1" },
     { name = "mypy", specifier = ">=1.18,<2" },
+    { name = "numpy", specifier = ">=2.0,<3" },
     { name = "pre-commit", specifier = ">=4.3,<5" },
     { name = "pytest", specifier = ">=9,<10" },
     { name = "pytest-cov", specifier = ">=7,<8" },

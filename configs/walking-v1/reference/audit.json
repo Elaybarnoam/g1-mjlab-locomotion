@@ -1,0 +1,42 @@
+{
+  "acceptance": {
+    "contact_seam_required": true,
+    "joint_pose_seam_rms_rad_max": 0.05,
+    "joint_velocity_seam_rms_rad_s_max": 1.5,
+    "passed": true,
+    "root_orientation_seam_rad_max": 0.05
+  },
+  "all_values_finite": true,
+  "contact_frames": {
+    "left": 16,
+    "right": 18
+  },
+  "contact_seam_matches": true,
+  "double_support_frames": 0,
+  "duration_s": 1.06,
+  "flight_frames": 20,
+  "forward_speed_m_s": 1.16381159304071,
+  "joint_limit_constrained_samples": 4,
+  "joint_limit_safety_margin_rad": 0.02,
+  "joint_limits_valid": true,
+  "joint_pose_seam_rms_rad": 0.022281937849889678,
+  "joint_velocity_seam_rms_rad_s": 0.3714982021370346,
+  "max_absolute_joint_velocity_rad_s": 10.157795906066895,
+  "max_joint_limit_adjustment_rad": 0.01999996375780258,
+  "minimum_joint_limit_margin_rad": 0.020000004696845985,
+  "npz_bytes": 90304,
+  "npz_sha256": "1a260b2e2c29fc7edff331e1f1896aa06df4be3f62429d388a7e7a69e2986c26",
+  "output_fps": 50.0,
+  "output_frames": 54,
+  "root_height_range_m": [
+    0.7271897196769714,
+    0.7751054167747498
+  ],
+  "root_orientation_seam_rad": 0.038767547198150454,
+  "schema_version": 1,
+  "source_fps": 120.0,
+  "source_frames_inclusive": [
+    409,
+    537
+  ]
+}

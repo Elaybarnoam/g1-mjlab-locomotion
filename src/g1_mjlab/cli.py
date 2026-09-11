@@ -14,6 +14,19 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
     validate = commands.add_parser("validate-config")
     validate.add_argument("--config", required=True, type=Path)
+    prepare_motion = commands.add_parser("prepare-motion")
+    prepare_motion.add_argument("--source-csv", required=True, type=Path)
+    prepare_motion.add_argument("--model-xml", required=True, type=Path)
+    prepare_motion.add_argument("--output", required=True, type=Path)
+    prepare_motion.add_argument("--audit", required=True, type=Path)
+    prepare_motion.add_argument("--source-fps", type=float, default=120.0)
+    prepare_motion.add_argument("--output-fps", type=float, default=50.0)
+    prepare_motion.add_argument("--first-frame", type=int, default=409)
+    prepare_motion.add_argument("--last-frame", type=int, default=537)
+    preview_motion = commands.add_parser("preview-motion")
+    preview_motion.add_argument("--reference", required=True, type=Path)
+    preview_motion.add_argument("--model-xml", required=True, type=Path)
+    preview_motion.add_argument("--output", required=True, type=Path)
     install = commands.add_parser("install-policy")
     install.add_argument("name", choices=("standing-v1",))
     install.add_argument("--output", type=Path)
@@ -99,6 +112,36 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "validate-config":
         config = load_config(args.config)
         print(json.dumps(config.to_dict(), indent=2, sort_keys=True))
+        return 0
+    if args.command == "prepare-motion":
+        from .motion.preparation import prepare_reference
+
+        result = prepare_reference(
+            source_csv=args.source_csv,
+            model_xml=args.model_xml,
+            output_npz=args.output,
+            output_audit=args.audit,
+            source_fps=args.source_fps,
+            output_fps=args.output_fps,
+            first_frame=args.first_frame,
+            last_frame=args.last_frame,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+    if args.command == "preview-motion":
+        from .motion.preparation import render_reference_preview
+
+        print(
+            json.dumps(
+                render_reference_preview(
+                    reference_npz=args.reference,
+                    model_xml=args.model_xml,
+                    output_mp4=args.output,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "install-policy":
         from .policy_distribution import install_policy

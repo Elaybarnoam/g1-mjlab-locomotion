@@ -11,6 +11,11 @@ built on [mjlab](https://github.com/mujocolab/mjlab), MuJoCo Warp, native MuJoCo
 _Click the image for a 15-second deterministic native-MuJoCo playback. No learning or exploration
 occurs during playback._
 
+Walking-v1 is under development. Its first legally redistributable, hash-bound G1 gait reference
+and real-time kinematic preview are now available in
+[Walking reference provenance and audit](docs/walking-reference.md). This is input data for the
+next control and PPO stages—not a walking-policy result.
+
 ## Run the trained policy
 
 The `standing-v1` release runs deterministically in native MuJoCo on CPU. It does not start PPO or
@@ -140,6 +145,7 @@ not a safe interchange format for untrusted files.
 | --- | --- |
 | `src/g1_mjlab/` | Standing task, PPO lifecycle, evaluation, qualification, deployment, reports |
 | `configs/standing-v1/` | Canonical train/smoke configuration and qualified runtime lock |
+| `configs/walking-v1/` | Audited walking reference, manifest, and implemented task configuration |
 | `tests/` | Pure boundary tests plus opt-in simulator integration |
 | `evidence/standing-v1/` | Small, reviewed, non-executable result summaries |
 | `docs/assets/standing-v1/` | Curated stills/video and hash manifest |
@@ -154,6 +160,7 @@ not a safe interchange format for untrusted files.
 - [Reproducibility and clean setup](docs/reproducibility.md)
 - [Using published policies](docs/using-published-policies.md)
 - [Limitations and roadmap](docs/limitations-and-roadmap.md)
+- [Walking reference provenance and audit](docs/walking-reference.md)
 
 ## Contributing and license
 

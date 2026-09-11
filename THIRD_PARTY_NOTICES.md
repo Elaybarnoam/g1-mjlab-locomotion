@@ -16,6 +16,7 @@ source distribution.
 | [NumPy](https://github.com/numpy/numpy) | 2.5.1 for native playback | BSD-3-Clause | Numerical arrays |
 | [ImageIO](https://github.com/imageio/imageio) | 2.37.0 | BSD-2-Clause | Video writing |
 | [ImageIO-FFmpeg](https://github.com/imageio/imageio-ffmpeg) | 0.6.0 | BSD-2-Clause | MP4 encoding helper |
+| [NVIDIA SOMA Retargeter sample motions](https://github.com/NVIDIA/soma-retargeter/tree/b3ef2708d84bfd1314ddb52d0db6c9c211df1f57/assets/motions) | commit `b3ef2708d84bfd1314ddb52d0db6c9c211df1f57`, sample `Neutral_walk_forward_002__A057` | Apache-2.0 for the ten bundled sample BVH files, [confirmed by the maintainer](https://github.com/NVIDIA/soma-retargeter/issues/13#issuecomment-4509181768) | Source of the processed walking-reference cycle and preview; the larger Bones-SEED dataset is excluded |
 
 The Unitree G1 model and visual geometry shown in the curated experiment media are loaded through
 the pinned [mjlab G1 asset directory](https://github.com/mujocolab/mjlab/tree/8ee51fbcf806a7419189f706d9e394cbeb7790fa/src/mjlab/asset_zoo/robots/unitree_g1),
@@ -33,3 +34,7 @@ Unitree, the mjlab developers, Google DeepMind, NVIDIA, ETH Zurich, or OpenAI is
 Dependency wheels may include additional notices. Their installed license files remain
 authoritative. Before redistributing a dependency or robot asset inside this repository or a
 release archive, review and include all license and notice files shipped by that component.
+
+The Apache-2.0 text distributed with NVIDIA SOMA Retargeter is reproduced at
+[`release/NVIDIA_SOMA_APACHE_2_LICENSE.txt`](release/NVIDIA_SOMA_APACHE_2_LICENSE.txt) because this
+repository vendors a processed derivative of one approved sample motion.

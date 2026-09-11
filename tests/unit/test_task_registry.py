@@ -24,12 +24,12 @@ def test_standing_descriptor_declares_stable_runtime_identity() -> None:
     assert task.supports(TaskCapability.NATIVE_INFERENCE)
 
 
-def test_walking_descriptor_fails_closed_until_motion_contract_exists() -> None:
+def test_walking_descriptor_fails_closed_until_control_contract_exists() -> None:
     task = get_task(WALKING_TASK_ID)
 
     assert task.config_directory == "walking-v1"
     assert task.experiment_name == "g1_walking"
-    with pytest.raises(TaskCapabilityError, match="motion reference"):
+    with pytest.raises(TaskCapabilityError, match="command/phase"):
         task.require(TaskCapability.TRAIN)
 
 
@@ -62,5 +62,5 @@ def test_unavailable_training_fails_before_simulator_import(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(TaskCapabilityError, match="motion reference"):
+    with pytest.raises(TaskCapabilityError, match="command/phase"):
         build_train_config(load_config(source), tmp_path / "logs")

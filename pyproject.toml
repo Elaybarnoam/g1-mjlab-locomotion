@@ -27,6 +27,9 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+motion = [
+  "numpy>=2.0,<3",
+]
 native = [
   "mujoco~=3.11.0",
   "numpy>=2.0,<3",
@@ -60,6 +63,7 @@ dev = [
   "build>=1.3,<2",
   "check-wheel-contents>=0.6,<1",
   "mypy>=1.18,<2",
+  "numpy>=2.0,<3",
   "pre-commit>=4.3,<5",
   "pytest>=9,<10",
   "pytest-cov>=7,<8",
@@ -96,6 +100,7 @@ omit = [
   "src/g1_mjlab/diagnostics.py",
   "src/g1_mjlab/environment.py",
   "src/g1_mjlab/native_media.py",
+  "src/g1_mjlab/motion/preparation.py",
   "src/g1_mjlab/qualification.py",
   "src/g1_mjlab/rl_adapter.py",
   "src/g1_mjlab/runtime.py",

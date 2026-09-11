@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "reference_id": "nvidia-soma-g1-neutral-walk-a057-cycle-v1",
+  "description": "One same-foot gait cycle from NVIDIA SOMA's G1-retargeted neutral forward walk sample.",
+  "redistribution": "approved-derivative",
+  "source": {
+    "repository": "https://github.com/NVIDIA/soma-retargeter",
+    "commit": "b3ef2708d84bfd1314ddb52d0db6c9c211df1f57",
+    "bvh_path": "assets/motions/bvh/Neutral_walk_forward_002__A057.bvh",
+    "bvh_download_url": "https://media.githubusercontent.com/media/NVIDIA/soma-retargeter/b3ef2708d84bfd1314ddb52d0db6c9c211df1f57/assets/motions/bvh/Neutral_walk_forward_002__A057.bvh",
+    "bvh_sha256": "c0f4e63cec94c58196105a6d9f03a2ed1c94c8ff4fba15dd0a33cc512877904a",
+    "bvh_bytes": 2587387,
+    "csv_path": "assets/motions/csv/Neutral_walk_forward_002__A057.csv",
+    "csv_download_url": "https://media.githubusercontent.com/media/NVIDIA/soma-retargeter/b3ef2708d84bfd1314ddb52d0db6c9c211df1f57/assets/motions/csv/Neutral_walk_forward_002__A057.csv",
+    "csv_sha256": "233b83e59a8b319aacb8cf980a66290b8d357e624e5f5506238973a5f0acaca2",
+    "csv_bytes": 446867,
+    "license": "Apache-2.0 for the ten sample BVH files",
+    "license_confirmation": "https://github.com/NVIDIA/soma-retargeter/issues/13#issuecomment-4509181768",
+    "larger_dataset_excluded": "Bones-SEED is not included or authorized by this manifest."
+  },
+  "format": {
+    "source_fps": 120.0,
+    "source_position_unit": "centimeter",
+    "source_angle_unit": "degree",
+    "source_root_euler": "intrinsic xyz",
+    "processed_position_unit": "meter",
+    "processed_angle_unit": "radian",
+    "processed_quaternion_order": "wxyz",
+    "processed_joint_order": "MuJoCo G1 29-DOF actuator order",
+    "output_fps": 50.0,
+    "output_pickle_allowed": false
+  },
+  "processing": {
+    "source_frames_inclusive": [409, 537],
+    "forward_axis": "+X",
+    "horizontal_origin": "first selected frame",
+    "interpolation": "linear position/joint and shortest-path quaternion SLERP",
+    "joint_limit_margin_rad": 0.02,
+    "contact_derivation": {
+      "bodies": ["left_ankle_roll_link", "right_ankle_roll_link"],
+      "enter_height_m": 0.04,
+      "exit_height_m": 0.065,
+      "maximum_horizontal_stance_speed_m_s": 0.8,
+      "minimum_duration_s": 0.04
+    },
+    "model": {
+      "provider": "mjlab",
+      "commit": "8ee51fbcf806a7419189f706d9e394cbeb7790fa",
+      "path": "src/mjlab/asset_zoo/robots/unitree_g1/xmls/g1.xml",
+      "sha256": "febdcbeffbbf84051556ae41a5ac1b43fb479a5d76bdb3f54824dbc2721c20aa"
+    },
+    "reference_parser_basis": {
+      "repository": "https://github.com/NVlabs/GR00T-WholeBodyControl",
+      "commit": "087f9ac01d46f6d8e4d0b73c01ae64799f292a38",
+      "path": "gear_sonic/data_process/convert_soma_csv_to_motion_lib.py"
+    }
+  },
+  "assets": [
+    {
+      "path": "reference/g1-walk-a057-cycle.npz",
+      "sha256": "1a260b2e2c29fc7edff331e1f1896aa06df4be3f62429d388a7e7a69e2986c26",
+      "bytes": 90304
+    }
+  ],
+  "audit_path": "reference/audit.json",
+  "preview": {
+    "path": "docs/assets/walking-v1/reference-gait-a057.mp4",
+    "sha256": "add1720f7e3becf7ffa357e3d9b73797262529341b834ab1e84a4791fbde7b0d",
+    "bytes": 156851,
+    "playback_rate": "real time at 50 fps",
+    "learning_enabled": false
+  }
+}
