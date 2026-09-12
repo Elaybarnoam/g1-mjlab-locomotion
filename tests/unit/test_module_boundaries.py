@@ -27,6 +27,42 @@ def test_cli_routes_to_new_module_commands() -> None:
         parser().parse_args(["play-policy", "--policy", "policies/standing-v1"]).command
         == "play-policy"
     )
+
+
+def test_evaluate_walking_v2_requests_required_physics_trace(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from g1_mjlab import cli, walking_runtime
+
+    received: dict[str, object] = {}
+
+    def diagnose(*args: object, **kwargs: object) -> dict[str, object]:
+        received.update(kwargs)
+        return {"schema_version": 2}
+
+    monkeypatch.setattr(cli, "load_config", lambda _: object())
+    monkeypatch.setattr(walking_runtime, "diagnose_walking", diagnose)
+    result = cli.main(
+        [
+            "evaluate-walking",
+            "--config",
+            "config.json",
+            "--checkpoint",
+            "model.pt",
+            "--scenarios",
+            "scenarios.json",
+            "--criteria",
+            "criteria.json",
+            "--metric-schema",
+            "2",
+            "--output",
+            str(tmp_path / "out"),
+            "--video",
+        ]
+    )
+    assert result == 0
+    assert received["physics_trace"] is True
+    assert received["video"] is True
     assert (
         parser()
         .parse_args(
@@ -42,6 +78,25 @@ def test_cli_routes_to_new_module_commands() -> None:
         )
         .command
         == "diagnose-standing"
+    )
+    assert (
+        parser()
+        .parse_args(
+            [
+                "diagnose-walking",
+                "--config",
+                "config",
+                "--checkpoint",
+                "model",
+                "--scenarios",
+                "scenarios",
+                "--output",
+                "out",
+                "--physics-trace",
+            ]
+        )
+        .command
+        == "diagnose-walking"
     )
 
 

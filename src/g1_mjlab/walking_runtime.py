@@ -21,6 +21,13 @@ from .walking_evaluation import (
 )
 
 
+def diagnose_walking(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Compatibility seam for the schema-2 measurement adapter."""
+    from .walking_measurement import diagnose_walking as implementation
+
+    return implementation(*args, **kwargs)
+
+
 def evaluate_walking(
     config: ResolvedRunConfig,
     checkpoint: Path,

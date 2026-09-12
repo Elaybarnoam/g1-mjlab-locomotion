@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "name": "measurement-audit-v2",
+  "scenarios": [
+    {
+      "name": "stand-walk-stop-060",
+      "seed": 10042,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 10.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "name": "replicate-01-stand-walk-stop-060",
+      "seed": 10042,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 10.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "name": "replicate-02-stand-walk-stop-060",
+      "seed": 10042,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 10.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "name": "replicate-03-stand-walk-stop-060",
+      "seed": 10042,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 10.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    }
+  ]
+}

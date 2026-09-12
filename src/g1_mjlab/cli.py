@@ -111,7 +111,10 @@ def parser() -> argparse.ArgumentParser:
     evaluate_walking = commands.add_parser("evaluate-walking")
     evaluate_walking.add_argument("--config", required=True, type=Path)
     evaluate_walking.add_argument("--checkpoint", required=True, type=Path)
-    evaluate_walking.add_argument("--schedule", required=True, type=Path)
+    evaluate_walking.add_argument("--schedule", type=Path)
+    evaluate_walking.add_argument("--scenarios", type=Path)
+    evaluate_walking.add_argument("--criteria", type=Path)
+    evaluate_walking.add_argument("--metric-schema", type=int, choices=(1, 2), default=1)
     evaluate_walking.add_argument("--output", required=True, type=Path)
     evaluate_walking.add_argument("--trials", type=int, default=16)
     evaluate_walking.add_argument("--seed", type=int, default=10042)
@@ -121,6 +124,16 @@ def parser() -> argparse.ArgumentParser:
         choices=("standing", "reference", "reference-fixed"),
         default="standing",
     )
+    diagnose_walking = commands.add_parser("diagnose-walking")
+    diagnose_walking.add_argument("--config", required=True, type=Path)
+    diagnose_walking.add_argument("--checkpoint", required=True, type=Path)
+    diagnose_walking.add_argument("--scenarios", required=True, type=Path)
+    diagnose_walking.add_argument("--output", required=True, type=Path)
+    diagnose_walking.add_argument(
+        "--criteria", type=Path, default=Path("configs/walking-v1/evaluation-v2.json")
+    )
+    diagnose_walking.add_argument("--physics-trace", action="store_true")
+    diagnose_walking.add_argument("--video", action="store_true")
     diagnose = commands.add_parser("diagnose-standing")
     diagnose.add_argument("--config", required=True, type=Path)
     diagnose.add_argument("--checkpoint", required=True, type=Path)
@@ -253,7 +266,29 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(qualify_controller(load_config(args.config), args.output), indent=2))
         return 0
     if args.command == "evaluate-walking":
-        from .walking_runtime import evaluate_walking
+        from .walking_runtime import diagnose_walking, evaluate_walking
+
+        if args.metric_schema == 2:
+            if args.scenarios is None or args.criteria is None:
+                raise ValueError("metric schema 2 requires --scenarios and --criteria")
+            print(
+                json.dumps(
+                    diagnose_walking(
+                        load_config(args.config),
+                        args.checkpoint,
+                        args.scenarios,
+                        args.output,
+                        criteria_path=args.criteria,
+                        physics_trace=True,
+                        video=args.video,
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 0
+        if args.schedule is None:
+            raise ValueError("metric schema 1 requires --schedule")
 
         print(
             json.dumps(
@@ -266,6 +301,25 @@ def main(argv: list[str] | None = None) -> int:
                     seed=args.seed,
                     video=args.video,
                     initialization=args.initialization,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "diagnose-walking":
+        from .walking_runtime import diagnose_walking
+
+        print(
+            json.dumps(
+                diagnose_walking(
+                    load_config(args.config),
+                    args.checkpoint,
+                    args.scenarios,
+                    args.output,
+                    criteria_path=args.criteria,
+                    physics_trace=args.physics_trace,
+                    video=args.video,
                 ),
                 indent=2,
                 sort_keys=True,

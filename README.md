@@ -166,6 +166,7 @@ not a safe interchange format for untrusted files.
 - [Walking-v1 MDP and incentive design](docs/walking-mdp.md)
 - [Walking method decision and bootstrap](docs/walking-method-decision.md)
 - [Walking PPO lifecycle](docs/walking-training-lifecycle.md)
+- [Walking physical-contact evaluation v2](docs/walking-evaluation-v2.md)
 
 ## Contributing and license
 
