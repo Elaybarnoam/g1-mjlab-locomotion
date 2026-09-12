@@ -128,6 +128,21 @@ def parser() -> argparse.ArgumentParser:
     curriculum_gate.add_argument("--experiment-table", required=True, type=Path)
     curriculum_gate.add_argument("--visual-approval", type=Path)
     curriculum_gate.add_argument("--output", required=True, type=Path)
+    final_gate = commands.add_parser("check-walking-final-prerequisite")
+    final_gate.add_argument("--policy", required=True, type=Path)
+    final_gate.add_argument("--visual-approval", type=Path)
+    final_gate.add_argument("--output", required=True, type=Path)
+    final_freeze = commands.add_parser("freeze-walking-final-suite")
+    final_freeze.add_argument("--policy", required=True, type=Path)
+    final_freeze.add_argument("--base-scenarios", required=True, type=Path)
+    final_freeze.add_argument("--acceptance", required=True, type=Path)
+    final_freeze.add_argument("--visual-approval", required=True, type=Path)
+    final_freeze.add_argument("--output", required=True, type=Path)
+    final_qualification = commands.add_parser("qualify-final-walking")
+    final_qualification.add_argument("--freeze", required=True, type=Path)
+    final_qualification.add_argument("--mjlab-summary", required=True, type=Path)
+    final_qualification.add_argument("--native-summary", required=True, type=Path)
+    final_qualification.add_argument("--output", required=True, type=Path)
     qualify_final = commands.add_parser("qualify-final")
     qualify_final.add_argument("--run", required=True, type=Path)
     train = commands.add_parser("train")
@@ -568,6 +583,48 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["training_authorized"] else 2
+    if args.command == "check-walking-final-prerequisite":
+        from .walking_final import assess_final_prerequisite
+
+        result = assess_final_prerequisite(
+            args.policy / "walking-policy-bundle.json", args.visual_approval
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0 if result["final_execution_authorized"] else 2
+    if args.command == "freeze-walking-final-suite":
+        from .walking_final import freeze_final_suite
+
+        print(
+            json.dumps(
+                freeze_final_suite(
+                    args.policy,
+                    args.base_scenarios,
+                    args.acceptance,
+                    args.visual_approval,
+                    args.output,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "qualify-final-walking":
+        from .walking_final import qualify_final_walking
+
+        print(
+            json.dumps(
+                qualify_final_walking(
+                    args.freeze, args.mjlab_summary, args.native_summary, args.output
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
     if args.command == "qualify-final":
         from .deployment import qualify_final_bundle
 

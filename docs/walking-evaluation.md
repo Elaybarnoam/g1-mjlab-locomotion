@@ -28,3 +28,18 @@ The evaluator was exercised against the W06 two-update checkpoint on four held-o
 trials. All four correctly failed at 1.36 seconds before walking began. This is expected and confirms
 that the evaluator does not convert resets or missing gait samples into a favorable result. See
 [`evidence/walking-v1/evaluator-smoke.json`](../evidence/walking-v1/evaluator-smoke.json).
+
+## Final qualification protocol
+
+Final thresholds are separately frozen in
+[`configs/walking-v1/final-acceptance-v1.json`](../configs/walking-v1/final-acceptance-v1.json).
+The final suite contains 100 serialized 60-second trials: 25 each at 0.4, 0.6, and 0.8 m/s and 25
+with repeated stand/walk transitions. Seeds 20000–20099 are reserved exclusively for generation.
+Both mjlab and native MuJoCo must pass at least 95/100 overall and 23/25 in every stratum, using the
+same checkpoint, ONNX, model, controller, reference, command, criteria, and initial-state hashes.
+
+`check-walking-final-prerequisite` runs before scenarios are frozen or outcomes are accessed. It
+requires a development-qualified policy covering 0–0.8 m/s and checkpoint-bound owner visual
+acceptance. The currently retained P04-09 policy is explicitly unqualified and covers only the
+0–0.6 m/s development domain, so final execution is correctly blocked. A failed final suite is
+recorded as failure and becomes development evidence; it cannot silently be reused as a final test.
