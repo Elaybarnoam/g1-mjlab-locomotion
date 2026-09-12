@@ -93,21 +93,25 @@ markers = [
 
 [tool.coverage.run]
 branch = true
+relative_files = true
 source = ["g1_mjlab"]
 omit = [
-  "src/g1_mjlab/cli.py",
-  "src/g1_mjlab/deployment.py",
-  "src/g1_mjlab/diagnostics.py",
-  "src/g1_mjlab/environment.py",
-  "src/g1_mjlab/native_media.py",
-  "src/g1_mjlab/motion/preparation.py",
-  "src/g1_mjlab/tasks/walking_mdp.py",
-  "src/g1_mjlab/tasks/walking_v1.py",
-  "src/g1_mjlab/qualification.py",
-  "src/g1_mjlab/rl_adapter.py",
-  "src/g1_mjlab/runtime.py",
-  "src/g1_mjlab/standing_task.py",
-  "src/g1_mjlab/training.py",
+  "*/g1_mjlab/cli.py",
+  "*/g1_mjlab/deployment.py",
+  "*/g1_mjlab/diagnostics.py",
+  "*/g1_mjlab/environment.py",
+  "*/g1_mjlab/native_media.py",
+  "*/g1_mjlab/motion/preparation.py",
+  "*/g1_mjlab/tasks/walking_mdp.py",
+  "*/g1_mjlab/tasks/walking_v1.py",
+  "*/g1_mjlab/qualification.py",
+  "*/g1_mjlab/rl_adapter.py",
+  "*/g1_mjlab/runtime.py",
+  "*/g1_mjlab/standing_task.py",
+  "*/g1_mjlab/training.py",
+  "*/g1_mjlab/tasks/standing_v1.py",
+  "*/g1_mjlab/walking_diagnostics.py",
+  "*/g1_mjlab/walking_runtime.py",
 ]
 
 [tool.coverage.report]

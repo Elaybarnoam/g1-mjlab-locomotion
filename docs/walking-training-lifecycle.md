@@ -6,6 +6,24 @@ critic is a separate normalized 114-input MLP with the same hidden widths and on
 Deterministic evaluation uses the actor mean; stochastic actions are used while collecting training
 rollouts.
 
+Before starting a continuation or fine-tuning campaign, reproduce the local source identities and
+historical evaluator-v1 results with the baseline verifier. It checks both policy bundles and every
+contract field, loads all checkpoint tensors on CPU, validates the actor and critic normalizers,
+and records the two completed runs' measured memory data:
+
+```console
+python scripts/verify_walking_baseline.py \
+  --repository . \
+  --bootstrap-run .runtime/walking-bootstrap-resume-10600-64 \
+  --stage18-run .runtime/walking-stage18-bootstrap-to-style-001 \
+  --bootstrap-evaluation .runtime/eval-bootstrap-final-13398/summary.json \
+  --stage18-evaluation .runtime/eval-stage18-1199/summary.json \
+  --output .runtime/plan04-baseline-001/evidence-inventory.json
+```
+
+The paths are local evidence paths and are intentionally ignored by Git. A mismatch is a hard
+failure; do not train from an artifact whose identity or deployment semantics are unresolved.
+
 The original reference-guided smoke configuration is
 [`configs/walking-v1/smoke.json`](../configs/walking-v1/smoke.json):
 256 worlds times 24 steps gives 6,144 transitions per update. PPO uses four minibatches, five epochs,
