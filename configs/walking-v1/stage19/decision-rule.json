@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "required_trials": 16,
+  "expected_cadence_steps_s": 0.972719696969697,
+  "expected_step_length_m": 0.6063803444314848,
+  "comparison_walk_duration_s": 7.0,
+  "slip_scale_m_s": 0.12,
+  "error_denominator_floor": 0.05,
+  "minimum_relative_improvement": 0.15,
+  "maximum_relative_worsening": 0.1,
+  "maximum_command_rms_worsening_m_s": 0.03,
+  "maximum_chatter_ratio": 1.05,
+  "low_function_threshold": 12,
+  "low_function_patience": 2,
+  "no_progress_patience": 3
+}

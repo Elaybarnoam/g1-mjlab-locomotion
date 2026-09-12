@@ -94,6 +94,17 @@ def parser() -> argparse.ArgumentParser:
     walking_checkpoint_evaluation = commands.add_parser("evaluate-walking-checkpoints")
     walking_checkpoint_evaluation.add_argument("--manifest", required=True, type=Path)
     walking_checkpoint_evaluation.add_argument("--output", required=True, type=Path)
+    freeze_walking_scenarios = commands.add_parser("freeze-walking-scenarios")
+    freeze_walking_scenarios.add_argument("--config", required=True, type=Path)
+    freeze_walking_scenarios.add_argument("--output", required=True, type=Path)
+    freeze_walking_scenarios.add_argument("--seed", type=int, default=10042)
+    summarize_stage19 = commands.add_parser("summarize-stage19-experiments")
+    summarize_stage19.add_argument("--source-evaluation", required=True, type=Path)
+    summarize_stage19.add_argument("--decision-rule", required=True, type=Path)
+    summarize_stage19.add_argument("--arm-a", required=True, type=Path)
+    summarize_stage19.add_argument("--arm-b", required=True, type=Path)
+    summarize_stage19.add_argument("--arm-c", required=True, type=Path)
+    summarize_stage19.add_argument("--output", required=True, type=Path)
     qualify_final = commands.add_parser("qualify-final")
     qualify_final.add_argument("--run", required=True, type=Path)
     train = commands.add_parser("train")
@@ -444,6 +455,28 @@ def main(argv: list[str] | None = None) -> int:
                 sort_keys=True,
             )
         )
+        return 0
+    if args.command == "freeze-walking-scenarios":
+        from .walking_experiments import freeze_development_scenarios
+
+        print(
+            json.dumps(
+                freeze_development_scenarios(load_config(args.config), args.output, seed=args.seed),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "summarize-stage19-experiments":
+        from .walking_experiments import build_stage19_experiment_table
+
+        result = build_stage19_experiment_table(
+            args.source_evaluation,
+            {"a": args.arm_a, "b": args.arm_b, "c": args.arm_c},
+            args.decision_rule,
+            args.output,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     if args.command == "qualify-final":
         from .deployment import qualify_final_bundle

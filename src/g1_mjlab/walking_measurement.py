@@ -66,16 +66,18 @@ def _run_identities(checkpoint: Path) -> dict[str, str]:
 
 
 def _require_parallel_scenario(scenarios: ScenarioSet) -> None:
-    if not 1 <= len(scenarios.scenarios) <= 4:
-        raise ValueError("detailed diagnosis requires 1..4 scenarios")
+    if not 1 <= len(scenarios.scenarios) <= 16:
+        raise ValueError("detailed diagnosis requires 1..16 scenarios")
     first = scenarios.scenarios[0]
-    signature = (first.initialization, first.seed, first.segments)
-    if any(
-        (item.initialization, item.seed, item.segments) != signature for item in scenarios.scenarios
-    ):
-        raise ValueError(
-            "parallel diagnostic scenarios must share seed, initialization, and segments"
-        )
+    if any(item.segments != first.segments for item in scenarios.scenarios):
+        raise ValueError("parallel diagnostic scenarios must share one command schedule")
+    if any(item.horizon_s != first.horizon_s for item in scenarios.scenarios):
+        raise ValueError("parallel diagnostic scenarios must share one horizon")
+    if any(item.initialization != first.initialization for item in scenarios.scenarios):
+        raise ValueError("parallel diagnostic scenarios must share one initialization mode")
+    explicit_count = sum(item.initial_qpos is not None for item in scenarios.scenarios)
+    if explicit_count not in {0, len(scenarios.scenarios)}:
+        raise ValueError("parallel scenarios must all use explicit state or all use reset state")
 
 
 def _schedule_speed(scenarios: ScenarioSet, step: int, control_dt: float) -> float:
@@ -104,6 +106,48 @@ def _initial_state_hash(robot: Any, environment: int) -> str:
         .numpy()
     )
     return hashlib.sha256(values.astype("<f4", copy=False).tobytes()).hexdigest()
+
+
+def _serialized_initial_state_hash(scenario: Any) -> str | None:
+    if scenario.initial_qpos is None:
+        return None
+    return _canonical_hash(
+        {
+            "initial_phase": scenario.initial_phase,
+            "initial_qpos": scenario.initial_qpos,
+            "initial_qvel": scenario.initial_qvel,
+        }
+    )
+
+
+def _apply_explicit_initial_states(
+    env: Any, robot: Any, command: Any, scenarios: ScenarioSet
+) -> None:
+    """Apply serialized generalized state after reset and run forward kinematics once."""
+    if scenarios.scenarios[0].initial_qpos is None:
+        return
+    import torch
+
+    qpos = torch.tensor(
+        [scenario.initial_qpos for scenario in scenarios.scenarios],
+        dtype=robot.data.joint_pos.dtype,
+        device=robot.data.joint_pos.device,
+    )
+    qvel = torch.tensor(
+        [scenario.initial_qvel for scenario in scenarios.scenarios],
+        dtype=robot.data.joint_vel.dtype,
+        device=robot.data.joint_vel.device,
+    )
+    root_state = torch.cat((qpos[:, :7], qvel[:, :6]), dim=1)
+    root_state[:, :3] += env.scene.env_origins
+    robot.write_root_state_to_sim(root_state)
+    robot.write_joint_state_to_sim(qpos[:, 7:], qvel[:, 6:])
+    command.phase[:] = torch.tensor(
+        [scenario.initial_phase for scenario in scenarios.scenarios],
+        dtype=command.phase.dtype,
+        device=command.phase.device,
+    )
+    env.sim.forward()
 
 
 def _append(records: list[dict[str, list[Any]]], name: str, value: Any, active: list[bool]) -> None:
@@ -194,7 +238,7 @@ def diagnose_walking(
             original_compute_substep()
             recorder.capture()
 
-        env.metrics_manager.compute_substep = compute_substep_with_trace
+        env.metrics_manager.compute_substep = compute_substep_with_trace  # type: ignore[method-assign]
     try:
         wrapped = MjlabVecEnvWrapper(env, clip_actions=config.action_clip)
         runner = MjlabOnPolicyRunner(wrapped, asdict(train_cfg.agent), device=config.device)
@@ -203,11 +247,12 @@ def diagnose_walking(
         )
         policy = runner.get_inference_policy(device=config.device)
         env.reset(seed=first.seed)
-        observations = wrapped.get_observations()
         command = env.command_manager.get_term("twist")
         if not isinstance(command, WalkingCommand):
             raise TypeError("walking diagnostic requires WalkingCommand")
         robot = env.scene["robot"]
+        _apply_explicit_initial_states(env, robot, command, scenarios)
+        observations = wrapped.get_observations()
         ankle_ids = torch.tensor(
             [
                 robot.body_names.index("left_ankle_roll_link"),
@@ -233,7 +278,7 @@ def diagnose_walking(
                 )
                 raw_actions = policy(observations)
                 observations, _, _, _ = wrapped.step(raw_actions)
-                action_term = env.action_manager.get_term("joint_pos")
+                action_term: Any = env.action_manager.get_term("joint_pos")
                 applied_actions = action_term.raw_action
                 q_target = action_term.offset + action_term.scale * applied_actions
                 force = torch.abs(contact_sensor.data.force[:, :, 2])
@@ -370,8 +415,8 @@ def diagnose_walking(
             scenario_sha256=scenarios.sha256,
             control_dt=config.control_dt,
             physics_dt=config.physics_dt,
-            seed=first.seed,
-            initialization=first.initialization,
+            seed=scenarios.scenarios[environment].seed,
+            initialization=scenarios.scenarios[environment].initialization,
             terminated=bool(arrays["terminated"].any()),
             reason=reasons[environment],
             completed_horizon_s=frames * config.control_dt,
@@ -399,6 +444,10 @@ def diagnose_walking(
         trial_summaries.append(
             {
                 "trial_id": environment,
+                "scenario_name": scenarios.scenarios[environment].name,
+                "serialized_initial_state_sha256": _serialized_initial_state_hash(
+                    scenarios.scenarios[environment]
+                ),
                 "trace": trace_path.name,
                 "physics_trace": f"physics-trace-{environment:03d}.npz" if recorder else None,
                 **asdict(summary),

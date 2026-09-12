@@ -63,3 +63,52 @@ def test_scenario_set_rejects_lateral_commands_for_v1(tmp_path: Path) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="forward-only"):
         load_scenario_set(path, control_dt=0.02)
+
+
+def test_explicit_scenario_state_is_exact_and_hashed(tmp_path: Path) -> None:
+    payload = scenario_payload()
+    payload["schema_version"] = 3
+    scenario = payload["scenarios"][0]  # type: ignore[index]
+    scenario["category"] = "nominal"
+    scenario["initial_phase"] = 0.25
+    scenario["initial_qpos"] = [0.0, 0.0, 0.8, 1.0, 0.0, 0.0, 0.0, *([0.0] * 29)]
+    scenario["initial_qvel"] = [0.0] * 35
+    path = tmp_path / "explicit.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = load_scenario_set(path, control_dt=0.02)
+
+    assert result.schema_version == 3
+    assert result.scenarios[0].initial_phase == 0.25
+    assert len(result.scenarios[0].initial_qpos or ()) == 36
+    assert len(result.scenarios[0].initial_qvel or ()) == 35
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("initial_phase", 1.0, "phase"),
+        ("initial_qpos", [0.0] * 35, "qpos"),
+        ("initial_qvel", [0.0] * 34, "qvel"),
+    ],
+)
+def test_explicit_scenario_rejects_invalid_state(
+    tmp_path: Path, field: str, value: object, message: str
+) -> None:
+    payload = scenario_payload()
+    payload["schema_version"] = 3
+    scenario = payload["scenarios"][0]  # type: ignore[index]
+    scenario.update(
+        {
+            "category": "nominal",
+            "initial_phase": 0.0,
+            "initial_qpos": [0.0, 0.0, 0.8, 1.0, 0.0, 0.0, 0.0, *([0.0] * 29)],
+            "initial_qvel": [0.0] * 35,
+        }
+    )
+    scenario[field] = value
+    path = tmp_path / "invalid-explicit.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_scenario_set(path, control_dt=0.02)

@@ -236,3 +236,73 @@ def test_interruption_preserves_campaign_state_and_journal(tmp_path: Path) -> No
     assert state["failure"] == "KeyboardInterrupt"
     assert not truncated
     assert records[-1]["to"] == "stopped"
+
+
+def test_development_campaign_stops_after_two_low_function_evaluations(tmp_path: Path) -> None:
+    manifest_path = _campaign_manifest(tmp_path)
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["schema_version"] = 2
+    trials = [
+        {
+            "trial_id": index,
+            "scenario_name": f"{index:02d}-nominal",
+            "functional_passed": index < 12,
+            "style_passed": False,
+            "cadence_steps_s": 0.4,
+            "step_length_median_m": 0.3,
+            "physical_slip_rms_m_s": 0.3,
+            "same_side_repeat_count": 4,
+            "command_rms_m_s": 0.1,
+            "raw_transition_rate_s": 4.0,
+        }
+        for index in range(16)
+    ]
+    summary = {"schema_version": 2, "planned": 16, "completed": 16, "trials": trials}
+    source_summary = tmp_path / "source-summary.json"
+    source_summary.write_text(json.dumps(summary), encoding="utf-8")
+    decision_source = (
+        Path(__file__).resolve().parents[2] / "configs/walking-v1/stage19/decision-rule.json"
+    )
+    decision = _copy(decision_source, tmp_path / "decision-rule.json")
+    payload["development_source_evaluation"] = {
+        "path": source_summary.name,
+        "sha256": sha256_file(source_summary),
+    }
+    payload["decision_rule"] = {
+        "path": decision.name,
+        "sha256": sha256_file(decision),
+    }
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    train_calls = 0
+
+    def run(command: list[str], **_: object) -> SimpleNamespace:
+        nonlocal train_calls
+        output = Path(command[command.index("--output") + 1])
+        if "train" in command:
+            train_calls += 1
+            config = json.loads(Path(command[command.index("--config") + 1]).read_text())
+            updates = config["max_iterations"]
+            source_iteration = (
+                checkpoint_iteration(Path(command[command.index("--resume") + 1]))
+                if "--resume" in command
+                else -1
+            )
+            output.mkdir(parents=True)
+            (output / "manifest.json").write_text(
+                json.dumps({"status": "completed"}), encoding="utf-8"
+            )
+            upstream = output / "upstream" / f"model_{source_iteration + updates}.pt"
+            upstream.parent.mkdir()
+            upstream.write_bytes(b"checkpoint")
+            publish_checkpoint(upstream, output / "checkpoints", transitions_per_update=1536)
+        else:
+            output.mkdir(parents=True)
+            (output / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
+    state = run_walking_campaign(manifest_path, tmp_path / "early-stop", process_runner=run)
+
+    assert state["status"] == "stopped"
+    assert state["completed_updates"] == 200
+    assert state["stop_reason"] == "two_low_function_evaluations"
+    assert train_calls == 3  # smoke plus two 100-update segments

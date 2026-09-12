@@ -35,12 +35,38 @@ class WalkingScenario:
     seed: int
     initialization: str
     segments: tuple[ScenarioSegment, ...]
+    category: str | None = None
+    initial_phase: float | None = None
+    initial_qpos: tuple[float, ...] | None = None
+    initial_qvel: tuple[float, ...] | None = None
 
     def __post_init__(self) -> None:
         if not self.name or self.seed < 0 or not self.segments:
             raise ValueError("scenario name, seed, and segments are required")
         if self.initialization not in {"standing", "reference", "reference-fixed"}:
             raise ValueError("unsupported scenario initialization")
+        if self.category is not None and not self.category:
+            raise ValueError("scenario category must be nonempty")
+        explicit = (self.initial_phase, self.initial_qpos, self.initial_qvel)
+        if any(value is not None for value in explicit) and not all(
+            value is not None for value in explicit
+        ):
+            raise ValueError("explicit scenario state requires phase, qpos, and qvel")
+        if self.initial_phase is not None:
+            if not math.isfinite(self.initial_phase) or not 0 <= self.initial_phase < 1:
+                raise ValueError("initial phase must be finite in [0, 1)")
+            assert self.initial_qpos is not None and self.initial_qvel is not None
+            if len(self.initial_qpos) != 36 or any(
+                not math.isfinite(value) for value in self.initial_qpos
+            ):
+                raise ValueError("initial qpos must contain 36 finite values")
+            if len(self.initial_qvel) != 35 or any(
+                not math.isfinite(value) for value in self.initial_qvel
+            ):
+                raise ValueError("initial qvel must contain 35 finite values")
+            quaternion_norm = math.sqrt(sum(value * value for value in self.initial_qpos[3:7]))
+            if not math.isclose(quaternion_norm, 1.0, abs_tol=1e-5):
+                raise ValueError("initial qpos root quaternion must have unit norm")
 
     @property
     def horizon_s(self) -> float:
@@ -68,7 +94,8 @@ def load_scenario_set(path: Path, *, control_dt: float) -> ScenarioSet:
     raw_value: Any = json.loads(path.read_text(encoding="utf-8"))
     raw = _object(raw_value, "scenario set")
     _fields(raw, {"schema_version", "name", "scenarios"}, "scenario set")
-    if raw["schema_version"] != 2 or not isinstance(raw["name"], str) or not raw["name"]:
+    schema_version = raw["schema_version"]
+    if schema_version not in {2, 3} or not isinstance(raw["name"], str) or not raw["name"]:
         raise ValueError("unsupported scenario-set schema or name")
     raw_scenarios = raw["scenarios"]
     if not isinstance(raw_scenarios, list) or not raw_scenarios:
@@ -77,7 +104,10 @@ def load_scenario_set(path: Path, *, control_dt: float) -> ScenarioSet:
     names: set[str] = set()
     for scenario_value in raw_scenarios:
         scenario_raw = _object(scenario_value, "scenario")
-        _fields(scenario_raw, {"name", "seed", "initialization", "segments"}, "scenario")
+        scenario_fields = {"name", "seed", "initialization", "segments"}
+        if schema_version == 3:
+            scenario_fields |= {"category", "initial_phase", "initial_qpos", "initial_qvel"}
+        _fields(scenario_raw, scenario_fields, "scenario")
         segment_values = scenario_raw["segments"]
         if not isinstance(segment_values, list) or not segment_values:
             raise ValueError("scenario segments must be a nonempty list")
@@ -101,10 +131,20 @@ def load_scenario_set(path: Path, *, control_dt: float) -> ScenarioSet:
             seed=int(scenario_raw["seed"]),
             initialization=str(scenario_raw["initialization"]),
             segments=tuple(segments),
+            category=str(scenario_raw["category"]) if schema_version == 3 else None,
+            initial_phase=float(scenario_raw["initial_phase"]) if schema_version == 3 else None,
+            initial_qpos=tuple(float(value) for value in scenario_raw["initial_qpos"])
+            if schema_version == 3
+            else None,
+            initial_qvel=tuple(float(value) for value in scenario_raw["initial_qvel"])
+            if schema_version == 3
+            else None,
         )
         if scenario.name in names:
             raise ValueError("scenario names must be unique")
         names.add(scenario.name)
         scenarios.append(scenario)
     encoded = json.dumps(raw, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    return ScenarioSet(2, raw["name"], tuple(scenarios), hashlib.sha256(encoded).hexdigest())
+    return ScenarioSet(
+        schema_version, raw["name"], tuple(scenarios), hashlib.sha256(encoded).hexdigest()
+    )

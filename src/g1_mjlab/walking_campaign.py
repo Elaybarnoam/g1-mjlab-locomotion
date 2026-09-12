@@ -22,6 +22,12 @@ from .config import (
     load_stage19_reward_profile,
     load_walking_training_profile,
 )
+from .walking_experiments import (
+    Stage19DecisionRule,
+    compare_development_evaluation,
+    load_stage19_decision_rule,
+    stop_decision,
+)
 
 _CAMPAIGN_TRANSITIONS = {
     "planned": {"smoke_running", "failed", "stopped"},
@@ -67,18 +73,27 @@ class WalkingCampaignManifest:
     environment_count: int
     stop_rules: CampaignStopRules
     metric_schema_version: int
+    development_source_evaluation: ArtifactReference | None = None
+    decision_rule: ArtifactReference | None = None
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
-        for name in (
+        artifact_names = (
             "source_checkpoint",
             "run_config",
             "walking_profile",
             "reward_profile",
             "ppo_profile",
             "scenario_set",
-        ):
+        )
+        for name in artifact_names:
             value[name] = getattr(self, name).to_dict()
+        for name in ("development_source_evaluation", "decision_rule"):
+            reference = getattr(self, name)
+            if reference is None:
+                value.pop(name)
+            else:
+                value[name] = reference.to_dict()
         value["stop_rules"]["cuda_error_codes"] = list(self.stop_rules.cuda_error_codes)
         return value
 
@@ -178,7 +193,11 @@ def _artifact_reference(value: Any, root: Path, field: str) -> ArtifactReference
 def load_walking_campaign_manifest(path: Path) -> WalkingCampaignManifest:
     """Load a complete campaign declaration and verify every referenced byte stream."""
     raw = json.loads(path.read_text(encoding="utf-8"))
+    schema_version = raw.get("schema_version") if isinstance(raw, dict) else None
+    optional_fields = {"development_source_evaluation", "decision_rule"}
     expected = set(WalkingCampaignManifest.__dataclass_fields__)
+    if schema_version == 1:
+        expected -= optional_fields
     if not isinstance(raw, dict) or set(raw) != expected:
         raise ValueError("walking campaign manifest fields do not match schema")
     root = path.resolve().parent
@@ -190,9 +209,13 @@ def load_walking_campaign_manifest(path: Path) -> WalkingCampaignManifest:
         "ppo_profile",
         "scenario_set",
     }
+    if schema_version == 2:
+        artifact_names |= optional_fields
     converted = dict(raw)
     for name in artifact_names:
         converted[name] = _artifact_reference(raw[name], root, name)
+    for name in optional_fields:
+        converted.setdefault(name, None)
     stop_fields = set(CampaignStopRules.__dataclass_fields__)
     stop_rules = raw["stop_rules"]
     if not isinstance(stop_rules, dict) or set(stop_rules) != stop_fields:
@@ -211,8 +234,16 @@ def load_walking_campaign_manifest(path: Path) -> WalkingCampaignManifest:
 
 
 def _validate_manifest(manifest: WalkingCampaignManifest) -> None:
-    if manifest.schema_version != 1 or manifest.metric_schema_version != 2:
-        raise ValueError("only campaign schema 1 with metric schema 2 is supported")
+    if manifest.schema_version not in {1, 2} or manifest.metric_schema_version != 2:
+        raise ValueError("only campaign schema 1/2 with metric schema 2 is supported")
+    development_references = (
+        manifest.development_source_evaluation,
+        manifest.decision_rule,
+    )
+    if manifest.schema_version == 2 and any(value is None for value in development_references):
+        raise ValueError("campaign schema 2 requires source evaluation and decision rule")
+    if manifest.schema_version == 1 and any(value is not None for value in development_references):
+        raise ValueError("campaign schema 1 cannot declare development decision references")
     if not manifest.hypothesis.strip() or not re.fullmatch(
         r"[0-9a-f]{40}", manifest.baseline_commit.lower()
     ):
@@ -436,6 +467,15 @@ def run_walking_campaign(
     output = store.root
     template = load_config(manifest.run_config.path)
     try:
+        source_evaluation: dict[str, Any] | None = None
+        decision_rule: Stage19DecisionRule | None = None
+        comparisons: list[dict[str, Any]] = []
+        if manifest.development_source_evaluation is not None:
+            assert manifest.decision_rule is not None
+            source_evaluation = json.loads(
+                manifest.development_source_evaluation.path.read_text(encoding="utf-8")
+            )
+            decision_rule = load_stage19_decision_rule(manifest.decision_rule.path)
         criteria_source = (
             Path(__file__).resolve().parents[2] / "configs/walking-v1/evaluation-v2.json"
         )
@@ -635,6 +675,39 @@ def run_walking_campaign(
                     "summary": str(evaluation_output / "summary.json"),
                 },
             )
+            if source_evaluation is not None:
+                assert decision_rule is not None
+                candidate_evaluation = json.loads(
+                    (evaluation_output / "summary.json").read_text(encoding="utf-8")
+                )
+                comparison = compare_development_evaluation(
+                    source_evaluation, candidate_evaluation, decision_rule
+                )
+                comparison.update(
+                    {
+                        "completed_updates": completed_updates,
+                        "checkpoint": str(checkpoint),
+                        "checkpoint_sha256": record["sha256"],
+                    }
+                )
+                comparisons.append(comparison)
+                write_atomic_json(evaluation_output / "development-comparison.json", comparison)
+                decision = stop_decision(comparisons, decision_rule)
+                store.record(
+                    "development_decision",
+                    {
+                        "segment": segment,
+                        "completed_updates": completed_updates,
+                        **decision,
+                    },
+                )
+                if decision["stop"] and completed_updates < manifest.max_updates:
+                    store.transition(
+                        "stopped",
+                        stop_reason=decision["reason"],
+                        stopped_by_rule=True,
+                    )
+                    break
             if completed_updates == manifest.max_updates:
                 store.transition("completed")
                 break
