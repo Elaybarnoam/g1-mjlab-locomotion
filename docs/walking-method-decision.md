@@ -90,6 +90,14 @@ pose, velocity, foot-position, and contact rewards can reshape an already-functi
 first requiring extrapolation to the reference clip's native 1.1638 m/s speed. Promotion still
 requires deterministic functional and style measurements; training reward alone is insufficient.
 
+Stage 18 result: the 1,200-update, 1,843,200-transition run completed with finite losses. Checkpoints
+300, 600, 900, and 1199 each passed function in 16/16 frozen trials and style in 0/16. Compared with
+the bootstrap checkpoint, checkpoint 900 improved mean stance slip from 0.2191 to 0.1851 m/s and
+alternation from 0.792 to 0.880, but cadence remained 5.96 steps/s, contact transitions remained
+12.37/s, and the median stride was only 0.0913 m. No Stage 18 checkpoint is promoted. The next
+ablation must target contact cadence and real stride formation directly rather than extending this
+unchanged objective.
+
 Bootstrap checkpoints may advance to style fine-tuning only after they sustain the complete
 development timeline, follow forward commands, stop, and pass basic contact/slip checks. The final
 walking release still requires the stricter humanlike stride, cadence, alternation, torso, and video
