@@ -93,8 +93,18 @@ def configure_environment(
     command.randomize_phase = (
         task_profile.randomize_phase if task_profile is not None else randomized_reset
     )
-    env.observations["actor"].enable_corruption = randomized_reset
-    if not randomized_reset:
+    domain_randomization = (
+        task_profile.domain_randomization
+        if task_profile is not None and task_profile.domain_randomization is not None
+        else randomized_reset
+    )
+    observation_noise = (
+        task_profile.observation_noise
+        if task_profile is not None and task_profile.observation_noise is not None
+        else randomized_reset
+    )
+    env.observations["actor"].enable_corruption = observation_noise
+    if not domain_randomization:
         env.events = {}
     if task_profile is not None:
         command.standing_fraction = task_profile.standing_fraction
@@ -118,6 +128,12 @@ def configure_environment(
             )
     command.reference_initialization = (
         task_profile.reference_initialization if task_profile is not None else randomized_reset
+    )
+    command.host_semantics_version = (
+        task_profile.host_semantics_version if task_profile is not None else 1
+    )
+    command.reference_ground_offset_m = (
+        task_profile.reference_ground_offset_m if task_profile is not None else 0.0
     )
 
 
@@ -203,6 +219,8 @@ def register_task() -> None:
         standing_fraction=0.2,
         randomize_phase=True,
         reference_initialization=True,
+        host_semantics_version=1,
+        reference_ground_offset_m=0.0,
         resampling_time_range=(4.0, 10.0),
         debug_vis=False,
     )

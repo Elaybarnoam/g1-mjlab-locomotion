@@ -124,6 +124,10 @@ def test_walking_training_profile_is_strict_and_hashable(tmp_path: Path) -> None
                 "randomize_phase": True,
                 "forward_progress_weight": 1.0,
                 "reference_foot_position_std_m": 0.3,
+                "host_semantics_version": 2,
+                "domain_randomization": False,
+                "observation_noise": True,
+                "reference_ground_offset_m": 0.03,
             }
         ),
         encoding="utf-8",
@@ -132,6 +136,10 @@ def test_walking_training_profile_is_strict_and_hashable(tmp_path: Path) -> None
     assert profile.standing_fraction == 0
     assert profile.forward_progress_weight == 1.0
     assert profile.reference_foot_position_std_m == 0.3
+    assert profile.host_semantics_version == 2
+    assert profile.domain_randomization is False
+    assert profile.observation_noise is True
+    assert profile.reference_ground_offset_m == 0.03
     assert len(profile.sha256) == 64
 
 

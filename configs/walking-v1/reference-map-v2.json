@@ -1,0 +1,115 @@
+{
+  "controller_sha256": "3b69f70b400cdc98c2e46a63485e15deb063015c106bd22736a1bc81247c7af0",
+  "criteria": {
+    "maximum_actuator_demand_ratio": 0.8,
+    "maximum_contact_fraction_asymmetry": 0.3,
+    "maximum_interpolation_derivative_rms_rad_s": 0.5,
+    "maximum_pose_seam_rms_rad": 0.05,
+    "maximum_velocity_seam_rms_rad_s": 1.5,
+    "minimum_corrected_sole_clearance_m": 0.0,
+    "minimum_joint_limit_margin_rad": 0.019
+  },
+  "entries": [
+    {
+      "contact_fraction": [
+        0.4074074074074074,
+        0.6666666666666666
+      ],
+      "cycle_period_s": 3.0841007215578817,
+      "double_support_fraction": 0.07407407407407407,
+      "expected_cadence_steps_s": 0.6484872514117287,
+      "flight_fraction": 0.0,
+      "maximum_actuator_demand_ratio": 0.15818512917834693,
+      "maximum_joint_acceleration_rad_s2": 27.89134699959837,
+      "maximum_joint_velocity_rad_s": 3.4912166081891147,
+      "minimum_joint_limit_margin_rad": 0.020000004696845985,
+      "passed": true,
+      "reachable_sole_forward_range_m": [
+        -0.4096091890544641,
+        0.47048405951531547
+      ],
+      "sole_clearance_range_m": [
+        0.0027556323175264748,
+        0.25597682234821684
+      ],
+      "speed_m_s": 0.4,
+      "step_length_median_m": 0.6063987004198446,
+      "stride_length_median_m": 1.2127974008396891,
+      "time_scale": 0.34369824324821624,
+      "violations": []
+    },
+    {
+      "contact_fraction": [
+        0.4074074074074074,
+        0.6666666666666666
+      ],
+      "cycle_period_s": 2.056067147705255,
+      "double_support_fraction": 0.07407407407407407,
+      "expected_cadence_steps_s": 0.972730877117593,
+      "flight_fraction": 0.0,
+      "maximum_actuator_demand_ratio": 0.23707448772663084,
+      "maximum_joint_acceleration_rad_s2": 62.75553074909632,
+      "maximum_joint_velocity_rad_s": 5.236824912283671,
+      "minimum_joint_limit_margin_rad": 0.020000004696845985,
+      "passed": true,
+      "reachable_sole_forward_range_m": [
+        -0.4096091890544641,
+        0.47048405951531547
+      ],
+      "sole_clearance_range_m": [
+        0.0027556323175264748,
+        0.25597682234821684
+      ],
+      "speed_m_s": 0.6,
+      "step_length_median_m": 0.6063987004198446,
+      "stride_length_median_m": 1.2127974008396891,
+      "time_scale": 0.5155473648723243,
+      "violations": []
+    },
+    {
+      "contact_fraction": [
+        0.4074074074074074,
+        0.6666666666666666
+      ],
+      "cycle_period_s": 1.5420503607789409,
+      "double_support_fraction": 0.07407407407407407,
+      "expected_cadence_steps_s": 1.2969745028234574,
+      "flight_fraction": 0.0,
+      "maximum_actuator_demand_ratio": 0.3158283755809886,
+      "maximum_joint_acceleration_rad_s2": 111.56538799839348,
+      "maximum_joint_velocity_rad_s": 6.9824332163782294,
+      "minimum_joint_limit_margin_rad": 0.020000004696845985,
+      "passed": true,
+      "reachable_sole_forward_range_m": [
+        -0.4096091890544641,
+        0.47048405951531547
+      ],
+      "sole_clearance_range_m": [
+        0.0027556323175264748,
+        0.25597682234821684
+      ],
+      "speed_m_s": 0.8,
+      "step_length_median_m": 0.6063987004198446,
+      "stride_length_median_m": 1.2127974008396891,
+      "time_scale": 0.6873964864964325,
+      "violations": []
+    }
+  ],
+  "interpolation_derivative_rms_rad_s": 0.19717374549954872,
+  "model_sha256": "febdcbeffbbf84051556ae41a5ac1b43fb479a5d76bdb3f54824dbc2721c20aa",
+  "passed": true,
+  "pose_seam_rms_rad": 0.022281937849889678,
+  "reference_ground_offset_m": 0.03,
+  "reference_id": "nvidia-soma-g1-neutral-walk-a057-cycle-v1",
+  "reference_sha256": "028eae4a2a8163dae515891cb31a8f015b9e47e2f3e13d84669dd3fa7e91d06e",
+  "schema_version": 2,
+  "source_cycle_duration_s": 1.06,
+  "source_speed_m_s": 1.16381159304071,
+  "supported_speed_range_m_s": [
+    0.4,
+    0.8
+  ],
+  "transformation": "retain spatial trajectory; scale phase rate, velocities by s, and accelerations by s^2",
+  "velocity_seam_rms_rad_s": 0.37149816842332195,
+  "violations": []
+}

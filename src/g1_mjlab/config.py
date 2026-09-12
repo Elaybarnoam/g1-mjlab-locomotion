@@ -108,6 +108,10 @@ class WalkingTrainingProfile:
     velocity_tracking_std_m_s: float | None = None
     forward_progress_weight: float | None = None
     reference_foot_position_std_m: float | None = None
+    host_semantics_version: int = 2
+    domain_randomization: bool | None = None
+    observation_noise: bool | None = None
+    reference_ground_offset_m: float = 0.03
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -253,6 +257,10 @@ def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
         "velocity_tracking_std_m_s",
         "forward_progress_weight",
         "reference_foot_position_std_m",
+        "host_semantics_version",
+        "domain_randomization",
+        "observation_noise",
+        "reference_ground_offset_m",
     }
     if not required.issubset(raw) or not set(raw).issubset(expected):
         raise ValueError("walking profile fields do not match schema")
@@ -281,6 +289,19 @@ def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
         profile.randomize_phase, bool
     ):
         raise ValueError("walking reset flags must be boolean")
+    if profile.host_semantics_version not in {1, 2}:
+        raise ValueError("host_semantics_version must be 1 or 2")
+    if any(
+        value is not None and not isinstance(value, bool)
+        for value in (profile.domain_randomization, profile.observation_noise)
+    ):
+        raise ValueError("domain_randomization and observation_noise must be booleans or null")
+    if (
+        not math.isfinite(profile.reference_ground_offset_m)
+        or profile.reference_ground_offset_m < 0
+        or profile.reference_ground_offset_m > 0.05
+    ):
+        raise ValueError("reference_ground_offset_m must be finite in [0, 0.05]")
     if profile.objective not in {"locomotion_bootstrap", "reference_style"}:
         raise ValueError("walking objective must be 'locomotion_bootstrap' or 'reference_style'")
     if profile.forward_speed_range_m_s is not None:

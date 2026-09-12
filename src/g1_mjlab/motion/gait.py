@@ -116,8 +116,8 @@ def step_gait_numpy(
 ) -> GaitState:
     """Advance once in the canonical order: command, mode, blend, then phase."""
     state.validate()
-    if not math.isfinite(dt) or dt <= 0:
-        raise ValueError("dt must be finite and positive")
+    if not math.isfinite(dt) or dt < 0:
+        raise ValueError("dt must be finite and nonnegative")
     requested = profile.validate_requested(requested_command)
     if requested.shape != state.applied_command.shape:
         raise ValueError("requested command batch does not match gait state")
@@ -139,6 +139,47 @@ def step_gait_numpy(
     result = GaitState(applied, phase, blend, walking, reference_distance)
     result.validate()
     return result
+
+
+def reference_time_scale(
+    applied_forward_speed_m_s: npt.ArrayLike, reference_speed_m_s: float
+) -> FloatArray:
+    """Return the clip time-warp factor for each applied forward speed."""
+    if not math.isfinite(reference_speed_m_s) or reference_speed_m_s <= 0:
+        raise ValueError("reference speed must be finite and positive")
+    speed = np.asarray(applied_forward_speed_m_s, dtype=np.float64)
+    if not np.all(np.isfinite(speed)) or np.any(speed < 0):
+        raise ValueError("applied forward speed must be finite and nonnegative")
+    return speed / reference_speed_m_s
+
+
+def blended_reference_velocity(
+    reference_position: npt.ArrayLike,
+    nominal_position: npt.ArrayLike,
+    source_velocity: npt.ArrayLike,
+    blend: npt.ArrayLike,
+    blend_velocity_s: npt.ArrayLike,
+    time_scale: npt.ArrayLike,
+) -> FloatArray:
+    """Differentiate ``(1-blend)*nominal + blend*reference`` exactly."""
+    reference = np.asarray(reference_position, dtype=np.float64)
+    nominal = np.asarray(nominal_position, dtype=np.float64)
+    velocity = np.asarray(source_velocity, dtype=np.float64)
+    if reference.shape != nominal.shape or reference.shape != velocity.shape:
+        raise ValueError("reference, nominal, and velocity arrays must have identical shapes")
+    if reference.ndim != 2:
+        raise ValueError("joint arrays must have shape (batch, joints)")
+    factors = tuple(
+        np.asarray(value, dtype=np.float64) for value in (blend, blend_velocity_s, time_scale)
+    )
+    if any(value.shape != (reference.shape[0],) for value in factors):
+        raise ValueError("blend, blend velocity, and time scale must match the batch")
+    if not all(np.all(np.isfinite(value)) for value in (reference, nominal, velocity, *factors)):
+        raise ValueError("blended reference inputs must be finite")
+    blend_array, blend_rate, scale = factors
+    return blend_array[:, None] * scale[:, None] * velocity + blend_rate[:, None] * (
+        reference - nominal
+    )
 
 
 def step_gait_torch(

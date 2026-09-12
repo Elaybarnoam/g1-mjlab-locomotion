@@ -15,7 +15,11 @@ from g1_mjlab.config import (  # noqa: E402
     load_walking_training_profile,
 )
 from g1_mjlab.environment import build_train_config  # noqa: E402
-from g1_mjlab.tasks.walking_mdp import heading_frame_delta  # noqa: E402
+from g1_mjlab.tasks.walking_mdp import (  # noqa: E402
+    heading_frame_delta,
+    heading_frame_velocity,
+    reference_contact_timing,
+)
 
 
 def _config():
@@ -31,6 +35,14 @@ def test_reference_foot_delta_is_rotated_from_world_into_heading_frame() -> None
     actual = heading_frame_delta(world_delta, root_quaternion)
 
     torch.testing.assert_close(actual, torch.tensor([[[0.0, -1.0, 0.0]]]), atol=1e-6, rtol=0)
+
+
+def test_heading_velocity_ignores_root_pitch_and_respects_yaw() -> None:
+    pitched = torch.tensor([[0.9238795, 0.0, 0.3826834, 0.0]])
+    world_velocity = torch.tensor([[1.0, 0.0, 0.0]])
+    torch.testing.assert_close(
+        heading_frame_velocity(world_velocity, pitched), world_velocity, atol=1e-6, rtol=0
+    )
 
 
 def test_walking_mdp_resolves_only_declared_terms() -> None:
@@ -129,6 +141,24 @@ def test_walking_profile_can_enable_forward_progress_reward() -> None:
     assert cfg.rewards["reference_foot_position"].params["std_m"] == 0.3
 
 
+def test_domain_randomization_and_observation_noise_are_independent() -> None:
+    root = Path(__file__).parents[2]
+    run = load_config(root / "configs" / "walking-v1" / "mdp-probe.json")
+    profile = WalkingTrainingProfile(
+        schema_version=1,
+        name="separated-randomization",
+        standing_fraction=1.0,
+        reference_initialization=False,
+        randomize_phase=False,
+        domain_randomization=False,
+        observation_noise=True,
+    )
+    cfg = build_train_config(run, root / ".runtime", walking_profile=profile).env
+    assert cfg.events == {}
+    assert cfg.observations["actor"].enable_corruption is True
+    assert cfg.commands["twist"].host_semantics_version == 2
+
+
 @pytest.mark.gpu
 def test_reference_profile_resets_moving_worlds_to_sampled_reference() -> None:
     root = Path(__file__).parents[2]
@@ -146,12 +176,113 @@ def test_reference_profile_resets_moving_worlds_to_sampled_reference() -> None:
         assert torch.all(command.blend == 1)
         torch.testing.assert_close(robot.data.joint_pos, command.joint_position, atol=2e-5, rtol=0)
         torch.testing.assert_close(robot.data.joint_vel, command.joint_velocity, atol=2e-5, rtol=0)
+        expected_root_height = command.interpolate(command.reference_body_position)[:, 0, 2] + 0.03
+        torch.testing.assert_close(
+            robot.data.root_link_pos_w[:, 2], expected_root_height, atol=2e-5, rtol=0
+        )
         action = env.action_manager.get_term("joint_pos")
         torch.testing.assert_close(
             action.offset,
             robot.data.default_joint_pos,
             atol=2e-5,
             rtol=0,
+        )
+    finally:
+        env.close()
+
+
+@pytest.mark.gpu
+def test_random_phase_reset_updates_only_selected_worlds_reproducibly() -> None:
+    cfg = _config().env
+    env = ManagerBasedRlEnv(cfg=cfg, device="cuda:0", render_mode=None)
+    try:
+        env.reset(seed=42)
+        command = env.command_manager.get_term("twist")
+        ids = torch.tensor([0, 2], device="cuda:0")
+        command.phase.fill_(0.5)
+        torch.manual_seed(1234)
+        command.reset(ids)
+        first = command.phase[ids].clone()
+        torch.testing.assert_close(
+            command.phase[torch.tensor([1, 3], device="cuda:0")],
+            torch.full((2,), 0.5, device="cuda:0"),
+        )
+        assert not torch.all(first == 0.5)
+        assert first[0] != first[1]
+
+        command.phase.fill_(0.5)
+        torch.manual_seed(1234)
+        command.reset(ids)
+        torch.testing.assert_close(command.phase[ids], first)
+    finally:
+        env.close()
+
+
+@pytest.mark.gpu
+def test_reference_velocity_is_time_scaled_and_includes_blend_derivative() -> None:
+    cfg = _config().env
+    env = ManagerBasedRlEnv(cfg=cfg, device="cuda:0", render_mode=None)
+    try:
+        env.reset(seed=42)
+        command = env.command_manager.get_term("twist")
+        command.phase.fill_(0.25)
+        command._applied[:, 0] = 0.5 * command.cfg.reference_speed_m_s
+        command.blend.fill_(0.4)
+        command.blend_velocity_s.fill_(0.7)
+        nominal = env.scene["robot"].data.default_joint_pos
+        expected = 0.4 * 0.5 * command.interpolate(command.reference_joint_velocity)
+        expected += 0.7 * (command.joint_position - nominal)
+        torch.testing.assert_close(command.blended_joint_velocity(nominal), expected)
+    finally:
+        env.close()
+
+
+@pytest.mark.gpu
+def test_manager_advances_phase_once_after_reward_and_exposes_it_in_next_observation() -> None:
+    root = Path(__file__).parents[2]
+    run = load_config(root / "configs" / "walking-v1" / "mdp-probe.json")
+    profile = WalkingTrainingProfile(
+        schema_version=1,
+        name="ordering-probe",
+        standing_fraction=1.0,
+        reference_initialization=False,
+        randomize_phase=False,
+        domain_randomization=False,
+        observation_noise=False,
+    )
+    cfg = build_train_config(run, root / ".runtime", walking_profile=profile).env
+    env = ManagerBasedRlEnv(cfg=cfg, device="cuda:0", render_mode=None)
+    try:
+        env.reset(seed=42)
+        command = env.command_manager.get_term("twist")
+        command.set_requested_forward_speed(0.6)
+        phase_before_reward_reads = command.phase.clone()
+        reference_contact_timing(env, "twist", "feet_ground_contact")
+        reference_contact_timing(env, "twist", "feet_ground_contact")
+        torch.testing.assert_close(command.phase, phase_before_reward_reads)
+        calls = 0
+        original = command._update_command
+
+        def counted_update(env_ids):
+            nonlocal calls
+            calls += 1
+            return original(env_ids)
+
+        command._update_command = counted_update
+        phase_before = command.phase.clone()
+        observations, _, _, _, _ = env.step(torch.zeros((4, 29), device="cuda:0"))
+        expected = torch.remainder(
+            phase_before
+            + env.step_dt
+            * command.command[:, 0]
+            / (command.cfg.reference_speed_m_s * command.cfg.cycle_duration_s),
+            1.0,
+        )
+        assert calls == 1
+        torch.testing.assert_close(command.phase, expected)
+        torch.testing.assert_close(observations["actor"][:, 99], torch.sin(2 * torch.pi * expected))
+        torch.testing.assert_close(
+            observations["actor"][:, 100], torch.cos(2 * torch.pi * expected)
         )
     finally:
         env.close()

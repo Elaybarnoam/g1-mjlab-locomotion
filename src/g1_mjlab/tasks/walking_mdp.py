@@ -37,6 +37,8 @@ class WalkingCommandCfg(CommandTermCfg):  # type: ignore[misc]
     reference_initialization: bool = True
     moving_speed_min_m_s: float | None = None
     moving_speed_max_m_s: float | None = None
+    host_semantics_version: int = 1
+    reference_ground_offset_m: float = 0.0
 
     def build(self, env: ManagerBasedRlEnv) -> WalkingCommand:
         return WalkingCommand(self, env)
@@ -61,6 +63,10 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         self.profile.validate()
         if not 0 <= cfg.standing_fraction <= 1:
             raise ValueError("standing_fraction must be in [0, 1]")
+        if cfg.host_semantics_version not in {1, 2}:
+            raise ValueError("host_semantics_version must be 1 or 2")
+        if not 0 <= cfg.reference_ground_offset_m <= 0.05:
+            raise ValueError("reference_ground_offset_m must be in [0, 0.05]")
         low = cfg.moving_speed_min_m_s or cfg.reference_speed_m_s
         high = cfg.moving_speed_max_m_s or cfg.reference_speed_m_s
         if low <= 0 or high < low or high > cfg.reference_speed_m_s:
@@ -103,6 +109,7 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         self._applied = torch.zeros_like(self._requested)
         self.phase = torch.zeros(self.num_envs, device=self.device)
         self.blend = torch.zeros(self.num_envs, device=self.device)
+        self.blend_velocity_s = torch.zeros(self.num_envs, device=self.device)
         self.walking = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reference_distance_m = torch.zeros(self.num_envs, device=self.device)
         self._command_dt: float | torch.Tensor = 0.0
@@ -131,10 +138,11 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         assert isinstance(env_ids, torch.Tensor)
         self._applied[env_ids] = 0
         self.blend[env_ids] = 0
+        self.blend_velocity_s[env_ids] = 0
         self.walking[env_ids] = False
         self.reference_distance_m[env_ids] = 0
         if self.cfg.randomize_phase:
-            self.phase[env_ids].uniform_(0.0, 1.0)
+            self.phase[env_ids] = torch.rand(len(env_ids), device=self.device)
         else:
             self.phase[env_ids] = 0
         extras = cast(dict[str, float], super().reset(env_ids))
@@ -169,6 +177,7 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         dt = self._command_dt
         if isinstance(dt, torch.Tensor) and env_ids is not None and dt.ndim == 1:
             dt = dt[env_ids]
+        previous_blend = self.blend[ids].clone()
         values = step_gait_torch(
             self._applied[ids],
             self.phase[ids],
@@ -186,6 +195,12 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
             self.walking[ids],
             self.reference_distance_m[ids],
         ) = values
+        resolved_dt = torch.as_tensor(dt, dtype=self.blend.dtype, device=self.device)
+        self.blend_velocity_s[ids] = torch.where(
+            resolved_dt > 0,
+            (self.blend[ids] - previous_blend) / torch.clamp(resolved_dt, min=1e-12),
+            torch.zeros_like(self.blend[ids]),
+        )
 
     def _frame_blend(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         intervals = self.reference_joint_position.shape[0] - 1
@@ -206,7 +221,16 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
 
     @property
     def joint_velocity(self) -> torch.Tensor:
-        return self.interpolate(self.reference_joint_velocity)
+        scale = self._applied[:, 0] / self.cfg.reference_speed_m_s
+        return self.interpolate(self.reference_joint_velocity) * scale[:, None]
+
+    def blended_joint_velocity(self, nominal_position: torch.Tensor) -> torch.Tensor:
+        """Derivative of the rate-limited stand/reference position target."""
+        if tuple(nominal_position.shape) != (self.num_envs, 29):
+            raise ValueError("nominal joint position must have shape (num_envs, 29)")
+        return self.blend[:, None] * self.joint_velocity + self.blend_velocity_s[:, None] * (
+            self.joint_position - nominal_position
+        )
 
     @property
     def foot_contact(self) -> torch.Tensor:
@@ -241,8 +265,13 @@ def track_linear_velocity(
 ) -> torch.Tensor:
     """Match upstream velocity reward while logging the physical tracking error."""
     robot: Entity = env.scene[asset_cfg.name]
-    command = _command(env, command_name).command
-    actual = robot.data.root_link_lin_vel_b
+    command_term = _command(env, command_name)
+    command = command_term.command
+    actual = (
+        heading_frame_velocity(robot.data.root_link_lin_vel_w, robot.data.root_link_quat_w)
+        if command_term.cfg.host_semantics_version == 2
+        else robot.data.root_link_lin_vel_b
+    )
     error = torch.sum(torch.square(command[:, :2] - actual[:, :2]), dim=1)
     error += torch.square(actual[:, 2])
     env.extras["log"]["Errors/base_linear_velocity_rms_m_s"] = torch.sqrt(error).mean()
@@ -259,8 +288,13 @@ def commanded_forward_progress(
     robot: Entity = env.scene[asset_cfg.name]
     reference_speed = command.cfg.reference_speed_m_s
     command_fraction = torch.clamp(command.command[:, 0] / reference_speed, 0.0, 1.0)
+    actual = (
+        heading_frame_velocity(robot.data.root_link_lin_vel_w, robot.data.root_link_quat_w)
+        if command.cfg.host_semantics_version == 2
+        else robot.data.root_link_lin_vel_b
+    )
     normalized_velocity = torch.clamp(
-        robot.data.root_link_lin_vel_b[:, 0] / reference_speed,
+        actual[:, 0] / reference_speed,
         min=-1.0,
         max=1.5,
     )
@@ -291,8 +325,8 @@ def reference_joint_velocity(
     asset_cfg: SceneEntityCfg = _ROBOT,
 ) -> torch.Tensor:
     command = _command(env, command_name)
-    target = command.joint_velocity * command.blend[:, None]
     robot: Entity = env.scene[asset_cfg.name]
+    target = command.blended_joint_velocity(robot.data.default_joint_pos)
     error = torch.mean(torch.square(robot.data.joint_vel - target), dim=1)
     env.extras["log"]["Errors/reference_joint_velocity_rms_rad_s"] = torch.sqrt(error).mean()
     return torch.exp(-error / std_rad_s**2)
@@ -306,6 +340,14 @@ def heading_frame_delta(
     heading = yaw_quat(quaternion)
     repeated = heading[:, None, :].expand(-1, world_delta.shape[1], -1)
     return quat_apply_inverse(repeated, world_delta)
+
+
+def heading_frame_velocity(
+    world_velocity: torch.Tensor, root_quaternion_wxyz: torch.Tensor
+) -> torch.Tensor:
+    """Rotate world velocity into yaw heading without roll/pitch contamination."""
+    quaternion = torch.nn.functional.normalize(root_quaternion_wxyz, dim=-1)
+    return quat_apply_inverse(yaw_quat(quaternion), world_velocity)
 
 
 class reference_foot_position:
@@ -409,25 +451,28 @@ def _write_walking_state(
     default_joint_velocity = robot.data.default_joint_vel[env_ids].clone()
     if reference_initialization:
         moving = command.requested_command[env_ids, 0] > command.cfg.walk_threshold_m_s
+        command._applied[env_ids[moving]] = command.requested_command[env_ids[moving]]
+        command.blend[env_ids[moving]] = 1.0
+        command.blend_velocity_s[env_ids[moving]] = 0.0
+        command.walking[env_ids[moving]] = True
         reference_body_position = command.interpolate(command.reference_body_position)[env_ids]
         reference_body_quaternion = command.interpolate(command.reference_body_quaternion)[env_ids]
-        reference_body_linear_velocity = command.interpolate(
-            command.reference_body_linear_velocity
+        scale = command._applied[:, 0] / command.cfg.reference_speed_m_s
+        reference_body_linear_velocity = (
+            command.interpolate(command.reference_body_linear_velocity) * scale[:, None, None]
         )[env_ids]
-        reference_body_angular_velocity = command.interpolate(
-            command.reference_body_angular_velocity
+        reference_body_angular_velocity = (
+            command.interpolate(command.reference_body_angular_velocity) * scale[:, None, None]
         )[env_ids]
         reference_joint_position = command.joint_position[env_ids]
         reference_joint_velocity = command.joint_velocity[env_ids]
         default_root[moving, :3] = reference_body_position[moving, 0]
+        default_root[moving, 2] += command.cfg.reference_ground_offset_m
         default_root[moving, :2] += env.scene.env_origins[env_ids[moving], :2]
         default_root[moving, 3:7] = reference_body_quaternion[moving, 0]
         default_root[moving, 7:10] = reference_body_linear_velocity[moving, 0]
         default_root[moving, 10:13] = reference_body_angular_velocity[moving, 0]
         default_joint_position[moving] = reference_joint_position[moving]
         default_joint_velocity[moving] = reference_joint_velocity[moving]
-        command._applied[env_ids[moving]] = command.requested_command[env_ids[moving]]
-        command.blend[env_ids[moving]] = 1.0
-        command.walking[env_ids[moving]] = True
     robot.write_root_state_to_sim(default_root, env_ids=env_ids)
     robot.write_joint_state_to_sim(default_joint_position, default_joint_velocity, env_ids=env_ids)

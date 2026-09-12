@@ -9,8 +9,10 @@ from g1_mjlab.motion.gait import (
     CommandProfile,
     GaitState,
     WalkingInitialState,
+    blended_reference_velocity,
     load_command_profile,
     load_command_schedule,
+    reference_time_scale,
     step_gait_numpy,
 )
 
@@ -51,6 +53,39 @@ def test_gait_step_rate_limits_command_blend_and_phase(profile: CommandProfile) 
     assert state.applied_command[0, 0] == pytest.approx(0.2)
     assert state.blend[0] == pytest.approx(0.4)
     assert state.phase[0] == pytest.approx(0.05)
+
+
+def test_zero_dt_preserves_gait_state(profile: CommandProfile) -> None:
+    state = GaitState(
+        applied_command=np.array([[0.4, 0.0, 0.0]]),
+        phase=np.array([0.25]),
+        blend=np.array([0.5]),
+        walking=np.array([True]),
+        reference_distance_m=np.array([1.2]),
+    )
+    result = step_gait_numpy(state, [[1.0, 0.0, 0.0]], profile, dt=0.0)
+    np.testing.assert_equal(result.applied_command, state.applied_command)
+    np.testing.assert_equal(result.phase, state.phase)
+    np.testing.assert_equal(result.blend, state.blend)
+    np.testing.assert_equal(result.reference_distance_m, state.reference_distance_m)
+
+
+def test_time_warp_and_blend_derivative_match_finite_difference() -> None:
+    dt = 1e-6
+    blend = np.array([0.4])
+    blend_rate = np.array([0.7])
+    scale = reference_time_scale([0.5], 1.0)
+    phase = 0.2
+    source_position = np.array([[np.sin(phase)]])
+    source_velocity = np.array([[np.cos(phase)]])
+    nominal = np.zeros((1, 1))
+    analytic = blended_reference_velocity(
+        source_position, nominal, source_velocity, blend, blend_rate, scale
+    )
+    next_position = (blend + blend_rate * dt)[:, None] * np.sin(phase + scale[0] * dt)
+    current_position = blend[:, None] * source_position
+    numerical = (next_position - current_position) / dt
+    np.testing.assert_allclose(analytic, numerical, atol=1e-6, rtol=1e-6)
 
 
 def test_stop_preserves_phase_and_blends_to_standing(profile: CommandProfile) -> None:
