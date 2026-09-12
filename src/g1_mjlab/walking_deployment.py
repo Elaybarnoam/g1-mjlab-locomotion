@@ -346,21 +346,28 @@ def check_walking_native_parity(
                     )
                 },
             )[0][0]
-            records.append(
-                {
-                    "step": step,
-                    "observation_max_abs_error": float(
-                        np.max(np.abs(reconstructed - expected_observation))
-                    ),
-                    "action_max_abs_error": float(np.max(np.abs(actual_action - expected_action))),
-                    "observation_passed": bool(
-                        np.allclose(reconstructed, expected_observation, atol=1e-5, rtol=1e-4)
-                    ),
-                    "action_passed": bool(
-                        np.allclose(actual_action, expected_action, atol=1e-4, rtol=1e-4)
-                    ),
+            record: dict[str, Any] = {
+                "step": step,
+                "observation_max_abs_error": float(
+                    np.max(np.abs(reconstructed - expected_observation))
+                ),
+                "action_max_abs_error": float(np.max(np.abs(actual_action - expected_action))),
+                "observation_passed": bool(
+                    np.allclose(reconstructed, expected_observation, atol=1e-5, rtol=1e-4)
+                ),
+                "action_passed": bool(
+                    np.allclose(actual_action, expected_action, atol=1e-4, rtol=1e-4)
+                ),
+            }
+            if step == 0:
+                record["capture"] = {
+                    "actor_observation": expected_observation.tolist(),
+                    "actor_action": expected_action.tolist(),
+                    "joint_target_rad": walking_joint_targets(
+                        session.contract, expected_action
+                    ).tolist(),
                 }
-            )
+            records.append(record)
             observation, _, _, _ = wrapped.step(expected_action_tensor)
     finally:
         env.close()

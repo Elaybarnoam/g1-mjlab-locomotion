@@ -34,6 +34,9 @@ Walking native inference is implemented but the currently retained walking check
 unqualified development artifact, not a release policy. Exact export, parity, CPU evaluation, and
 the explicit opt-in viewer workflow are documented in
 [`docs/walking-native-inference.md`](docs/walking-native-inference.md).
+The complete current walking status, theory, and generated interface are in
+[`docs/walking.md`](docs/walking.md), [`docs/walking-theory.md`](docs/walking-theory.md), and
+[`docs/walking-policy-spec.md`](docs/walking-policy-spec.md).
 
 The installer cryptographically verifies the release archive and every runtime artifact before an
 atomic installation. See [Using published policies](docs/using-published-policies.md) for bundle

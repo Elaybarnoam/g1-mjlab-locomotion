@@ -215,6 +215,19 @@ def parser() -> argparse.ArgumentParser:
     report.add_argument("--run", required=True, type=Path)
     report.add_argument("--output", type=Path)
     report.add_argument("--final", action="store_true")
+    policy_spec = commands.add_parser("generate-walking-policy-spec")
+    policy_spec.add_argument("--run", required=True, type=Path)
+    policy_spec.add_argument("--checkpoint", required=True, type=Path)
+    policy_spec.add_argument("--parity", required=True, type=Path)
+    policy_spec.add_argument("--output", required=True, type=Path)
+    walking_report = commands.add_parser("report-walking-research")
+    walking_report.add_argument("--run", required=True, type=Path)
+    walking_report.add_argument("--experiment-table", required=True, type=Path)
+    walking_report.add_argument("--policy-spec", required=True, type=Path)
+    walking_report.add_argument("--native-summary", required=True, type=Path)
+    walking_report.add_argument("--native-trace", required=True, type=Path)
+    walking_report.add_argument("--parity", required=True, type=Path)
+    walking_report.add_argument("--output", required=True, type=Path)
     return root
 
 
@@ -677,6 +690,27 @@ def main(argv: list[str] | None = None) -> int:
         from .reporting import render_report
 
         print(render_report(args.run, args.output, final=args.final))
+        return 0
+    if args.command == "generate-walking-policy-spec":
+        from .reporting.policy_spec import generate_walking_policy_spec
+
+        result = generate_walking_policy_spec(args.run, args.checkpoint, args.parity, args.output)
+        print(json.dumps(result["validation"], indent=2, sort_keys=True))
+        return 0
+    if args.command == "report-walking-research":
+        from .reporting.walking import render_walking_research_report
+
+        print(
+            render_walking_research_report(
+                args.run,
+                args.experiment_table,
+                args.policy_spec,
+                args.native_summary,
+                args.native_trace,
+                args.parity,
+                args.output,
+            )
+        )
         return 0
     raise AssertionError(f"unhandled command {args.command}")
 
