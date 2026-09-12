@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "control_dt_s": 0.02,
+  "physics_dt_s": 0.005,
+  "events": [
+    "read_initial_physical_sensors",
+    "compose_observation_from_current_applied_command_phase_blend_and_previous_action",
+    "infer_actor_mean_action",
+    "advance_command_phase_blend_for_next_observation",
+    "map_normalized_action_to_joint_targets_once",
+    "physics_step_1",
+    "physics_step_2",
+    "physics_step_3",
+    "physics_step_4",
+    "read_next_physical_sensors",
+    "compose_next_observation"
+  ],
+  "invariant": "The action sees current host state; advanced host state appears first in the next observation."
+}

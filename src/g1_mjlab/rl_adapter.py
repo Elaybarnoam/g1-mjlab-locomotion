@@ -5,7 +5,7 @@ from typing import Any
 from mjlab.rl import RslRlVecEnvWrapper
 
 
-class MjlabVecEnvWrapper(RslRlVecEnvWrapper):  # type: ignore[misc]
+class MjlabVecEnvWrapper(RslRlVecEnvWrapper):
     """True termination takes precedence over a coincident time-limit timeout.
 
     RSL-RL's stored-current-value timeout compensation is otherwise unchanged.

@@ -27,6 +27,22 @@ def test_cli_routes_to_new_module_commands() -> None:
         parser().parse_args(["play-policy", "--policy", "policies/standing-v1"]).command
         == "play-policy"
     )
+    assert (
+        parser()
+        .parse_args(
+            [
+                "evaluate-native-walking",
+                "--policy",
+                "bundle",
+                "--scenarios",
+                "scenarios.json",
+                "--output",
+                "out",
+            ]
+        )
+        .command
+        == "evaluate-native-walking"
+    )
 
 
 def test_evaluate_walking_v2_requests_required_physics_trace(

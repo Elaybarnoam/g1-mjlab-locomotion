@@ -50,6 +50,25 @@ def parser() -> argparse.ArgumentParser:
     installed_play = commands.add_parser("play-policy")
     installed_play.add_argument("--policy", required=True, type=Path)
     installed_play.add_argument("--trial-id", type=int, default=0)
+    installed_play.add_argument("--forward-speed", type=float)
+    installed_play.add_argument("--allow-unqualified-development", action="store_true")
+    installed_play.add_argument("--duration-seconds", type=float)
+    export_walking = commands.add_parser("export-walking")
+    export_walking.add_argument("--run", required=True, type=Path)
+    export_walking.add_argument("--checkpoint", required=True, type=Path)
+    export_walking.add_argument("--output", required=True, type=Path)
+    native_walking = commands.add_parser("evaluate-native-walking")
+    native_walking.add_argument("--policy", required=True, type=Path)
+    native_walking.add_argument("--scenarios", required=True, type=Path)
+    native_walking.add_argument("--output", required=True, type=Path)
+    native_walking.add_argument("--allow-unqualified-development", action="store_true")
+    native_walking.add_argument("--minimum-horizon-seconds", type=float)
+    walking_parity = commands.add_parser("check-walking-native-parity")
+    walking_parity.add_argument("--run", required=True, type=Path)
+    walking_parity.add_argument("--checkpoint", required=True, type=Path)
+    walking_parity.add_argument("--policy", required=True, type=Path)
+    walking_parity.add_argument("--output", required=True, type=Path)
+    walking_parity.add_argument("--samples", type=int, default=100)
     doctor = commands.add_parser("doctor")
     doctor.add_argument("--output", required=True, type=Path)
     qualify = commands.add_parser("qualify-controller")
@@ -260,9 +279,68 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(install_policy(args.name, output), indent=2, sort_keys=True))
         return 0
     if args.command == "play-policy":
-        from .native_media import play_native
+        if (args.policy / "walking-policy-bundle.json").is_file():
+            if args.forward_speed is None:
+                raise ValueError("walking playback requires --forward-speed")
+            from .walking_deployment import play_native_walking
 
-        play_native(args.policy, args.policy / "scenarios.json", trial_id=args.trial_id)
+            play_native_walking(
+                args.policy,
+                forward_speed_m_s=args.forward_speed,
+                allow_unqualified=args.allow_unqualified_development,
+                duration_s=args.duration_seconds,
+            )
+        else:
+            if args.forward_speed is not None or args.allow_unqualified_development:
+                raise ValueError("walking playback options cannot be used with standing policy")
+            from .native_media import play_native
+
+            play_native(args.policy, args.policy / "scenarios.json", trial_id=args.trial_id)
+        return 0
+    if args.command == "export-walking":
+        from .walking_deployment import export_walking_policy
+
+        print(
+            json.dumps(
+                export_walking_policy(args.run, args.checkpoint, args.output),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "evaluate-native-walking":
+        from .walking_deployment import evaluate_native_walking
+
+        print(
+            json.dumps(
+                evaluate_native_walking(
+                    args.policy,
+                    args.scenarios,
+                    args.output,
+                    allow_unqualified=args.allow_unqualified_development,
+                    minimum_horizon_s=args.minimum_horizon_seconds,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "check-walking-native-parity":
+        from .walking_deployment import check_walking_native_parity
+
+        print(
+            json.dumps(
+                check_walking_native_parity(
+                    args.run,
+                    args.checkpoint,
+                    args.policy,
+                    args.output,
+                    samples=args.samples,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "doctor":
         from .runtime import doctor

@@ -22,7 +22,7 @@ def test_standing_descriptor_declares_stable_runtime_identity() -> None:
     assert task.supports(TaskCapability.NATIVE_INFERENCE)
 
 
-def test_walking_descriptor_exposes_training_but_not_unimplemented_workflows() -> None:
+def test_walking_descriptor_exposes_native_inference_but_not_qualification() -> None:
     task = get_task(WALKING_TASK_ID)
 
     assert task.config_directory == "walking-v1"
@@ -32,8 +32,9 @@ def test_walking_descriptor_exposes_training_but_not_unimplemented_workflows() -
     assert task.layout_id == "g1-walking-actor-v1"
     task.require(TaskCapability.TRAIN)
     task.require(TaskCapability.WALKING_EVALUATION)
-    with pytest.raises(TaskCapabilityError, match="native inference"):
-        task.require(TaskCapability.NATIVE_INFERENCE)
+    task.require(TaskCapability.NATIVE_INFERENCE)
+    with pytest.raises(TaskCapabilityError, match="qualification"):
+        task.require(TaskCapability.CONTROLLER_QUALIFICATION)
 
 
 def test_unknown_task_is_rejected_without_loading_the_simulator() -> None:
@@ -41,6 +42,6 @@ def test_unknown_task_is_rejected_without_loading_the_simulator() -> None:
         get_task("G1-Unknown-v1")
 
 
-def test_unavailable_walking_evaluation_fails_without_simulator_import() -> None:
-    with pytest.raises(TaskCapabilityError, match="native inference"):
-        get_task(WALKING_TASK_ID).require(TaskCapability.NATIVE_INFERENCE)
+def test_unavailable_walking_qualification_fails_without_simulator_import() -> None:
+    with pytest.raises(TaskCapabilityError, match="qualification"):
+        get_task(WALKING_TASK_ID).require(TaskCapability.CONTROLLER_QUALIFICATION)

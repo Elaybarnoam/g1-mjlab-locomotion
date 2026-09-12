@@ -103,9 +103,15 @@ _TASKS = {
         layout_id="g1-walking-actor-v1",
         actor_size=102,
         critic_size=114,
-        capabilities=frozenset({TaskCapability.TRAIN, TaskCapability.WALKING_EVALUATION}),
+        capabilities=frozenset(
+            {
+                TaskCapability.TRAIN,
+                TaskCapability.WALKING_EVALUATION,
+                TaskCapability.NATIVE_INFERENCE,
+            }
+        ),
         unavailable_reason=(
-            "walking native inference and controller qualification are not yet implemented"
+            "walking controller qualification is blocked until a policy passes final gates"
         ),
         # Walking profiles own this value: bootstrap matches the upstream zero penalty while
         # reference-style fine-tuning uses the versioned per-event penalty.

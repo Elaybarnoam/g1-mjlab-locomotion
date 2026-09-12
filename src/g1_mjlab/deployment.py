@@ -328,13 +328,14 @@ def check_transfer_parity(config: ResolvedRunConfig, run: Path, output: Path) ->
         )
         policy = runner.get_inference_policy(device=config.device)
         obs = wrapped.get_observations()
+        simulator_data: Any = env.sim.data
         with torch.inference_mode():
             for step in range(301):
                 raw = policy(obs)
                 if step % 10 == 0:
                     data = mujoco.MjData(native_model)
-                    data.qpos[:] = env.sim.data.qpos[0].cpu().numpy()
-                    data.qvel[:] = env.sim.data.qvel[0].cpu().numpy()
+                    data.qpos[:] = simulator_data.qpos[0].cpu().numpy()
+                    data.qvel[:] = simulator_data.qvel[0].cpu().numpy()
                     previous = env.action_manager.action[0].cpu().numpy()
                     apply_action(data, contract, previous)
                     mujoco.mj_forward(native_model, data)

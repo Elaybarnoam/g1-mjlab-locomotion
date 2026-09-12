@@ -93,7 +93,7 @@ def run_walking_probe(
         command = env.command_manager.get_term("twist")
         if not isinstance(command, WalkingCommand):
             raise TypeError("walking diagnostic did not resolve WalkingCommand")
-        action_term = env.action_manager.get_term("joint_pos")
+        action_term: Any = env.action_manager.get_term("joint_pos")
         robot = env.scene["robot"]
         loop_started = time.perf_counter()
         for index in range(steps):
@@ -144,9 +144,11 @@ def run_walking_probe(
             )
             tilt = torch.arccos(torch.clamp(upright_z, -1.0, 1.0))
             maximum_torso_tilt = max(maximum_torso_tilt, float(torch.max(tilt)))
+            actor_observation: Any = observations["actor"]
+            critic_observation: Any = observations["critic"]
             finite = finite and bool(
-                torch.isfinite(observations["actor"]).all()
-                and torch.isfinite(observations["critic"]).all()
+                torch.isfinite(actor_observation).all()
+                and torch.isfinite(critic_observation).all()
                 and torch.isfinite(robot.data.joint_pos).all()
                 and torch.isfinite(robot.data.qfrc_actuator).all()
             )

@@ -30,6 +30,11 @@ uv run g1-mjlab install-policy standing-v1
 uv run g1-mjlab play-policy --policy policies/standing-v1
 ```
 
+Walking native inference is implemented but the currently retained walking checkpoint is an
+unqualified development artifact, not a release policy. Exact export, parity, CPU evaluation, and
+the explicit opt-in viewer workflow are documented in
+[`docs/walking-native-inference.md`](docs/walking-native-inference.md).
+
 The installer cryptographically verifies the release archive and every runtime artifact before an
 atomic installation. See [Using published policies](docs/using-published-policies.md) for bundle
 contents, custom locations, and the separately distributed resumable training checkpoint.
