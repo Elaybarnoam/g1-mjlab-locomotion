@@ -214,7 +214,12 @@ class WalkingPolicySession:
         if set(bundle["files"]) != expected_files:
             raise ValueError("walking policy bundle file inventory is incomplete")
         for name, digest in bundle["files"].items():
-            if sha256_file(root / name) != digest:
+            file = (
+                root / "checkpoints" / "policy.onnx"
+                if name == "policy.onnx" and not (root / name).is_file()
+                else root / name
+            )
+            if sha256_file(file) != digest:
                 raise ValueError(f"walking policy bundle integrity mismatch: {name}")
         contract = json.loads((root / "contract.json").read_text(encoding="utf-8"))
         if canonical_hash(contract) != contract.get("sha256"):
@@ -244,9 +249,10 @@ class WalkingPolicySession:
             host["stand_threshold_m_s"],
             host["walk_threshold_m_s"],
         )
-        runtime = ort.InferenceSession(
-            str(root / "policy.onnx"), providers=["CPUExecutionProvider"]
-        )
+        onnx = root / "policy.onnx"
+        if not onnx.is_file():
+            onnx = root / "checkpoints" / "policy.onnx"
+        runtime = ort.InferenceSession(str(onnx), providers=["CPUExecutionProvider"])
         return cls.from_components(
             contract,
             bundle,

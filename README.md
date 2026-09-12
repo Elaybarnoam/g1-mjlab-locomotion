@@ -37,6 +37,9 @@ the explicit opt-in viewer workflow are documented in
 The complete current walking status, theory, and generated interface are in
 [`docs/walking.md`](docs/walking.md), [`docs/walking-theory.md`](docs/walking-theory.md), and
 [`docs/walking-policy-spec.md`](docs/walking-policy-spec.md).
+Development-only walking inference and resume archives can be built reproducibly, but are not
+published as release assets. See [`docs/using-published-policies.md`](docs/using-published-policies.md)
+for the explicit hash-pinned install workflow and qualification warning.
 
 The installer cryptographically verifies the release archive and every runtime artifact before an
 atomic installation. See [Using published policies](docs/using-published-policies.md) for bundle

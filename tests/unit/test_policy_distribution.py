@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from g1_mjlab.artifacts import sha256_file
-from g1_mjlab.policy_distribution import install_policy, validate_policy
+from g1_mjlab.policy_distribution import _safe_members, install_policy, validate_policy
 from g1_mjlab.qualification import canonical_hash
 
 
@@ -78,6 +78,11 @@ def test_install_policy_rejects_hash_mismatch_without_destination(tmp_path: Path
     assert not destination.exists()
 
 
+def test_unpublished_walking_policy_requires_explicit_archive(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="no published qualified archive"):
+        install_policy("walking-v1", tmp_path / "walking")
+
+
 @pytest.mark.parametrize("member", ["../escape", "/absolute", "C:/escape"])
 def test_install_policy_rejects_unsafe_archive_members(tmp_path: Path, member: str) -> None:
     archive = _policy_archive(tmp_path, unsafe_member=member)
@@ -89,3 +94,33 @@ def test_install_policy_rejects_unsafe_archive_members(tmp_path: Path, member: s
             archive_url=archive.as_uri(),
             archive_sha256=sha256_file(archive),
         )
+
+
+def test_archive_validator_rejects_duplicate_members(tmp_path: Path) -> None:
+    path = tmp_path / "duplicate.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("same", "first")
+        archive.writestr("same", "second")
+    with zipfile.ZipFile(path) as archive, pytest.raises(ValueError, match="duplicate"):
+        _safe_members(archive)
+
+
+@pytest.mark.parametrize("mode", [0o120777, 0o010644])
+def test_archive_validator_rejects_links_and_nonregular_members(tmp_path: Path, mode: int) -> None:
+    path = tmp_path / "special.zip"
+    info = zipfile.ZipInfo("special")
+    info.create_system = 3
+    info.external_attr = mode << 16
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(info, "target")
+    pattern = "symbolic links" if mode == 0o120777 else "non-regular"
+    with zipfile.ZipFile(path) as archive, pytest.raises(ValueError, match=pattern):
+        _safe_members(archive)
+
+
+def test_archive_validator_rejects_extreme_compression_ratio(tmp_path: Path) -> None:
+    path = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("zeros", b"0" * (2 * 1024 * 1024))
+    with zipfile.ZipFile(path) as archive, pytest.raises(ValueError, match="compression ratio"):
+        _safe_members(archive)

@@ -30,6 +30,46 @@ The installed bundle contains:
 | `policy-bundle.json` | Cryptographic identity and qualification bindings |
 | `scenarios.json` | Frozen final-test initial states for deterministic playback |
 
+## Walking-v1 development archives
+
+Walking-v1 is not published in the default catalog because its best checkpoint passed 16/16
+development function trials but 0/16 combined function/style trials. A maintainer can build two
+local, deterministic, clearly unqualified archives:
+
+```console
+uv run --extra train g1-mjlab build-walking-archives \
+  --bundle WALKING_BUNDLE \
+  --source-run SOURCE_RUN \
+  --checkpoint SOURCE_RUN/checkpoints/model_99.pt \
+  --scenarios configs/walking-v1/stage19/development-scenarios-v3.json \
+  --policy-spec POLICY_SPEC.json \
+  --output ARCHIVE_DIRECTORY
+```
+
+The inference archive contains ONNX, compiled model, host command profile, reference, explicit
+scenarios, policy specification, notices, and a member hash/size manifest. The separate resume
+archive contains the trusted PyTorch checkpoint, complete learner/optimizer/normalizer state,
+resolved run/MDP/algorithm/profiles, source snapshot, reference, and fresh-environment continuation
+instructions.
+
+An explicit local/archive URL and SHA-256 are required to install this unqualified artifact:
+
+```console
+uv run g1-mjlab install-policy walking-v1 \
+  --archive-url file:///absolute/path/walking-v1-development-inference.zip \
+  --archive-sha256 ARCHIVE_SHA256
+
+uv run g1-mjlab play-policy \
+  --policy policies/walking-v1 \
+  --forward-speed .6 \
+  --allow-unqualified-development
+```
+
+The installer validates archive hash, path safety, member count, expansion size, compression ratio,
+duplicate entries, regular-file type, internal hashes/sizes, identity, and policy contract before an
+atomic directory promotion. It refuses a default walking download until a qualified release is
+entered in the trusted catalog.
+
 ## Resume training
 
 The separate `model_999.pt` release asset contains the full RSL-RL learner checkpoint. Treat it as

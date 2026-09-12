@@ -45,8 +45,10 @@ def parser() -> argparse.ArgumentParser:
     select_parallel.add_argument("--minimum-free-ratio", type=float, default=0.2)
     select_parallel.add_argument("--output", required=True, type=Path)
     install = commands.add_parser("install-policy")
-    install.add_argument("name", choices=("standing-v1",))
+    install.add_argument("name", choices=("standing-v1", "walking-v1"))
     install.add_argument("--output", type=Path)
+    install.add_argument("--archive-url")
+    install.add_argument("--archive-sha256")
     installed_play = commands.add_parser("play-policy")
     installed_play.add_argument("--policy", required=True, type=Path)
     installed_play.add_argument("--trial-id", type=int, default=0)
@@ -228,6 +230,13 @@ def parser() -> argparse.ArgumentParser:
     walking_report.add_argument("--native-trace", required=True, type=Path)
     walking_report.add_argument("--parity", required=True, type=Path)
     walking_report.add_argument("--output", required=True, type=Path)
+    walking_archives = commands.add_parser("build-walking-archives")
+    walking_archives.add_argument("--bundle", required=True, type=Path)
+    walking_archives.add_argument("--source-run", required=True, type=Path)
+    walking_archives.add_argument("--checkpoint", required=True, type=Path)
+    walking_archives.add_argument("--scenarios", required=True, type=Path)
+    walking_archives.add_argument("--policy-spec", required=True, type=Path)
+    walking_archives.add_argument("--output", required=True, type=Path)
     return root
 
 
@@ -304,7 +313,18 @@ def main(argv: list[str] | None = None) -> int:
         from .policy_distribution import install_policy
 
         output = args.output or Path("policies") / args.name
-        print(json.dumps(install_policy(args.name, output), indent=2, sort_keys=True))
+        print(
+            json.dumps(
+                install_policy(
+                    args.name,
+                    output,
+                    archive_url=args.archive_url,
+                    archive_sha256=args.archive_sha256,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "play-policy":
         if (args.policy / "walking-policy-bundle.json").is_file():
@@ -709,6 +729,24 @@ def main(argv: list[str] | None = None) -> int:
                 args.native_trace,
                 args.parity,
                 args.output,
+            )
+        )
+        return 0
+    if args.command == "build-walking-archives":
+        from .walking_archives import build_walking_archives
+
+        print(
+            json.dumps(
+                build_walking_archives(
+                    args.bundle,
+                    args.source_run,
+                    args.checkpoint,
+                    args.scenarios,
+                    args.policy_spec,
+                    args.output,
+                ),
+                indent=2,
+                sort_keys=True,
             )
         )
         return 0
