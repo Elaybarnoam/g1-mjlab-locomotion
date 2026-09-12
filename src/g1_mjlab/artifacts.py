@@ -33,7 +33,8 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _atomic_json(path: Path, data: dict[str, Any]) -> None:
+def write_atomic_json(path: Path, data: dict[str, Any]) -> None:
+    """Durably replace one JSON object without exposing a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + f".{os.getpid()}.tmp")
     temporary.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -52,7 +53,7 @@ class RunStore:
             (root / name).mkdir()
         now = utc_now()
         data = {"schema_version": 1, "status": "created", "created_at": now, **manifest}
-        _atomic_json(root / "manifest.json", data)
+        write_atomic_json(root / "manifest.json", data)
         return cls(root=root, monotonic_started=time.monotonic())
 
     @classmethod
@@ -76,7 +77,7 @@ class RunStore:
         manifest["status"] = status
         manifest["updated_at"] = utc_now()
         manifest["wall_seconds"] = time.monotonic() - self.monotonic_started
-        _atomic_json(self.root / "manifest.json", manifest)
+        write_atomic_json(self.root / "manifest.json", manifest)
 
     def append_metric(self, record: dict[str, Any]) -> None:
         self.append_metrics([record])

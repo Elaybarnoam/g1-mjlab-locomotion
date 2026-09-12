@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "hypothesis": "The campaign harness can smoke, train, hash, evaluate, and resume Stage 19 without overlapping GPU processes.",
+  "baseline_commit": "79366c94c85e7413621bf961df66b9075cc5f907",
+  "source_checkpoint": {
+    "path": "../../../.runtime/walking-bootstrap-resume-10600-64/checkpoints/model_13398.pt",
+    "sha256": "e3cbd37746fbfad9d6cce90bcbfc5371d851c619ffcda7b59aac8c3f6783cd64"
+  },
+  "run_config": {
+    "path": "campaign-train.json",
+    "sha256": "a53bf36816e1f52c8c78fc9a5b00a480f7d0e70798618fae218819521fdc6974"
+  },
+  "walking_profile": {
+    "path": "walking-profile.json",
+    "sha256": "9acbf80a564f4e56b8249d4c5fbf47ead391e8b2aada033da68ef15402d061cf"
+  },
+  "reward_profile": {
+    "path": "arm-c-rewards.json",
+    "sha256": "e3e80df4d94e26b9de21fb595f5fcbafcfe223b046b01e89ab245ab9dbfc36dd"
+  },
+  "ppo_profile": {
+    "path": "ppo.json",
+    "sha256": "036409b07a044ee812ab0cc1635cbf54282b08b506f9d78459fe4478179d6b49"
+  },
+  "training_seed": 42,
+  "scenario_set": {
+    "path": "../measurement-scenarios-v2.json",
+    "sha256": "64c9013c481bd895f3d37d1d0ef319b810c54eb9f8b859c11c5ba1eae36cca4b"
+  },
+  "checkpoint_interval": 2,
+  "max_updates": 4,
+  "environment_count": 64,
+  "stop_rules": {
+    "segment_updates": 2,
+    "smoke_updates": 2,
+    "max_recovery_attempts": 1,
+    "fatal_nonfinite": true,
+    "cuda_error_codes": [700, 719]
+  },
+  "metric_schema_version": 2
+}

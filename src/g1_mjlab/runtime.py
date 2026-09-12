@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import RunStore, read_jsonl, sha256_file, snapshot_source
-from .checkpoints import checkpoint_index, ordered_checkpoints
+from .checkpoints import checkpoint_index, ordered_checkpoints, publish_checkpoint
 from .config import (
     PpoProfile,
     ResolvedRunConfig,
@@ -250,8 +250,14 @@ def train(
             encoding="utf-8",
         )
         checkpoints = ordered_checkpoints(log_dir)
+        lineage = _checkpoint_lineage(resume=resume, fine_tune=fine_tune)
         for checkpoint in checkpoints:
-            shutil.copy2(checkpoint, run_dir / "checkpoints" / checkpoint.name)
+            publish_checkpoint(
+                checkpoint,
+                run_dir / "checkpoints",
+                transitions_per_update=config.transitions_per_update,
+                source_lineage=lineage,
+            )
         for exported in sorted(log_dir.glob("*.onnx")):
             shutil.copy2(exported, run_dir / "checkpoints" / exported.name)
         final = checkpoints[-1] if checkpoints else None
@@ -276,9 +282,13 @@ def train(
             + "\n",
             encoding="utf-8",
         )
+        index = checkpoint_index(
+            run_dir / "checkpoints",
+            transitions_per_update=config.transitions_per_update,
+            source_lineage=lineage,
+        )
         (run_dir / "checkpoints" / "index.json").write_text(
-            json.dumps(checkpoint_index(run_dir / "checkpoints"), indent=2) + "\n",
-            encoding="utf-8",
+            json.dumps(index, indent=2) + "\n", encoding="utf-8"
         )
         store.transition(
             "completed",
@@ -308,9 +318,21 @@ def salvage_training(run_dir: Path, store: RunStore) -> dict[str, Any]:
             return {"recovery": "no upstream log directory created"}
         log_dir = logs[-1].parent.parent
         metric_count = harvest_tensorboard(log_dir, store)
+        config = json.loads((run_dir / "config.json").read_text(encoding="utf-8"))
+        transitions_per_update = int(config["transitions_per_update"])
+        lineage = _checkpoint_lineage_from_run(run_dir)
         for checkpoint in ordered_checkpoints(log_dir):
-            shutil.copy2(checkpoint, run_dir / "checkpoints" / checkpoint.name)
-        index = checkpoint_index(run_dir / "checkpoints")
+            publish_checkpoint(
+                checkpoint,
+                run_dir / "checkpoints",
+                transitions_per_update=transitions_per_update,
+                source_lineage=lineage,
+            )
+        index = checkpoint_index(
+            run_dir / "checkpoints",
+            transitions_per_update=transitions_per_update,
+            source_lineage=lineage,
+        )
         (run_dir / "checkpoints" / "index.json").write_text(
             json.dumps(index, indent=2) + "\n", encoding="utf-8"
         )
@@ -321,6 +343,32 @@ def salvage_training(run_dir: Path, store: RunStore) -> dict[str, Any]:
         }
     except Exception as exc:
         return {"recovery_error": f"{type(exc).__name__}: {exc}"}
+
+
+def _checkpoint_lineage(
+    *, resume: Path | None = None, fine_tune: Path | None = None
+) -> dict[str, Any] | None:
+    checkpoint = resume or fine_tune
+    if checkpoint is None:
+        return None
+    return {
+        "mode": "resume" if resume is not None else "fine_tune",
+        "checkpoint": str(checkpoint),
+        "checkpoint_sha256": sha256_file(checkpoint),
+    }
+
+
+def _checkpoint_lineage_from_run(run_dir: Path) -> dict[str, Any] | None:
+    for name in ("resume.json", "fine-tune.json"):
+        path = run_dir / name
+        if path.exists():
+            value = json.loads(path.read_text(encoding="utf-8"))
+            return {
+                "mode": "resume" if name == "resume.json" else "fine_tune",
+                "checkpoint": value["checkpoint"],
+                "checkpoint_sha256": value["sha256"],
+            }
+    return None
 
 
 def git_source_metadata(project_root: Path) -> dict[str, Any]:

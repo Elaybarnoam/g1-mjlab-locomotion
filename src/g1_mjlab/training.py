@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
 from .artifacts import RunStore, sha256_file
-from .checkpoints import checkpoint_iteration
+from .checkpoints import checkpoint_iteration, publish_checkpoint
 from .config import (
     PpoProfile,
     ResolvedRunConfig,
@@ -204,14 +205,40 @@ def execute_training(
             encoding="utf-8",
         )
 
+        lineage_checkpoint = resume if resume is not None else fine_tune
+        checkpoint_lineage = (
+            {
+                "mode": "resume" if resume is not None else "fine_tune",
+                "checkpoint": str(lineage_checkpoint),
+                "checkpoint_sha256": sha256_file(lineage_checkpoint),
+            }
+            if lineage_checkpoint is not None
+            else None
+        )
+
         class RecordingRunner(MjlabOnPolicyRunner):
             def save(self, path: str, infos: Any = None) -> None:
                 super().save(path, infos)
+                publish_checkpoint(
+                    Path(path),
+                    run_dir / "checkpoints",
+                    transitions_per_update=config.transitions_per_update,
+                    source_lineage=checkpoint_lineage,
+                )
                 if self.logger.writer is not None:
                     self.logger.writer.flush()
                 harvest_tensorboard(log_dir, RunStore.open(run_dir))
 
         runner = RecordingRunner(wrapped, agent_cfg, str(log_dir), device=config.device)
+        kl_samples: list[Any] = []
+        original_kl_divergence = runner.alg.actor.get_kl_divergence
+
+        def record_kl_divergence(*args: Any, **kwargs: Any) -> Any:
+            value = original_kl_divergence(*args, **kwargs)
+            kl_samples.append(torch.mean(value).detach())
+            return value
+
+        runner.alg.actor.get_kl_divergence = record_kl_divergence
         if sum(value is not None for value in (resume, initialize_actor, fine_tune)) > 1:
             raise ValueError("resume, initialize_actor, and fine_tune are mutually exclusive")
         if resume is not None:
@@ -322,6 +349,22 @@ def execute_training(
             if parameter.grad is not None
         ]
         gradient_finite = all(bool(torch.isfinite(gradient).all()) for gradient in gradients)
+        gradient_global_norm = (
+            float(
+                torch.sqrt(
+                    torch.stack(
+                        [torch.sum(torch.square(value.detach())) for value in gradients]
+                    ).sum()
+                ).cpu()
+            )
+            if gradients
+            else 0.0
+        )
+        kl_values = torch.stack(kl_samples).detach().cpu().tolist() if kl_samples else []
+        algorithm = agent_cfg["algorithm"]
+        kl_samples_per_update = int(algorithm["num_learning_epochs"]) * int(
+            algorithm["num_mini_batches"]
+        )
         if not all(bool(item["all_parameters_finite"]) for item in changes.values()):
             raise FloatingPointError("PPO produced non-finite model parameters")
         if not all(bool(item["parameters_changed"]) for item in changes.values()):
@@ -338,6 +381,10 @@ def execute_training(
                     "components": changes,
                     "recorded_gradient_tensor_count": len(gradients),
                     "all_recorded_gradients_finite": gradient_finite,
+                    "final_gradient_global_norm": gradient_global_norm,
+                    "kl_divergence_samples": kl_values,
+                    "kl_samples_per_update": kl_samples_per_update,
+                    "all_kl_samples_finite": all(math.isfinite(value) for value in kl_values),
                     "optimizer_state_entries": len(runner.alg.optimizer.state),
                     "final_learning_rate": runner.alg.learning_rate,
                 },
@@ -346,6 +393,20 @@ def execute_training(
             )
             + "\n",
             encoding="utf-8",
+        )
+        normalizers: dict[str, Any] = {"schema_version": 1}
+        for name, model in (("actor", runner.alg.actor), ("critic", runner.alg.critic)):
+            state = model.obs_normalizer.state_dict()
+            normalizers[name] = {
+                key: {
+                    "shape": list(value.shape),
+                    "values": value.detach().cpu().tolist(),
+                    "finite": bool(torch.isfinite(value).all()),
+                }
+                for key, value in state.items()
+            }
+        (run_dir / "normalizer-state.json").write_text(
+            json.dumps(normalizers, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         runner.export_policy_to_onnx(str(log_dir), filename="policy.onnx")
         if config.device.startswith("cuda"):

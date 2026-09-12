@@ -88,6 +88,12 @@ def parser() -> argparse.ArgumentParser:
     campaign.add_argument("--trials", type=int, default=20)
     campaign.add_argument("--horizon-seconds", type=float, default=10.0)
     campaign.add_argument("--attempts", type=int, default=3)
+    walking_campaign = commands.add_parser("run-walking-campaign")
+    walking_campaign.add_argument("--manifest", required=True, type=Path)
+    walking_campaign.add_argument("--output", required=True, type=Path)
+    walking_checkpoint_evaluation = commands.add_parser("evaluate-walking-checkpoints")
+    walking_checkpoint_evaluation.add_argument("--manifest", required=True, type=Path)
+    walking_checkpoint_evaluation.add_argument("--output", required=True, type=Path)
     qualify_final = commands.add_parser("qualify-final")
     qualify_final.add_argument("--run", required=True, type=Path)
     train = commands.add_parser("train")
@@ -420,6 +426,24 @@ def main(argv: list[str] | None = None) -> int:
             retries=args.attempts,
         )
         print(json.dumps(result, indent=2))
+        return 0
+    if args.command == "run-walking-campaign":
+        from .walking_campaign import run_walking_campaign
+
+        print(
+            json.dumps(run_walking_campaign(args.manifest, args.output), indent=2, sort_keys=True)
+        )
+        return 0
+    if args.command == "evaluate-walking-checkpoints":
+        from .walking_campaign import evaluate_walking_checkpoints
+
+        print(
+            json.dumps(
+                evaluate_walking_checkpoints(args.manifest, args.output),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "qualify-final":
         from .deployment import qualify_final_bundle

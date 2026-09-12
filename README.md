@@ -170,6 +170,7 @@ not a safe interchange format for untrusted files.
 - [Walking reference semantics v2](docs/walking-reference-v2.md)
 - [Walking deterministic live viewer](docs/walking-live-viewer.md)
 - [Walking Stage 19 contact state and reward profiles](docs/walking-stage19-rewards.md)
+- [Walking campaign execution and recovery](docs/walking-campaigns.md)
 
 ## Contributing and license
 
