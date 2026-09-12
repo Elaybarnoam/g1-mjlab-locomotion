@@ -98,6 +98,22 @@ def test_evaluate_walking_v2_requests_required_physics_trace(
         .command
         == "diagnose-walking"
     )
+    assert (
+        parser()
+        .parse_args(
+            [
+                "play-walking",
+                "--config",
+                "config",
+                "--checkpoint",
+                "model",
+                "--schedule",
+                "schedule",
+            ]
+        )
+        .command
+        == "play-walking"
+    )
 
 
 def test_native_recording_rejects_invalid_dimensions_before_file_access() -> None:

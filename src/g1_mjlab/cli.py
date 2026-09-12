@@ -134,6 +134,14 @@ def parser() -> argparse.ArgumentParser:
     )
     diagnose_walking.add_argument("--physics-trace", action="store_true")
     diagnose_walking.add_argument("--video", action="store_true")
+    play_walking = commands.add_parser("play-walking")
+    play_walking.add_argument("--config", required=True, type=Path)
+    play_walking.add_argument("--checkpoint", required=True, type=Path)
+    play_walking.add_argument("--schedule", required=True, type=Path)
+    play_walking.add_argument("--seed", type=int, default=10042)
+    play_walking.add_argument("--viewer", choices=("native",), default="native")
+    play_walking.add_argument("--loop", action="store_true")
+    play_walking.add_argument("--duration-seconds", type=float)
     diagnose = commands.add_parser("diagnose-standing")
     diagnose.add_argument("--config", required=True, type=Path)
     diagnose.add_argument("--checkpoint", required=True, type=Path)
@@ -320,6 +328,24 @@ def main(argv: list[str] | None = None) -> int:
                     criteria_path=args.criteria,
                     physics_trace=args.physics_trace,
                     video=args.video,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "play-walking":
+        from .walking_viewer import play_walking
+
+        print(
+            json.dumps(
+                play_walking(
+                    load_config(args.config),
+                    args.checkpoint,
+                    args.schedule,
+                    seed=args.seed,
+                    loop=args.loop,
+                    duration_s=args.duration_seconds,
                 ),
                 indent=2,
                 sort_keys=True,

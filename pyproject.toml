@@ -102,6 +102,7 @@ omit = [
   "*/g1_mjlab/environment.py",
   "*/g1_mjlab/native_media.py",
   "*/g1_mjlab/motion/preparation.py",
+  "*/g1_mjlab/motion/reference_feasibility.py",
   "*/g1_mjlab/tasks/walking_mdp.py",
   "*/g1_mjlab/tasks/walking_contact.py",
   "*/g1_mjlab/tasks/walking_v1.py",
@@ -113,6 +114,7 @@ omit = [
   "*/g1_mjlab/tasks/standing_v1.py",
   "*/g1_mjlab/walking_diagnostics.py",
   "*/g1_mjlab/walking_measurement.py",
+  "*/g1_mjlab/walking_viewer.py",
   "*/g1_mjlab/walking_runtime.py",
 ]
 

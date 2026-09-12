@@ -168,6 +168,7 @@ not a safe interchange format for untrusted files.
 - [Walking PPO lifecycle](docs/walking-training-lifecycle.md)
 - [Walking physical-contact evaluation v2](docs/walking-evaluation-v2.md)
 - [Walking reference semantics v2](docs/walking-reference-v2.md)
+- [Walking deterministic live viewer](docs/walking-live-viewer.md)
 
 ## Contributing and license
 
