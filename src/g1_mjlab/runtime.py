@@ -20,6 +20,7 @@ from .checkpoints import checkpoint_index, ordered_checkpoints
 from .config import (
     PpoProfile,
     ResolvedRunConfig,
+    Stage19RewardProfile,
     StandingRewardProfile,
     WalkingTrainingProfile,
 )
@@ -134,6 +135,7 @@ def train(
     initialize_actor: Path | None = None,
     fine_tune: Path | None = None,
     walking_profile: WalkingTrainingProfile | None = None,
+    walking_reward_profile: Stage19RewardProfile | None = None,
 ) -> Path:
     """Execute one bounded upstream training run and finalize local evidence."""
     task = get_task(config.task_id).require(TaskCapability.TRAIN)
@@ -144,7 +146,14 @@ def train(
     if resume is not None:
         from .training import validate_resume
 
-        validate_resume(config, resume, reward_profile, ppo_profile, walking_profile)
+        validate_resume(
+            config,
+            resume,
+            reward_profile,
+            ppo_profile,
+            walking_profile,
+            walking_reward_profile,
+        )
     if initialize_actor is not None:
         from .training import validate_actor_initialization
 
@@ -163,6 +172,9 @@ def train(
             "reward_profile_sha256": reward_profile.sha256 if reward_profile else None,
             "ppo_profile_sha256": ppo_profile.sha256 if ppo_profile else None,
             "walking_profile_sha256": walking_profile.sha256 if walking_profile else None,
+            "walking_reward_profile_sha256": (
+                walking_reward_profile.sha256 if walking_reward_profile else None
+            ),
             "max_iterations": config.max_iterations,
             **source,
         },
@@ -185,6 +197,11 @@ def train(
             json.dumps(walking_profile.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+    if walking_reward_profile is not None:
+        (run_dir / "walking-reward-profile.json").write_text(
+            json.dumps(walking_reward_profile.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     store.transition("starting")
     try:
         snapshot = snapshot_source(
@@ -201,6 +218,7 @@ def train(
             reward_profile=reward_profile,
             ppo_profile=ppo_profile,
             walking_profile=walking_profile,
+            walking_reward_profile=walking_reward_profile,
         )
         (run_dir / "algorithm.json").write_text(
             json.dumps(asdict(train_cfg.agent), indent=2, sort_keys=True) + "\n",

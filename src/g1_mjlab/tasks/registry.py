@@ -61,12 +61,18 @@ class TaskDefinition:
         self._implementation().register_task()
 
     def configure_environment(
-        self, env: Any, *, randomized_reset: bool = True, task_profile: Any = None
+        self,
+        env: Any,
+        *,
+        randomized_reset: bool = True,
+        task_profile: Any = None,
+        stage19_reward_profile: Any = None,
     ) -> None:
         self._implementation().configure_environment(
             env,
             randomized_reset=randomized_reset,
             task_profile=task_profile,
+            stage19_reward_profile=stage19_reward_profile,
         )
 
 

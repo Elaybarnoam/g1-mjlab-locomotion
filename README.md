@@ -169,6 +169,7 @@ not a safe interchange format for untrusted files.
 - [Walking physical-contact evaluation v2](docs/walking-evaluation-v2.md)
 - [Walking reference semantics v2](docs/walking-reference-v2.md)
 - [Walking deterministic live viewer](docs/walking-live-viewer.md)
+- [Walking Stage 19 contact state and reward profiles](docs/walking-stage19-rewards.md)
 
 ## Contributing and license
 

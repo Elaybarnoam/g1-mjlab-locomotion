@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from g1_mjlab.artifacts import snapshot_source
-from g1_mjlab.config import WalkingTrainingProfile, load_config
+from g1_mjlab.config import WalkingTrainingProfile, load_config, load_stage19_reward_profile
 from g1_mjlab.runtime import summarize_training_metrics
 from g1_mjlab.training import (
     validate_actor_initialization,
@@ -73,6 +73,23 @@ def test_resume_compares_json_normalized_walking_profile(tmp_path: Path) -> None
     (run / "walking-profile.json").write_text(json.dumps(profile.to_dict()), encoding="utf-8")
 
     validate_resume(config, checkpoint, None, None, profile)
+
+
+def test_resume_rejects_changed_stage19_reward_profile(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_config(root / "configs/walking-v1/stage19/arm-c-smoke.json")
+    arm_b = load_stage19_reward_profile(root / "configs/walking-v1/stage19/arm-b-rewards.json")
+    arm_c = load_stage19_reward_profile(root / "configs/walking-v1/stage19/arm-c-rewards.json")
+    run = tmp_path / "run"
+    (run / "checkpoints").mkdir(parents=True)
+    checkpoint = run / "checkpoints" / "model_1.pt"
+    checkpoint.touch()
+    (run / "config.json").write_text(json.dumps(config.to_dict()), encoding="utf-8")
+    (run / "walking-reward-profile.json").write_text(json.dumps(arm_c.to_dict()), encoding="utf-8")
+
+    validate_resume(config, checkpoint, None, None, walking_reward_profile=arm_c)
+    with pytest.raises(ValueError, match="walking-reward-profile"):
+        validate_resume(config, checkpoint, None, None, walking_reward_profile=arm_b)
 
 
 def test_actor_initialization_requires_same_task_and_is_not_resume(tmp_path: Path) -> None:

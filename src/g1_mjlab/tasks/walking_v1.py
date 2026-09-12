@@ -80,9 +80,13 @@ def walking_policy_contract() -> PolicyContract:
 
 
 def configure_environment(
-    env: Any, *, randomized_reset: bool = True, task_profile: Any = None
+    env: Any,
+    *,
+    randomized_reset: bool = True,
+    task_profile: Any = None,
+    stage19_reward_profile: Any = None,
 ) -> None:
-    from ..config import WalkingTrainingProfile
+    from ..config import Stage19RewardProfile, WalkingTrainingProfile
     from .walking_mdp import WalkingCommandCfg
 
     command = env.commands["twist"]
@@ -90,6 +94,10 @@ def configure_environment(
         raise TypeError("walking-v1 requires WalkingCommandCfg")
     if task_profile is not None and not isinstance(task_profile, WalkingTrainingProfile):
         raise TypeError("walking-v1 requires WalkingTrainingProfile")
+    if stage19_reward_profile is not None and not isinstance(
+        stage19_reward_profile, Stage19RewardProfile
+    ):
+        raise TypeError("walking-v1 requires Stage19RewardProfile")
     command.randomize_phase = (
         task_profile.randomize_phase if task_profile is not None else randomized_reset
     )
@@ -135,6 +143,104 @@ def configure_environment(
     command.reference_ground_offset_m = (
         task_profile.reference_ground_offset_m if task_profile is not None else 0.0
     )
+    if stage19_reward_profile is not None:
+        configure_stage19_rewards(env, stage19_reward_profile)
+
+
+def configure_stage19_rewards(env: Any, profile: Any) -> None:
+    """Apply a complete allowlisted profile; undeclared inherited weights cannot survive."""
+    from mjlab.managers.reward_manager import RewardTermCfg
+    from mjlab.sensor import ContactMatch, ContactSensorCfg
+
+    from ..config import Stage19RewardProfile
+    from ..motion.contact import load_stage19_contact_profile
+    from . import walking_mdp
+
+    if not isinstance(profile, Stage19RewardProfile):
+        raise TypeError("profile must be Stage19RewardProfile")
+    terms = profile.by_name()
+    contact_profile = load_stage19_contact_profile(
+        _repository_root() / "configs/walking-v1/stage19/contact-profile.json"
+    )
+    command = env.commands["twist"]
+    if not isinstance(command, walking_mdp.WalkingCommandCfg):
+        raise TypeError("Stage 19 requires WalkingCommandCfg")
+    command.stage19_contact_parameters = contact_profile.runtime_parameters()
+    expected_parameters = {
+        "phase_contact_error": {"walk_threshold_m_s": command.walk_threshold_m_s},
+        "extra_contact_event": {
+            "phase_tolerance_cycle": contact_profile.phase_tolerance_cycle,
+            "transition_grace_s": contact_profile.transition_grace_s,
+        },
+        "short_stance": {
+            "minimum_duration_s": contact_profile.minimum_stance_duration_s,
+            "transition_grace_s": contact_profile.transition_grace_s,
+        },
+        "short_swing": {
+            "minimum_duration_s": contact_profile.minimum_swing_duration_s,
+            "transition_grace_s": contact_profile.transition_grace_s,
+        },
+        "physical_stance_slip": {
+            "slip_scale_m_s": contact_profile.slip_scale_m_s,
+            "squared_error_clip": contact_profile.squared_error_clip,
+        },
+        "swing_clearance_error": {
+            "reference_clearance_m": contact_profile.swing_clearance_reference_m,
+            "clearance_scale_m": contact_profile.clearance_scale_m,
+            "squared_error_clip": contact_profile.squared_error_clip,
+        },
+        "touchdown_placement": {
+            "minimum_root_progress_fraction": contact_profile.minimum_root_progress_fraction,
+            "minimum_step_reference_m": contact_profile.minimum_step_reference_m,
+            "minimum_swing_clearance_m": contact_profile.minimum_swing_clearance_m,
+            "placement_scale_m": contact_profile.placement_scale_m,
+            "step_reference_m": contact_profile.step_reference_m,
+        },
+        "bilateral_flight": {
+            "minimum_duration_s": contact_profile.bilateral_flight_duration_s,
+        },
+    }
+    for name, expected in expected_parameters.items():
+        if terms[name].parameter_dict != expected:
+            raise ValueError(f"{name} parameters differ from the frozen contact profile")
+    sensor = ContactSensorCfg(
+        name="stage19_feet_contact",
+        primary=ContactMatch(
+            mode="subtree",
+            pattern=r"^(left_ankle_roll_link|right_ankle_roll_link)$",
+            entity="robot",
+        ),
+        secondary=ContactMatch(mode="body", pattern="terrain"),
+        fields=("found", "force", "pos", "normal", "tangent"),
+        reduce="none",
+        num_slots=contact_profile.contact_slots,
+        global_frame=True,
+    )
+    env.scene.sensors = (env.scene.sensors or ()) + (sensor,)
+    stateful = {
+        "phase_contact_error": walking_mdp.phase_contact_error,
+        "extra_contact_event": walking_mdp.extra_contact_event,
+        "short_stance": walking_mdp.short_stance,
+        "short_swing": walking_mdp.short_swing,
+        "physical_stance_slip": walking_mdp.physical_stance_slip,
+        "swing_clearance_error": walking_mdp.swing_clearance_error,
+        "touchdown_placement": walking_mdp.touchdown_placement,
+        "bilateral_flight": walking_mdp.bilateral_flight,
+    }
+    for name, function in stateful.items():
+        term = terms[name]
+        env.rewards[name] = RewardTermCfg(
+            func=function,
+            weight=term.manager_weight(env.sim.mujoco.timestep * env.decimation),
+            params={"command_name": "twist"},
+        )
+    missing = set(terms) - set(env.rewards)
+    if missing:
+        raise ValueError(f"Stage 19 profile names missing from task: {sorted(missing)}")
+    control_dt = env.sim.mujoco.timestep * env.decimation
+    for name, reward in env.rewards.items():
+        term = terms[name]
+        reward.weight = term.manager_weight(control_dt) if term.enabled else 0.0
 
 
 def _configure_locomotion_bootstrap(env: Any) -> None:

@@ -12,6 +12,7 @@ from mjlab.envs import ManagerBasedRlEnv  # noqa: E402
 from g1_mjlab.config import (  # noqa: E402
     WalkingTrainingProfile,
     load_config,
+    load_stage19_reward_profile,
     load_walking_training_profile,
 )
 from g1_mjlab.environment import build_train_config  # noqa: E402
@@ -107,6 +108,30 @@ def test_bootstrap_profile_uses_nominal_actions_and_upstream_locomotion_rewards(
     assert cfg.rewards["foot_slip"].weight == pytest.approx(-0.1)
     assert cfg.rewards["soft_landing"].weight == pytest.approx(-1e-5)
     assert cfg.rewards["termination"].weight == 0
+    assert set(cfg.terminations) == {"time_out", "fell_over", "nonfinite_state"}
+
+
+def test_stage19_arm_c_resolves_every_weight_and_stateful_sensor() -> None:
+    root = Path(__file__).parents[2]
+    run = load_config(root / "configs/walking-v1/stage19/arm-c-smoke.json")
+    walking = load_walking_training_profile(
+        root / "configs/walking-v1/stage19/walking-profile.json"
+    )
+    rewards = load_stage19_reward_profile(root / "configs/walking-v1/stage19/arm-c-rewards.json")
+
+    cfg = build_train_config(
+        run,
+        root / ".runtime",
+        walking_profile=walking,
+        walking_reward_profile=rewards,
+    ).env
+
+    assert set(cfg.rewards) == set(rewards.by_name())
+    assert cfg.rewards["foot_slip"].weight == 0
+    assert cfg.rewards["physical_stance_slip"].weight == pytest.approx(-0.25)
+    assert cfg.rewards["extra_contact_event"].weight == pytest.approx(-1.0)
+    assert cfg.commands["twist"].stage19_contact_parameters["minimum_stance_duration_s"] == 0.2
+    assert any(sensor.name == "stage19_feet_contact" for sensor in cfg.scene.sensors)
     assert set(cfg.terminations) == {"time_out", "fell_over", "nonfinite_state"}
 
 

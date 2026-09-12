@@ -6,11 +6,68 @@ from pathlib import Path
 import pytest
 
 from g1_mjlab.config import (
+    STAGE19_EVENT_REWARDS,
+    STAGE19_REWARD_NAMES,
+    STAGE19_REWARD_PARAMETERS,
     load_config,
     load_ppo_profile,
     load_reward_profile,
+    load_stage19_reward_profile,
     load_walking_training_profile,
 )
+
+
+def _stage19_payload() -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "name": "arm-a-v1",
+        "terms": [
+            {
+                "name": name,
+                "enabled": False,
+                "weight": 0.0,
+                "integration_kind": "per_event" if name in STAGE19_EVENT_REWARDS else "rate",
+                "parameters": {parameter: 1.0 for parameter in STAGE19_REWARD_PARAMETERS[name]},
+                "physical_unit": "1",
+                "mask_id": "always",
+                "formula_id": name,
+            }
+            for name in sorted(STAGE19_REWARD_NAMES)
+        ],
+    }
+
+
+def test_stage19_reward_profile_is_complete_hashed_and_event_scaled(tmp_path: Path) -> None:
+    payload = _stage19_payload()
+    path = _write(tmp_path, payload)
+    profile = load_stage19_reward_profile(path)
+    assert len(profile.terms) == len(STAGE19_REWARD_NAMES)
+    assert len(profile.sha256) == 64
+    termination = profile.by_name()["termination"]
+    assert termination.manager_weight(0.02) == 0
+
+
+@pytest.mark.parametrize(
+    "mutation", ["missing", "unknown", "unsafe_formula", "bad_kind", "bad_parameter"]
+)
+def test_stage19_reward_profile_fails_closed(tmp_path: Path, mutation: str) -> None:
+    payload = _stage19_payload()
+    terms = payload["terms"]
+    assert isinstance(terms, list)
+    if mutation == "missing":
+        terms.pop()
+    elif mutation == "unknown":
+        terms[0]["unknown"] = 1
+    elif mutation == "unsafe_formula":
+        terms[0]["formula_id"] = "package.module:function"
+    elif mutation == "bad_kind":
+        target = next(term for term in terms if term["name"] == "termination")
+        target["integration_kind"] = "rate"
+    else:
+        target = next(term for term in terms if term["name"] == "physical_stance_slip")
+        target["parameters"]["unreviewed_scale"] = 1.0
+    with pytest.raises(ValueError):
+        load_stage19_reward_profile(_write(tmp_path, payload))
 
 
 def _data() -> dict[str, object]:

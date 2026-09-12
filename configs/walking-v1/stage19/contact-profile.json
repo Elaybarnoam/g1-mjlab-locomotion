@@ -1,0 +1,21 @@
+{
+  "bilateral_flight_duration_s": 0.06,
+  "clearance_scale_m": 0.03,
+  "confirmation_duration_s": 0.06,
+  "contact_slots": 4,
+  "enter_force_n": 15.0,
+  "exit_force_n": 8.0,
+  "minimum_root_progress_fraction": 0.5,
+  "minimum_stance_duration_s": 0.2,
+  "minimum_step_reference_m": 0.18,
+  "minimum_swing_clearance_m": 0.025,
+  "minimum_swing_duration_s": 0.12,
+  "phase_tolerance_cycle": 0.1,
+  "placement_scale_m": 0.1,
+  "schema_version": 1,
+  "slip_scale_m_s": 0.12,
+  "squared_error_clip": 4.0,
+  "step_reference_m": 0.6064067445483481,
+  "swing_clearance_reference_m": 0.03,
+  "transition_grace_s": 1.0
+}

@@ -10,6 +10,74 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+STAGE19_REWARD_NAMES = frozenset(
+    {
+        "track_linear_velocity",
+        "track_angular_velocity",
+        "upright",
+        "pose",
+        "body_ang_vel",
+        "angular_momentum",
+        "dof_pos_limits",
+        "action_rate_l2",
+        "air_time",
+        "foot_clearance",
+        "foot_swing_height",
+        "foot_slip",
+        "soft_landing",
+        "self_collisions",
+        "commanded_forward_progress",
+        "reference_joint_pose",
+        "reference_joint_velocity",
+        "reference_foot_position",
+        "reference_contact_timing",
+        "crouch",
+        "effort",
+        "termination",
+        "phase_contact_error",
+        "extra_contact_event",
+        "short_stance",
+        "short_swing",
+        "physical_stance_slip",
+        "swing_clearance_error",
+        "touchdown_placement",
+        "bilateral_flight",
+    }
+)
+
+STAGE19_EVENT_REWARDS = frozenset(
+    {"extra_contact_event", "short_stance", "short_swing", "touchdown_placement", "termination"}
+)
+
+STAGE19_REWARD_PARAMETERS: dict[str, frozenset[str]] = {
+    name: frozenset() for name in STAGE19_REWARD_NAMES
+}
+STAGE19_REWARD_PARAMETERS.update(
+    {
+        "track_linear_velocity": frozenset({"std"}),
+        "track_angular_velocity": frozenset({"std"}),
+        "upright": frozenset({"std"}),
+        "phase_contact_error": frozenset({"walk_threshold_m_s"}),
+        "extra_contact_event": frozenset({"phase_tolerance_cycle", "transition_grace_s"}),
+        "short_stance": frozenset({"minimum_duration_s", "transition_grace_s"}),
+        "short_swing": frozenset({"minimum_duration_s", "transition_grace_s"}),
+        "physical_stance_slip": frozenset({"slip_scale_m_s", "squared_error_clip"}),
+        "swing_clearance_error": frozenset(
+            {"reference_clearance_m", "clearance_scale_m", "squared_error_clip"}
+        ),
+        "touchdown_placement": frozenset(
+            {
+                "minimum_root_progress_fraction",
+                "minimum_step_reference_m",
+                "minimum_swing_clearance_m",
+                "placement_scale_m",
+                "step_reference_m",
+            }
+        ),
+        "bilateral_flight": frozenset({"minimum_duration_s"}),
+    }
+)
+
 
 @dataclass(frozen=True)
 class ResolvedRunConfig:
@@ -120,6 +188,63 @@ class WalkingTrainingProfile:
     def sha256(self) -> str:
         canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class Stage19RewardTerm:
+    """One allowlisted reward with explicit units and integration semantics."""
+
+    name: str
+    enabled: bool
+    weight: float
+    integration_kind: str
+    parameters: tuple[tuple[str, float], ...]
+    physical_unit: str
+    mask_id: str
+    formula_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "enabled": self.enabled,
+            "weight": self.weight,
+            "integration_kind": self.integration_kind,
+            "parameters": dict(self.parameters),
+            "physical_unit": self.physical_unit,
+            "mask_id": self.mask_id,
+            "formula_id": self.formula_id,
+        }
+
+    def manager_weight(self, control_dt: float) -> float:
+        return self.weight / control_dt if self.integration_kind == "per_event" else self.weight
+
+    @property
+    def parameter_dict(self) -> dict[str, float]:
+        return dict(self.parameters)
+
+
+@dataclass(frozen=True)
+class Stage19RewardProfile:
+    """Complete reward resolution for one controlled Stage 19 arm."""
+
+    schema_version: int
+    name: str
+    terms: tuple[Stage19RewardTerm, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "name": self.name,
+            "terms": [term.to_dict() for term in self.terms],
+        }
+
+    @property
+    def sha256(self) -> str:
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+    def by_name(self) -> dict[str, Stage19RewardTerm]:
+        return {term.name: term for term in self.terms}
 
 
 _FIELDS = set(ResolvedRunConfig.__dataclass_fields__)
@@ -330,3 +455,65 @@ def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
     ):
         raise ValueError("reference_foot_position_std_m must be positive and finite")
     return profile
+
+
+def load_stage19_reward_profile(path: Path) -> Stage19RewardProfile:
+    """Load a complete, non-executable Stage 19 reward declaration."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or set(raw) != {"schema_version", "name", "terms"}:
+        raise ValueError("stage19 reward profile fields do not match schema")
+    if raw["schema_version"] != 1 or not isinstance(raw["name"], str) or not raw["name"]:
+        raise ValueError("invalid stage19 reward profile identity")
+    if not isinstance(raw["terms"], list):
+        raise ValueError("stage19 reward terms must be a list")
+    expected = set(Stage19RewardTerm.__dataclass_fields__)
+    terms: list[Stage19RewardTerm] = []
+    for value in raw["terms"]:
+        if not isinstance(value, dict) or set(value) != expected:
+            raise ValueError("stage19 reward term fields do not match schema")
+        if value["name"] not in STAGE19_REWARD_NAMES or value["formula_id"] != value["name"]:
+            raise ValueError("stage19 reward term or formula is not allowlisted")
+        if value["integration_kind"] not in {"rate", "per_event"}:
+            raise ValueError("stage19 integration_kind must be rate or per_event")
+        expected_kind = "per_event" if value["name"] in STAGE19_EVENT_REWARDS else "rate"
+        if value["integration_kind"] != expected_kind:
+            raise ValueError(f"{value['name']} must use {expected_kind} integration")
+        parameters = value["parameters"]
+        if not isinstance(parameters, dict) or any(
+            not isinstance(key, str)
+            or isinstance(number, bool)
+            or not isinstance(number, (int, float))
+            or not math.isfinite(number)
+            for key, number in parameters.items()
+        ):
+            raise ValueError("stage19 parameters must be finite numeric values")
+        expected_parameters = STAGE19_REWARD_PARAMETERS[value["name"]]
+        if set(parameters) != expected_parameters:
+            raise ValueError(
+                f"{value['name']} parameters mismatch; "
+                f"expected={sorted(expected_parameters)}, actual={sorted(parameters)}"
+            )
+        if any(number <= 0 for number in parameters.values()):
+            raise ValueError("stage19 scales and thresholds must be positive")
+        weight = value["weight"]
+        if (
+            isinstance(weight, bool)
+            or not isinstance(weight, (int, float))
+            or not math.isfinite(weight)
+            or not isinstance(value["enabled"], bool)
+        ):
+            raise ValueError("stage19 reward state and weight are invalid")
+        if not value["enabled"] and weight != 0:
+            raise ValueError("disabled stage19 rewards must have zero weight")
+        if not value["physical_unit"] or not value["mask_id"]:
+            raise ValueError("stage19 reward units and mask must be explicit")
+        converted = dict(value)
+        converted["parameters"] = tuple(
+            sorted((key, float(number)) for key, number in parameters.items())
+        )
+        converted["weight"] = float(weight)
+        terms.append(Stage19RewardTerm(**converted))
+    names = [term.name for term in terms]
+    if len(names) != len(set(names)) or set(names) != STAGE19_REWARD_NAMES:
+        raise ValueError("stage19 profile must resolve every reward exactly once")
+    return Stage19RewardProfile(1, raw["name"], tuple(terms))

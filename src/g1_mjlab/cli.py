@@ -10,6 +10,7 @@ from .config import (
     load_config,
     load_ppo_profile,
     load_reward_profile,
+    load_stage19_reward_profile,
     load_walking_training_profile,
 )
 
@@ -94,6 +95,7 @@ def parser() -> argparse.ArgumentParser:
     train.add_argument("--reward-profile", type=Path)
     train.add_argument("--ppo-profile", type=Path)
     train.add_argument("--walking-profile", type=Path)
+    train.add_argument("--walking-reward-profile", type=Path)
     continuation = train.add_mutually_exclusive_group()
     continuation.add_argument("--resume", type=Path)
     continuation.add_argument("--initialize-actor", type=Path)
@@ -255,6 +257,11 @@ def main(argv: list[str] | None = None) -> int:
         walking_profile = (
             load_walking_training_profile(args.walking_profile) if args.walking_profile else None
         )
+        walking_reward_profile = (
+            load_stage19_reward_profile(args.walking_reward_profile)
+            if args.walking_reward_profile
+            else None
+        )
         project_root = Path(__file__).resolve().parents[2]
         train(
             config,
@@ -266,6 +273,7 @@ def main(argv: list[str] | None = None) -> int:
             initialize_actor=args.initialize_actor,
             fine_tune=args.fine_tune,
             walking_profile=walking_profile,
+            walking_reward_profile=walking_reward_profile,
         )
         return 0
     if args.command == "qualify-controller":

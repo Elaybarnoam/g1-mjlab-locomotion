@@ -23,7 +23,7 @@ _ROBOT = SceneEntityCfg("robot")
 
 
 @dataclass(kw_only=True)
-class WalkingCommandCfg(CommandTermCfg):  # type: ignore[misc]
+class WalkingCommandCfg(CommandTermCfg):
     motion_file: str
     reference_speed_m_s: float
     cycle_duration_s: float
@@ -39,12 +39,13 @@ class WalkingCommandCfg(CommandTermCfg):  # type: ignore[misc]
     moving_speed_max_m_s: float | None = None
     host_semantics_version: int = 1
     reference_ground_offset_m: float = 0.0
+    stage19_contact_parameters: dict[str, float] | None = None
 
     def build(self, env: ManagerBasedRlEnv) -> WalkingCommand:
         return WalkingCommand(self, env)
 
 
-class WalkingCommand(CommandTerm):  # type: ignore[misc]
+class WalkingCommand(CommandTerm):
     """GPU-resident command and cyclic reference state shared by all MDP terms."""
 
     cfg: WalkingCommandCfg
@@ -114,6 +115,11 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
         self.reference_distance_m = torch.zeros(self.num_envs, device=self.device)
         self._command_dt: float | torch.Tensor = 0.0
         self.metrics["command_filter_error_m_s"] = torch.zeros(self.num_envs, device=self.device)
+        self.contact_runtime: Any | None = None
+        if cfg.stage19_contact_parameters is not None:
+            from .walking_contact import WalkingContactRuntime
+
+            self.contact_runtime = WalkingContactRuntime(env, self, cfg.stage19_contact_parameters)
 
     @property
     def command(self) -> torch.Tensor:
@@ -145,9 +151,11 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
             self.phase[env_ids] = torch.rand(len(env_ids), device=self.device)
         else:
             self.phase[env_ids] = 0
-        extras = cast(dict[str, float], super().reset(env_ids))
+        extras = super().reset(env_ids)
         if self.cfg.reference_initialization:
             _write_walking_state(self._env, env_ids, self, reference_initialization=True)
+        if self.contact_runtime is not None:
+            self.contact_runtime.reset(env_ids)
         return extras
 
     def _update_metrics(self) -> None:
@@ -201,6 +209,8 @@ class WalkingCommand(CommandTerm):  # type: ignore[misc]
             (self.blend[ids] - previous_blend) / torch.clamp(resolved_dt, min=1e-12),
             torch.zeros_like(self.blend[ids]),
         )
+        if self.contact_runtime is not None and env_ids is None:
+            self.contact_runtime.update()
 
     def _frame_blend(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         intervals = self.reference_joint_position.shape[0] - 1
@@ -339,7 +349,7 @@ def heading_frame_delta(
     quaternion = torch.nn.functional.normalize(root_quaternion_wxyz, dim=-1)
     heading = yaw_quat(quaternion)
     repeated = heading[:, None, :].expand(-1, world_delta.shape[1], -1)
-    return quat_apply_inverse(repeated, world_delta)
+    return cast(torch.Tensor, quat_apply_inverse(repeated, world_delta))
 
 
 def heading_frame_velocity(
@@ -347,7 +357,7 @@ def heading_frame_velocity(
 ) -> torch.Tensor:
     """Rotate world velocity into yaw heading without roll/pitch contamination."""
     quaternion = torch.nn.functional.normalize(root_quaternion_wxyz, dim=-1)
-    return quat_apply_inverse(yaw_quat(quaternion), world_velocity)
+    return cast(torch.Tensor, quat_apply_inverse(yaw_quat(quaternion), world_velocity))
 
 
 class reference_foot_position:
@@ -395,6 +405,47 @@ def reference_contact_timing(
     agreement = (actual == command.foot_contact).float().mean(dim=1)
     env.extras["log"]["Metrics/reference_contact_agreement"] = agreement.mean()
     return agreement * command.blend
+
+
+def _contact_reward(env: ManagerBasedRlEnv, command_name: str, field: str) -> torch.Tensor:
+    command = _command(env, command_name)
+    if command.contact_runtime is None:
+        raise RuntimeError("Stage 19 contact runtime is not configured")
+    value = cast(torch.Tensor, getattr(command.contact_runtime.snapshot, field))
+    env.extras["log"][f"Stage19Raw/{field}"] = value.mean()
+    return value
+
+
+def phase_contact_error(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "phase_contact_error")
+
+
+def extra_contact_event(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "unmatched_events")
+
+
+def short_stance(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "short_stance")
+
+
+def short_swing(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "short_swing")
+
+
+def physical_stance_slip(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "physical_stance_slip")
+
+
+def swing_clearance_error(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "swing_clearance_error")
+
+
+def touchdown_placement(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "touchdown_placement")
+
+
+def bilateral_flight(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+    return _contact_reward(env, command_name, "bilateral_flight")
 
 
 def crouch_cost(

@@ -151,9 +151,7 @@ class WalkingNativeViewer(NativeMujocoViewer):
             if self.fall_reason
             else ("PAUSED" if status.paused else "RUNNING")
         )
-        labels = (
-            "Mode\nCheckpoint\nHash\nEpisode\nState\nSim time\nRequested vx\nApplied vx\nPhase\nRTF\nControls"
-        )
+        labels = "Mode\nCheckpoint\nHash\nEpisode\nState\nSim time\nRequested vx\nApplied vx\nPhase\nRTF\nControls"
         values = (
             "deterministic actor mean; learning disabled\n"
             f"{self.checkpoint}\n{self.checkpoint_sha256[:12]}\n{self.episode}\n{state}\n"

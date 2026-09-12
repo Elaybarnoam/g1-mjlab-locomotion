@@ -13,6 +13,7 @@ from .checkpoints import checkpoint_iteration
 from .config import (
     PpoProfile,
     ResolvedRunConfig,
+    Stage19RewardProfile,
     StandingRewardProfile,
     WalkingTrainingProfile,
 )
@@ -59,6 +60,7 @@ def validate_resume(
     reward_profile: StandingRewardProfile | None,
     ppo_profile: PpoProfile | None,
     walking_profile: WalkingTrainingProfile | None = None,
+    walking_reward_profile: Stage19RewardProfile | None = None,
 ) -> None:
     """Only full-state continuation of the same declared learning problem is allowed."""
     checkpoint.resolve(strict=True)
@@ -89,6 +91,13 @@ def validate_resume(
     )
     if old != current:
         raise ValueError("resume changes walking-profile")
+    path = root / "walking-reward-profile.json"
+    old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    current_reward = (
+        walking_reward_profile.to_dict() if walking_reward_profile is not None else None
+    )
+    if old != current_reward:
+        raise ValueError("resume changes walking-reward-profile")
 
 
 def validate_actor_initialization(config: ResolvedRunConfig, checkpoint: Path) -> dict[str, Any]:
@@ -195,7 +204,7 @@ def execute_training(
             encoding="utf-8",
         )
 
-        class RecordingRunner(MjlabOnPolicyRunner):  # type: ignore[misc]
+        class RecordingRunner(MjlabOnPolicyRunner):
             def save(self, path: str, infos: Any = None) -> None:
                 super().save(path, infos)
                 if self.logger.writer is not None:
