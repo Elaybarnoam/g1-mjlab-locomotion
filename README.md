@@ -172,6 +172,7 @@ not a safe interchange format for untrusted files.
 - [Walking Stage 19 contact state and reward profiles](docs/walking-stage19-rewards.md)
 - [Walking campaign execution and recovery](docs/walking-campaigns.md)
 - [Stage 19 controlled experiment matrix](docs/stage19-experiments.md)
+- [Walking speed-curriculum prerequisite](docs/walking-curriculum-gate.md)
 
 ## Contributing and license
 

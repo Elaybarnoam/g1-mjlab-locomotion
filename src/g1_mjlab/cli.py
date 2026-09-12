@@ -105,6 +105,10 @@ def parser() -> argparse.ArgumentParser:
     summarize_stage19.add_argument("--arm-b", required=True, type=Path)
     summarize_stage19.add_argument("--arm-c", required=True, type=Path)
     summarize_stage19.add_argument("--output", required=True, type=Path)
+    curriculum_gate = commands.add_parser("check-walking-curriculum-prerequisite")
+    curriculum_gate.add_argument("--experiment-table", required=True, type=Path)
+    curriculum_gate.add_argument("--visual-approval", type=Path)
+    curriculum_gate.add_argument("--output", required=True, type=Path)
     qualify_final = commands.add_parser("qualify-final")
     qualify_final.add_argument("--run", required=True, type=Path)
     train = commands.add_parser("train")
@@ -478,6 +482,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
+    if args.command == "check-walking-curriculum-prerequisite":
+        from .walking_curriculum import assess_curriculum_prerequisite
+
+        result = assess_curriculum_prerequisite(
+            args.experiment_table, args.visual_approval, args.output
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0 if result["training_authorized"] else 2
     if args.command == "qualify-final":
         from .deployment import qualify_final_bundle
 
