@@ -77,6 +77,19 @@ and expected multi-hour runtime instead of pretending that another 600-update ru
 
 ## Promotion rule
 
+The first bootstrap campaign completed its planned 36,864,000 transitions across a 128-environment
+run and an exact-transition 64-environment continuation after a CUDA driver fault. The final
+checkpoint passed the functional stand-walk-stand gate in 16/16 deterministic development trials,
+but passed the style gate in 0/16. Its mean command RMS error was 0.0843 m/s and every trial survived
+15 seconds; contact chatter, shuffling, and stance slip remain the dominant style failures.
+
+Stage 18 therefore fine-tunes the complete learner state from that functional checkpoint. It uses a
+narrow 0.55--0.65 m/s command band inside the bootstrap policy's trained range, 10% standing worlds,
+ordinary standing initialization, and randomized gait phase. The single hypothesis is that reference
+pose, velocity, foot-position, and contact rewards can reshape an already-functional gait without
+first requiring extrapolation to the reference clip's native 1.1638 m/s speed. Promotion still
+requires deterministic functional and style measurements; training reward alone is insufficient.
+
 Bootstrap checkpoints may advance to style fine-tuning only after they sustain the complete
 development timeline, follow forward commands, stop, and pass basic contact/slip checks. The final
 walking release still requires the stricter humanlike stride, cadence, alternation, torso, and video
