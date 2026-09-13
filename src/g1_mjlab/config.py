@@ -206,6 +206,7 @@ class WalkingV2CurriculumProfile:
     push_disturbance: bool
     terminate_reference_deviation: bool
     gait_contact_weight: float
+    gait_foot_trajectory_weight: float
     gait_alternation_event_weight: float
     fall_penalty: float
 
@@ -566,6 +567,8 @@ def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile
     if (
         not math.isfinite(profile.gait_contact_weight)
         or profile.gait_contact_weight < 0.0
+        or not math.isfinite(profile.gait_foot_trajectory_weight)
+        or profile.gait_foot_trajectory_weight < 0.0
         or not math.isfinite(profile.gait_alternation_event_weight)
         or profile.gait_alternation_event_weight < 0.0
         or not math.isfinite(profile.fall_penalty)

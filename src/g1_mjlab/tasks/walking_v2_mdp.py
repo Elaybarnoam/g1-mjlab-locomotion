@@ -317,6 +317,7 @@ class walking_v2_rate:
         command_name: str,
         sensor_name: str,
         gait_contact_weight: float = 0.0,
+        gait_foot_trajectory_weight: float = 0.0,
         gait_alternation_event_weight: float = 0.0,
     ) -> torch.Tensor:
         robot: Entity = env.scene["robot"]
@@ -416,6 +417,7 @@ class walking_v2_rate:
             - 0.05 * raw["normalized_torque"]
             - 0.50 * raw["soft_joint_limit"]
             + gait_contact_weight * command.blend * agreement
+            + gait_foot_trajectory_weight * command.blend * raw["imitation_local_feet"]
             + gait_alternation_event_weight * command.blend * event_signal / env.step_dt
         )
         weights = {
@@ -442,6 +444,9 @@ class walking_v2_rate:
         env.extras["log"]["WalkingV2/rate"] = rate.mean()
         env.extras["log"]["WalkingV2/gait_contact_bonus"] = (
             gait_contact_weight * command.blend * agreement
+        ).mean()
+        env.extras["log"]["WalkingV2/gait_foot_trajectory_bonus"] = (
+            gait_foot_trajectory_weight * command.blend * raw["imitation_local_feet"]
         ).mean()
         env.extras["log"]["WalkingV2/gait_alternation_event"] = event_signal.mean()
         return rate

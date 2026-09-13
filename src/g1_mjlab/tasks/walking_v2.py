@@ -124,6 +124,7 @@ def configure_environment(
         reward.params = {
             **reward.params,
             "gait_contact_weight": profile.gait_contact_weight,
+            "gait_foot_trajectory_weight": profile.gait_foot_trajectory_weight,
             "gait_alternation_event_weight": profile.gait_alternation_event_weight,
         }
         env.rewards["true_fall_event"].weight = profile.fall_penalty / (

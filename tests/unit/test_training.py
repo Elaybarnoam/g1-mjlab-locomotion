@@ -133,6 +133,7 @@ def test_resume_rejects_changed_walking_v2_curriculum_profile(tmp_path: Path) ->
         push_disturbance=False,
         terminate_reference_deviation=False,
         gait_contact_weight=1.0,
+        gait_foot_trajectory_weight=2.0,
         gait_alternation_event_weight=1.0,
         fall_penalty=-10.0,
     )
