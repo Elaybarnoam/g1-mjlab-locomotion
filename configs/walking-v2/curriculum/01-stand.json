@@ -11,5 +11,6 @@
   "push_disturbance": false,
   "terminate_reference_deviation": false,
   "gait_contact_weight": 0.0,
+  "gait_alternation_event_weight": 0.0,
   "fall_penalty": -10.0
 }

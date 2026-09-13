@@ -121,7 +121,11 @@ def configure_environment(
         if not profile.terminate_reference_deviation:
             env.terminations.pop("reference_deviation", None)
         reward = env.rewards["walking_v2_rate"]
-        reward.params = {**reward.params, "gait_contact_weight": profile.gait_contact_weight}
+        reward.params = {
+            **reward.params,
+            "gait_contact_weight": profile.gait_contact_weight,
+            "gait_alternation_event_weight": profile.gait_alternation_event_weight,
+        }
         env.rewards["true_fall_event"].weight = profile.fall_penalty / (
             env.sim.mujoco.timestep * env.decimation
         )

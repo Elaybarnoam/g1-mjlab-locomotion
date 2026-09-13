@@ -307,6 +307,9 @@ class walking_v2_rate:
             device=env.device,
         )
         self._effort_limit = _effort_limits(robot, env.device)
+        self._previous_contact = torch.zeros((env.num_envs, 2), dtype=torch.bool, device=env.device)
+        self._last_touchdown = torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device)
+        self._touchdown_age_s = torch.full((env.num_envs,), 1.0, device=env.device)
 
     def __call__(
         self,
@@ -314,12 +317,30 @@ class walking_v2_rate:
         command_name: str,
         sensor_name: str,
         gait_contact_weight: float = 0.0,
+        gait_alternation_event_weight: float = 0.0,
     ) -> torch.Tensor:
         robot: Entity = env.scene["robot"]
         command = _command(env, command_name)
         contact_sensor: ContactSensor = env.scene[sensor_name]
         assert contact_sensor.data.found is not None
         actual_contact = contact_sensor.data.found.reshape(env.num_envs, -1)[:, :2] > 0
+        reset = env.episode_length_buf <= 1
+        self._last_touchdown[reset] = -1
+        self._touchdown_age_s[reset] = 1.0
+        rising = actual_contact & ~self._previous_contact
+        rising[reset] = False
+        eligible = rising & (self._touchdown_age_s >= 0.12)[:, None]
+        single = eligible.sum(dim=1) == 1
+        touchdown_foot = torch.argmax(eligible.to(torch.int64), dim=1)
+        alternating = (
+            single & (self._last_touchdown >= 0) & (touchdown_foot != self._last_touchdown)
+        )
+        repeated = single & (touchdown_foot == self._last_touchdown)
+        event_signal = alternating.to(torch.float32) - repeated.to(torch.float32)
+        self._last_touchdown[single] = touchdown_foot[single]
+        self._touchdown_age_s += env.step_dt
+        self._touchdown_age_s[single] = 0.0
+        self._previous_contact.copy_(actual_contact)
         actual_foot = _heading_frame_delta(
             robot.data.site_pos_w[:, self._site_ids] - robot.data.root_link_pos_w[:, None, :],
             robot.data.root_link_quat_w,
@@ -395,6 +416,7 @@ class walking_v2_rate:
             - 0.05 * raw["normalized_torque"]
             - 0.50 * raw["soft_joint_limit"]
             + gait_contact_weight * command.blend * agreement
+            + gait_alternation_event_weight * command.blend * event_signal / env.step_dt
         )
         weights = {
             "imitation_joint_pose": 0.80 * command.blend,
@@ -421,6 +443,7 @@ class walking_v2_rate:
         env.extras["log"]["WalkingV2/gait_contact_bonus"] = (
             gait_contact_weight * command.blend * agreement
         ).mean()
+        env.extras["log"]["WalkingV2/gait_alternation_event"] = event_signal.mean()
         return rate
 
 

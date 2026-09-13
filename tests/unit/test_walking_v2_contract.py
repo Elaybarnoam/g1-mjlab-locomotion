@@ -133,6 +133,7 @@ def test_walking_v2_curriculum_profile_is_strict_and_hashable(tmp_path) -> None:
   "push_disturbance": false,
   "terminate_reference_deviation": false,
   "gait_contact_weight": 1.0,
+  "gait_alternation_event_weight": 1.0,
   "fall_penalty": -10.0
 }\n""",
         encoding="utf-8",
@@ -161,6 +162,7 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
         push_disturbance=True,
         terminate_reference_deviation=False,
         gait_contact_weight=1.0,
+        gait_alternation_event_weight=1.0,
         fall_penalty=-10.0,
     )
 
@@ -182,4 +184,5 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
     assert command.reference_initialization is False
     assert "reference_deviation" not in environment.terminations
     assert environment.rewards["walking_v2_rate"].params["gait_contact_weight"] == 1.0
+    assert environment.rewards["walking_v2_rate"].params["gait_alternation_event_weight"] == 1.0
     assert environment.rewards["true_fall_event"].weight == -500.0

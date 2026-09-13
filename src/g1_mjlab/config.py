@@ -206,6 +206,7 @@ class WalkingV2CurriculumProfile:
     push_disturbance: bool
     terminate_reference_deviation: bool
     gait_contact_weight: float
+    gait_alternation_event_weight: float
     fall_penalty: float
 
     def to_dict(self) -> dict[str, Any]:
@@ -565,10 +566,12 @@ def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile
     if (
         not math.isfinite(profile.gait_contact_weight)
         or profile.gait_contact_weight < 0.0
+        or not math.isfinite(profile.gait_alternation_event_weight)
+        or profile.gait_alternation_event_weight < 0.0
         or not math.isfinite(profile.fall_penalty)
         or profile.fall_penalty > 0.0
     ):
-        raise ValueError("gait_contact_weight and fall_penalty are invalid")
+        raise ValueError("walking-v2 curriculum reward weights are invalid")
     return profile
 
 
