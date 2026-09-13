@@ -91,7 +91,12 @@ def acquisition_decision(checkpoints: list[dict[str, Any]]) -> dict[str, Any]:
         "selected_checkpoint_sha256": selected["checkpoint_sha256"] if selected else None,
         "selected_update": selected["update"] if selected else None,
         "positive_trend": positive_trend,
-        "extension_authorized": selected is None and positive_trend,
+        "continuation_authorized": bool(
+            selected is None and positive_trend and int(last["update"]) < 4000
+        ),
+        "extension_authorized": bool(
+            selected is None and positive_trend and int(last["update"]) >= 4000
+        ),
         "checkpoints": checkpoints,
         "qualification_claim": False,
     }

@@ -33,14 +33,15 @@ def test_selects_eligible_checkpoint() -> None:
     assert result["selected_update"] == 200
 
 
-def test_authorizes_extension_only_for_positive_safe_trend() -> None:
+def test_authorizes_continuation_only_for_positive_safe_trend() -> None:
     rows = [_checkpoint(100, 0.6), _checkpoint(200, 0.5), _checkpoint(500, 0.4)]
 
     result = acquisition_decision(rows)
 
     assert result["status"] == "not_promoted"
     assert result["positive_trend"] is True
-    assert result["extension_authorized"] is True
+    assert result["continuation_authorized"] is True
+    assert result["extension_authorized"] is False
 
 
 def test_rejects_checkpoint_order_drift() -> None:
