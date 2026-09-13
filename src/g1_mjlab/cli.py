@@ -115,6 +115,9 @@ def parser() -> argparse.ArgumentParser:
     walking_checkpoint_evaluation = commands.add_parser("evaluate-walking-checkpoints")
     walking_checkpoint_evaluation.add_argument("--manifest", required=True, type=Path)
     walking_checkpoint_evaluation.add_argument("--output", required=True, type=Path)
+    walking_method_audit = commands.add_parser("audit-walking-method")
+    walking_method_audit.add_argument("--manifest", required=True, type=Path)
+    walking_method_audit.add_argument("--output", required=True, type=Path)
     freeze_walking_scenarios = commands.add_parser("freeze-walking-scenarios")
     freeze_walking_scenarios.add_argument("--config", required=True, type=Path)
     freeze_walking_scenarios.add_argument("--output", required=True, type=Path)
@@ -583,6 +586,15 @@ def main(argv: list[str] | None = None) -> int:
                 evaluate_walking_checkpoints(args.manifest, args.output),
                 indent=2,
                 sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "audit-walking-method":
+        from .walking_research import audit_walking_method
+
+        print(
+            json.dumps(
+                audit_walking_method(args.manifest, args.output), indent=2, sort_keys=True
             )
         )
         return 0
