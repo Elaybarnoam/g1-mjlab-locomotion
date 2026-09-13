@@ -30,25 +30,43 @@ def _iteration(path: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run", required=True, type=Path)
+    parser.add_argument("--run", required=True, type=Path, action="append")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--horizon-seconds", default=5.0, type=float)
     args = parser.parse_args()
-    run = args.run.resolve(strict=True)
     if args.output.exists():
         raise FileExistsError(f"output already exists: {args.output}")
-    manifest = _object(run / "manifest.json")
-    if manifest.get("status") != "completed":
-        raise ValueError("acquisition run must be completed before sequential evaluation")
-    config = run / "config.json"
-    checkpoints = sorted((run / "checkpoints").glob("model_*.pt"), key=_iteration)
-    if not checkpoints or _iteration(checkpoints[-1]) != int(manifest["max_iterations"]) - 1:
-        raise ValueError("run does not contain its declared final checkpoint")
+    runs = [path.resolve(strict=True) for path in args.run]
+    candidates: dict[int, tuple[Path, Path]] = {}
+    manifest_hashes: list[str] = []
+    for run in runs:
+        manifest = _object(run / "manifest.json")
+        if manifest.get("status") not in {"completed", "interrupted"}:
+            raise ValueError("acquisition sources must be completed or preserved interruptions")
+        checkpoints = sorted((run / "checkpoints").glob("model_*.pt"), key=_iteration)
+        if not checkpoints:
+            raise ValueError("acquisition source contains no complete checkpoints")
+        if manifest["status"] == "completed":
+            resume_path = run / "resume.json"
+            restored = (
+                int(_object(resume_path)["restored_iteration"]) if resume_path.exists() else -1
+            )
+            expected_final = restored + int(manifest["max_iterations"])
+            if _iteration(checkpoints[-1]) != expected_final:
+                raise ValueError("completed run does not contain its declared final checkpoint")
+        for checkpoint in checkpoints:
+            iteration = _iteration(checkpoint)
+            candidates[iteration] = (run / "config.json", checkpoint)
+        manifest_hashes.append(sha256_file(run / "manifest.json"))
+    expected_iterations = [0, 100, 200, 300, 400, 499]
+    if sorted(candidates) != expected_iterations:
+        raise ValueError(f"acquisition checkpoint cadence differs: {sorted(candidates)}")
     args.output.mkdir(parents=True)
     rows: list[dict[str, Any]] = []
     jobs: list[dict[str, Any]] = []
     recorder = Path(__file__).with_name("record_walking_v2_rollout.py")
-    for checkpoint in checkpoints:
+    for iteration in expected_iterations:
+        config, checkpoint = candidates[iteration]
         update = _iteration(checkpoint) + 1
         evaluations: list[dict[str, Any]] = []
         for speed in (0.0, 0.4, 0.6, 0.8):
@@ -89,7 +107,7 @@ def main() -> int:
             )
         rows.append(summarize_checkpoint(update, sha256_file(checkpoint), evaluations))
     result = acquisition_decision(rows)
-    result["run_manifest_sha256"] = sha256_file(run / "manifest.json")
+    result["run_manifest_sha256"] = manifest_hashes
     result["evaluation_horizon_seconds"] = args.horizon_seconds
     result["jobs"] = jobs
     write_atomic_json(args.output / "decision.json", result)
