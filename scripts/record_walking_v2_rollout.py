@@ -115,11 +115,14 @@ def main() -> int:
             action_term, ReferenceResidualAction
         ):
             raise TypeError("rollout requires walking-v2 command and residual action terms")
-        command.set_requested_forward_speed(args.speed)
         robot = env.scene["robot"]
         sensor = env.scene["feet_ground_contact"]
         with torch.inference_mode():
             for _ in range(steps):
+                # CommandTerm resampling remains active during evaluation. Reassert the
+                # requested speed on every policy interval so this fixed-speed probe
+                # cannot silently become a sampled stand command partway through.
+                command.set_requested_forward_speed(args.speed)
                 action = policy(observation)
                 observation, reward, done, extras = wrapped.step(action)
                 del extras
