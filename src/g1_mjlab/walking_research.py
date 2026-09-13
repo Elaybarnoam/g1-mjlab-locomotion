@@ -213,7 +213,11 @@ def evaluate_mlp(
         raise ValueError("normalizer statistics are invalid")
     hidden = (inputs - normalizer_mean) / np.maximum(normalizer_std, 1e-8)
     for index, (weight, bias) in enumerate(layers):
-        if weight.ndim != 2 or bias.shape != (weight.shape[0],) or hidden.shape[1] != weight.shape[1]:
+        if (
+            weight.ndim != 2
+            or bias.shape != (weight.shape[0],)
+            or hidden.shape[1] != weight.shape[1]
+        ):
             raise ValueError("MLP layer shapes are inconsistent")
         hidden = hidden @ weight.T + bias
         if index < len(layers) - 1:
@@ -238,9 +242,9 @@ def analyze_phase_dependence(
     swept = np.repeat(observations[:, None, :], phase_sweep_count, axis=1)
     swept[:, :, 99] = np.sin(2 * np.pi * phases)
     swept[:, :, 100] = np.cos(2 * np.pi * phases)
-    actions = evaluate_mlp(
-        swept.reshape(-1, 102), layers, normalizer_mean, normalizer_std
-    ).reshape(len(observations), phase_sweep_count, -1)
+    actions = evaluate_mlp(swept.reshape(-1, 102), layers, normalizer_mean, normalizer_std).reshape(
+        len(observations), phase_sweep_count, -1
+    )
     if actions.shape[2] != 29 or not np.isfinite(actions).all():
         raise ValueError("actor phase sweep output must be finite [samples,16,29]")
     joint_std = np.std(actions, axis=1)
@@ -286,7 +290,9 @@ def analyze_observations(
     if float(np.max(empirical_std[99:101])) < 1e-4:
         flags.append("near_zero_phase_variance")
     zero_normalizer_indices = np.flatnonzero(normalizer_std < 1e-8).tolist()
-    unexpected_zero_normalizer = [index for index in zero_normalizer_indices if index not in {97, 98}]
+    unexpected_zero_normalizer = [
+        index for index in zero_normalizer_indices if index not in {97, 98}
+    ]
     if unexpected_zero_normalizer:
         flags.append("near_zero_normalizer_variance")
     return {
@@ -314,7 +320,9 @@ def analyze_observations(
     }
 
 
-def analyze_reward_returns(metrics_path: Path, *, gamma: float, gae_lambda: float) -> dict[str, Any]:
+def analyze_reward_returns(
+    metrics_path: Path, *, gamma: float, gae_lambda: float
+) -> dict[str, Any]:
     if not 0 < gamma <= 1 or not 0 <= gae_lambda <= 1:
         raise ValueError("gamma and GAE lambda must be in [0,1]")
     values: dict[str, list[float]] = {}
@@ -341,7 +349,8 @@ def analyze_reward_returns(metrics_path: Path, *, gamma: float, gae_lambda: floa
             "zero_fraction": float(np.mean(array == 0)),
         }
     sample_level = all(
-        name in values for name in ("Audit/reward", "Audit/value", "Audit/return", "Audit/advantage")
+        name in values
+        for name in ("Audit/reward", "Audit/value", "Audit/return", "Audit/advantage")
     )
     return {
         "schema_version": 1,
@@ -356,7 +365,7 @@ def analyze_reward_returns(metrics_path: Path, *, gamma: float, gae_lambda: floa
         "hypothesis": "inconclusive",
         "limitations": [
             "Aggregate TensorBoard telemetry cannot establish per-sample reward/advantage association.",
-            "A future instrumented rollout must emit the four Audit/* sample streams."
+            "A future instrumented rollout must emit the four Audit/* sample streams.",
         ],
     }
 
@@ -367,7 +376,9 @@ def _correlation(left: FloatArray, right: FloatArray) -> float | None:
     return float(np.corrcoef(left, right)[0, 1])
 
 
-def synthetic_reward_ordering(term_names: tuple[str, ...], term_weights: FloatArray) -> dict[str, Any]:
+def synthetic_reward_ordering(
+    term_names: tuple[str, ...], term_weights: FloatArray
+) -> dict[str, Any]:
     """Check whether the frozen weights distinguish desirable, shuffled and chattering motion."""
     if term_weights.shape != (len(term_names),):
         raise ValueError("reward term names and weights must align")
@@ -412,6 +423,7 @@ def _collect_fresh_reward_returns(  # pragma: no cover - exercised by the GPU au
         load_walking_training_profile,
     )
     from .environment import build_train_config
+
     base = load_config(resolved.run_config)
     walking = load_walking_training_profile(resolved.walking_profile)
     reward_profile = load_stage19_reward_profile(resolved.reward_profile)
@@ -588,8 +600,12 @@ def _sample_observations(
     for path in trace_paths:
         with np.load(path, allow_pickle=False) as trace:
             quaternion = np.asarray(trace["root_quaternion_wxyz"], dtype=np.float64)
-            linear = _rotate_inverse(quaternion, np.asarray(trace["root_lin_vel_w"], dtype=np.float64))
-            angular = _rotate_inverse(quaternion, np.asarray(trace["root_ang_vel_w"], dtype=np.float64))
+            linear = _rotate_inverse(
+                quaternion, np.asarray(trace["root_lin_vel_w"], dtype=np.float64)
+            )
+            angular = _rotate_inverse(
+                quaternion, np.asarray(trace["root_ang_vel_w"], dtype=np.float64)
+            )
             gravity = _rotate_inverse(
                 quaternion, np.broadcast_to(np.array([0.0, 0.0, -1.0]), linear.shape)
             )
@@ -616,7 +632,9 @@ def _sample_observations(
     return combined[indices]
 
 
-def _checkpoint_actor(path: Path) -> tuple[list[tuple[FloatArray, FloatArray]], FloatArray, FloatArray]:
+def _checkpoint_actor(
+    path: Path,
+) -> tuple[list[tuple[FloatArray, FloatArray]], FloatArray, FloatArray]:
     import torch
 
     checkpoint = torch.load(path, map_location="cpu", weights_only=False)
@@ -702,12 +720,8 @@ def audit_walking_method(manifest_path: Path, output: Path) -> dict[str, Any]:
         action_scale,
         phase_sweep_count=manifest.phase_sweep_count,
     )
-    observation = analyze_observations(
-        observations, std, actor_size=102, critic_size=114
-    )
-    reward = analyze_reward_returns(
-        resolved.reward_metrics, gamma=0.99, gae_lambda=0.95
-    )
+    observation = analyze_observations(observations, std, actor_size=102, critic_size=114)
+    reward = analyze_reward_returns(resolved.reward_metrics, gamma=0.99, gae_lambda=0.95)
     reward.update(_collect_fresh_reward_returns(manifest, resolved, output))
     reference = _reference_audit(
         resolved.reference,

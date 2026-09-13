@@ -143,6 +143,7 @@ class ReferenceBank:
         self.nominal_joint_position = arrays["nominal_joint_position_rad"]
         self.speed_knots = arrays["speed_knots_m_s"]
         self.cycle_period = arrays["cycle_period_s"]
+        self._torch_cache: dict[tuple[int, tuple[int, ...], str, str], Any] = {}
         self._validate_arrays()
 
     @classmethod
@@ -184,7 +185,9 @@ class ReferenceBank:
         if frames < 4 or not np.allclose(self.phase, np.arange(frames) / frames):
             raise ValueError("reference phase grid must be uniform, periodic and half-open")
 
-    def _coordinates(self, phase: FloatArray) -> tuple[npt.NDArray[np.int64], npt.NDArray[np.int64], FloatArray]:
+    def _coordinates(
+        self, phase: FloatArray
+    ) -> tuple[npt.NDArray[np.int64], npt.NDArray[np.int64], FloatArray]:
         coordinate = np.mod(phase, 1.0) * len(self.phase)
         lower = np.floor(coordinate).astype(np.int64) % len(self.phase)
         upper = (lower + 1) % len(self.phase)
@@ -192,9 +195,10 @@ class ReferenceBank:
 
     def _phase_sample(self, values: FloatArray, phase: FloatArray) -> FloatArray:
         lower, upper, fraction = self._coordinates(phase)
-        return values[:, lower, ...] * (1 - fraction)[None, ..., None] + values[
-            :, upper, ...
-        ] * fraction[None, ..., None]
+        return (
+            values[:, lower, ...] * (1 - fraction)[None, ..., None]
+            + values[:, upper, ...] * fraction[None, ..., None]
+        )
 
     def _speed_sample(
         self, values: FloatArray, derivatives: FloatArray, speed: FloatArray
@@ -237,7 +241,9 @@ class ReferenceBank:
         joint_by_speed = self._phase_sample(self.joint_position, phase_array)
         phase_derivative_by_speed = self._phase_sample(self.joint_partial_phase, phase_array)
         speed_derivative_by_speed = self._phase_sample(self.joint_partial_speed, phase_array)
-        foot_by_speed = self._phase_sample(self.local_foot_position.reshape(3, len(self.phase), 6), phase_array)
+        foot_by_speed = self._phase_sample(
+            self.local_foot_position.reshape(3, len(self.phase), 6), phase_array
+        )
         root_by_speed = self._phase_sample(self.root_velocity, phase_array)
         joint, joint_speed_derivative = self._speed_sample(
             joint_by_speed, speed_derivative_by_speed, speed
@@ -273,11 +279,17 @@ class ReferenceBank:
         if bool((speed < 0).any()) or bool((speed > 0.8).any()):
             raise ValueError("reference speed must be in [0,0.8] m/s")
         device, dtype = phase_array.device, phase_array.dtype
-        knots = torch.as_tensor(self.speed_knots, device=device, dtype=dtype)
 
-        def tensor(value: FloatArray) -> Any:
-            return torch.as_tensor(value, device=device, dtype=dtype)
+        def tensor(value: npt.NDArray[Any], *, target_dtype: Any = dtype) -> Any:
+            pointer = int(value.__array_interface__["data"][0])
+            key = (pointer, tuple(value.shape), str(device), str(target_dtype))
+            cached = self._torch_cache.get(key)
+            if cached is None:
+                cached = torch.as_tensor(value, device=device, dtype=target_dtype)
+                self._torch_cache[key] = cached
+            return cached
 
+        knots = tensor(self.speed_knots)
         coordinate = torch.remainder(phase_array, 1.0) * len(self.phase)
         lower = torch.floor(coordinate).long() % len(self.phase)
         upper = (lower + 1) % len(self.phase)
@@ -285,9 +297,10 @@ class ReferenceBank:
 
         def phase_sample(value: FloatArray) -> Any:
             data = tensor(value)
-            return data[:, lower, ...] * (1 - fraction)[None, ..., None] + data[
-                :, upper, ...
-            ] * fraction[None, ..., None]
+            return (
+                data[:, lower, ...] * (1 - fraction)[None, ..., None]
+                + data[:, upper, ...] * fraction[None, ..., None]
+            )
 
         interval = torch.clamp(torch.searchsorted(knots, speed, right=True) - 1, 0, 1)
         left, right = knots[interval], knots[interval + 1]
@@ -332,13 +345,11 @@ class ReferenceBank:
         foot, _ = speed_sample(foot_phase, torch.zeros_like(foot_phase))
         root, _ = speed_sample(root_phase, torch.zeros_like(root_phase))
         speed_index = torch.clamp(torch.searchsorted(knots, speed), 0, 2)
-        contact_data = torch.as_tensor(self.contact, device=device)
+        contact_data = tensor(self.contact, target_dtype=torch.bool)
         nearest = (lower + (fraction >= 0.5).long()) % len(self.phase)
         contact = contact_data[speed_index, nearest]
         periods = tensor(self.cycle_period)
-        frequency = torch.lerp(
-            1 / periods[interval], 1 / periods[interval + 1], blend
-        )
+        frequency = torch.lerp(1 / periods[interval], 1 / periods[interval + 1], blend)
         frequency = torch.where(speed <= 0.4, speed / 0.4 / periods[0], frequency)
         return TorchReferenceSample(
             joint,
@@ -399,12 +410,8 @@ def build_reference_bank(
         with np.load(source_path, allow_pickle=False) as source:
             joint = np.asarray(source["joint_pos"], dtype=np.float64)[:-1]
             joints.append(joint)
-            joint_velocities.append(
-                np.asarray(source["joint_vel"], dtype=np.float64)[:-1]
-            )
-            contacts_list.append(
-                np.asarray(source["foot_contact"], dtype=np.float64)[:-1]
-            )
+            joint_velocities.append(np.asarray(source["joint_vel"], dtype=np.float64)[:-1])
+            contacts_list.append(np.asarray(source["foot_contact"], dtype=np.float64)[:-1])
             fps = float(np.asarray(source["fps"]).reshape(-1)[0])
             periods_list.append(len(joint) / fps)
     joint_position = np.stack(joints)

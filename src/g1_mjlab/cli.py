@@ -593,9 +593,7 @@ def main(argv: list[str] | None = None) -> int:
         from .walking_research import audit_walking_method
 
         print(
-            json.dumps(
-                audit_walking_method(args.manifest, args.output), indent=2, sort_keys=True
-            )
+            json.dumps(audit_walking_method(args.manifest, args.output), indent=2, sort_keys=True)
         )
         return 0
     if args.command == "freeze-walking-scenarios":

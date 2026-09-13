@@ -48,9 +48,7 @@ class WalkingTargetProfile:
             raise ValueError("requested command must be finite")
         if not np.allclose(requested[:, 1:], 0.0, atol=1e-12):
             raise ValueError("walking-v2 first acquisition supports forward commands only")
-        if np.any(requested[:, 0] < 0) or np.any(
-            requested[:, 0] > self.maximum_forward_speed_m_s
-        ):
+        if np.any(requested[:, 0] < 0) or np.any(requested[:, 0] > self.maximum_forward_speed_m_s):
             raise ValueError("forward command must be in [0, 0.8] m/s")
         return requested
 
@@ -78,8 +76,7 @@ class WalkingTargetState:
         if self.applied_command.shape != (count, 3) or self.blend.shape != (count,):
             raise ValueError("walking target state has inconsistent batch dimensions")
         if not all(
-            np.isfinite(value).all()
-            for value in (self.applied_command, self.phase, self.blend)
+            np.isfinite(value).all() for value in (self.applied_command, self.phase, self.blend)
         ):
             raise ValueError("walking target state must be finite")
         if np.any((self.phase < 0) | (self.phase >= 1)):
@@ -148,18 +145,12 @@ def predict_walking_target_numpy(
         raise ValueError("requested command batch does not match target state")
     dt = profile.policy_dt_s
     delta = requested[:, 0] - state.applied_command[:, 0]
-    rate_limit = np.where(
-        delta >= 0.0, profile.acceleration_m_s2, profile.deceleration_m_s2
-    )
-    next_forward = state.applied_command[:, 0] + np.clip(
-        delta, -rate_limit * dt, rate_limit * dt
-    )
+    rate_limit = np.where(delta >= 0.0, profile.acceleration_m_s2, profile.deceleration_m_s2)
+    next_forward = state.applied_command[:, 0] + np.clip(delta, -rate_limit * dt, rate_limit * dt)
     next_command = np.zeros_like(state.applied_command)
     next_command[:, 0] = next_forward
     command_rate = (next_forward - state.applied_command[:, 0]) / dt
-    desired_blend = smoothstep_walk_blend_numpy(
-        next_forward, profile.full_walk_blend_speed_m_s
-    )
+    desired_blend = smoothstep_walk_blend_numpy(next_forward, profile.full_walk_blend_speed_m_s)
     next_blend = state.blend + np.clip(
         desired_blend - state.blend,
         -profile.blend_rate_s * dt,
@@ -243,9 +234,7 @@ def predict_walking_target_torch(
     next_command = torch.zeros_like(applied_command)
     next_command[:, 0] = next_forward
     command_rate = (next_forward - applied_command[:, 0]) / dt
-    fraction = torch.clamp(
-        next_forward / profile.full_walk_blend_speed_m_s, min=0.0, max=1.0
-    )
+    fraction = torch.clamp(next_forward / profile.full_walk_blend_speed_m_s, min=0.0, max=1.0)
     desired_blend = fraction * fraction * (3.0 - 2.0 * fraction)
     next_blend = blend + torch.clamp(
         desired_blend - blend,
@@ -261,12 +250,10 @@ def predict_walking_target_torch(
         dtype=applied_command.dtype,
         device=applied_command.device,
     )
-    target_position = nominal + next_blend[:, None] * (
-        sample.joint_position - nominal
-    )
-    target_velocity = blend_rate[:, None] * (
-        sample.joint_position - nominal
-    ) + next_blend[:, None] * (
+    target_position = nominal + next_blend[:, None] * (sample.joint_position - nominal)
+    target_velocity = blend_rate[:, None] * (sample.joint_position - nominal) + next_blend[
+        :, None
+    ] * (
         sample.joint_partial_phase * phase_rate[:, None]
         + sample.joint_partial_speed * command_rate[:, None]
     )
@@ -297,8 +284,6 @@ def reset_walking_target_torch(
     phase_next = phase.clone()
     blend_next = blend.clone()
     command_next[indices] = 0.0
-    phase_next[indices] = torch.as_tensor(
-        reset_phase, dtype=phase.dtype, device=phase.device
-    )
+    phase_next[indices] = torch.as_tensor(reset_phase, dtype=phase.dtype, device=phase.device)
     blend_next[indices] = 0.0
     return command_next, phase_next, blend_next

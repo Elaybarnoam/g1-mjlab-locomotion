@@ -72,9 +72,7 @@ def test_actuator_constraints_distribute_contact_without_exceeding_limit() -> No
     )
 
     assert result.success
-    contact_torque = sum(
-        actuator_jacobians[foot].T @ result.wrenches[foot] for foot in range(2)
-    )
+    contact_torque = sum(actuator_jacobians[foot].T @ result.wrenches[foot] for foot in range(2))
     assert abs(150.0 - contact_torque[0]) <= 1.0 + 1e-7
 
 

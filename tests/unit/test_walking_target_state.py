@@ -55,12 +55,10 @@ def test_smoothstep_blend_is_c1_and_saturates() -> None:
     np.testing.assert_allclose(blend, [0.0, 0.5, 1.0, 1.0])
     epsilon = 1e-6
     start_slope = (
-        smoothstep_walk_blend_numpy([epsilon])[0]
-        - smoothstep_walk_blend_numpy([0.0])[0]
+        smoothstep_walk_blend_numpy([epsilon])[0] - smoothstep_walk_blend_numpy([0.0])[0]
     ) / epsilon
     end_slope = (
-        smoothstep_walk_blend_numpy([0.4])[0]
-        - smoothstep_walk_blend_numpy([0.4 - epsilon])[0]
+        smoothstep_walk_blend_numpy([0.4])[0] - smoothstep_walk_blend_numpy([0.4 - epsilon])[0]
     ) / epsilon
     assert start_slope < 1e-4
     assert end_slope < 1e-4
@@ -131,9 +129,7 @@ def test_numpy_and_torch_transition_are_equivalent(tmp_path: Path) -> None:
 
 def test_partial_resets_are_isolated_in_numpy_and_torch() -> None:
     state = WalkingTargetState(
-        applied_command=np.asarray(
-            [[0.2, 0.0, 0.0], [0.4, 0.0, 0.0], [0.6, 0.0, 0.0]]
-        ),
+        applied_command=np.asarray([[0.2, 0.0, 0.0], [0.4, 0.0, 0.0], [0.6, 0.0, 0.0]]),
         phase=np.asarray([0.1, 0.2, 0.3]),
         blend=np.asarray([0.2, 0.4, 0.6]),
     )

@@ -111,6 +111,8 @@ omit = [
   "*/g1_mjlab/tasks/walking_mdp.py",
   "*/g1_mjlab/tasks/walking_contact.py",
   "*/g1_mjlab/tasks/walking_v1.py",
+  "*/g1_mjlab/tasks/walking_v2.py",
+  "*/g1_mjlab/tasks/walking_v2_mdp.py",
   "*/g1_mjlab/qualification.py",
   "*/g1_mjlab/rl_adapter.py",
   "*/g1_mjlab/runtime.py",

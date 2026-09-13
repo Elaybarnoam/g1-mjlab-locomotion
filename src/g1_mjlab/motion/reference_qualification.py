@@ -42,9 +42,7 @@ def qualify_reference_candidates(
             "adaptation_sha256": sha256_file(candidate.adaptation_path),
             "reference_sha256": adaptation.get("output_sha256"),
             "dynamics_sha256": (
-                None
-                if candidate.dynamics_path is None
-                else sha256_file(candidate.dynamics_path)
+                None if candidate.dynamics_path is None else sha256_file(candidate.dynamics_path)
             ),
             "kinematic_pass": kinematic_pass,
             "dynamics_pass": dynamics_pass,

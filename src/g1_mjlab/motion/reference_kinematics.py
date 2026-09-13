@@ -85,9 +85,7 @@ def audit_reference_kinematics(
     ):
         raise ValueError("reference array shapes do not satisfy the G1 cycle contract")
     pelvis = body_names.index("pelvis")
-    joint_ids = [
-        _model_id(mujoco, model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in joint_names
-    ]
+    joint_ids = [_model_id(mujoco, model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in joint_names]
     if any(identifier < 0 for identifier in joint_ids):
         raise ValueError("reference joint is absent from the model")
     qpos_addresses = [int(model.jnt_qposadr[identifier]) for identifier in joint_ids]
@@ -146,8 +144,7 @@ def audit_reference_kinematics(
         "finite": finite,
         "joint_margin": joint_margin + 1e-12 >= criteria.minimum_joint_margin_rad,
         "foot_ik": foot_ik_error <= criteria.maximum_foot_ik_error_m,
-        "ground_penetration": maximum_ground_penetration
-        <= criteria.maximum_ground_penetration_m,
+        "ground_penetration": maximum_ground_penetration <= criteria.maximum_ground_penetration_m,
         "self_penetration": maximum_self_penetration <= criteria.maximum_self_penetration_m,
         "forbidden_ground_contacts": forbidden_ground_contacts == 0,
         "stride": stride_error_m <= criteria.maximum_stride_error_m,

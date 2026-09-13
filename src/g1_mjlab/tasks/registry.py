@@ -10,6 +10,7 @@ from typing import Any
 
 STANDING_TASK_ID = "G1-Standing-Flat-v1"
 WALKING_TASK_ID = "G1-Walking-Flat-v1"
+WALKING_V2_TASK_ID = "G1-Walking-Flat-v2"
 
 
 class UnknownTaskError(ValueError):
@@ -116,6 +117,26 @@ _TASKS = {
         # Walking profiles own this value: bootstrap matches the upstream zero penalty while
         # reference-style fine-tuning uses the versioned per-event penalty.
         termination_penalty=None,
+    ),
+    WALKING_V2_TASK_ID: TaskDefinition(
+        task_id=WALKING_V2_TASK_ID,
+        config_directory="walking-v2",
+        experiment_name="g1_walking_v2",
+        implementation_module="g1_mjlab.tasks.walking_v2",
+        layout_id="g1-walking-reference-actor-v2",
+        actor_size=160,
+        critic_size=172,
+        capabilities=frozenset(
+            {
+                TaskCapability.TRAIN,
+                TaskCapability.WALKING_EVALUATION,
+                TaskCapability.NATIVE_INFERENCE,
+            }
+        ),
+        unavailable_reason=(
+            "walking-v2 controller qualification requires a learned policy to pass final gates"
+        ),
+        termination_penalty=-2.0,
     ),
 }
 

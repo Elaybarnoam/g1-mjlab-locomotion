@@ -50,9 +50,7 @@ def main() -> int:
     maximum_error = 0.0
     finite = True
     for _ in range(100):
-        numpy_transition = predict_walking_target_numpy(
-            numpy_state, requested, bank, profile
-        )
+        numpy_transition = predict_walking_target_numpy(numpy_state, requested, bank, profile)
         torch_transition = predict_walking_target_torch(
             torch_command,
             torch_phase,
@@ -70,9 +68,7 @@ def main() -> int:
         )
         for numpy_value, torch_value in comparisons:
             converted = torch_value.detach().cpu().numpy()
-            maximum_error = max(
-                maximum_error, float(np.max(np.abs(numpy_value - converted)))
-            )
+            maximum_error = max(maximum_error, float(np.max(np.abs(numpy_value - converted))))
             finite = finite and bool(np.isfinite(numpy_value).all())
         numpy_state = numpy_transition.next_state
         torch_command = torch_transition.next_applied_command

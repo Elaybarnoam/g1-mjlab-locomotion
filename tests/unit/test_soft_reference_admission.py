@@ -17,7 +17,9 @@ def _json(path: Path, value: dict[str, object]) -> Path:
     return path
 
 
-def _candidate(tmp_path: Path, speed: float, *, kinematics_pass: bool = True) -> SoftReferenceCandidate:
+def _candidate(
+    tmp_path: Path, speed: float, *, kinematics_pass: bool = True
+) -> SoftReferenceCandidate:
     code = str(speed).replace(".", "")
     reference = tmp_path / f"reference-{code}.npz"
     reference.write_bytes(f"reference-{speed}".encode())
@@ -104,9 +106,7 @@ def test_authorized_hashes_accept_soft_admission_and_reject_p05_blocked(
 
     hashes = authorized_reference_hashes(admitted, (0.4, 0.6, 0.8))
 
-    assert hashes == tuple(
-        item["reference_sha256"] for item in admitted["candidates"]
-    )
+    assert hashes == tuple(item["reference_sha256"] for item in admitted["candidates"])
     blocked = {
         **admitted,
         "schema_version": 1,

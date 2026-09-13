@@ -18,8 +18,7 @@ def _source(path: Path) -> None:
         phase=phase,
         joint_position_rad=np.stack([joint] * 3),
         joint_partial_phase=np.stack(
-            [np.cos(2 * np.pi * phase)[:, None] * 2 * np.pi * np.linspace(0.1, 0.3, 29)]
-            * 3
+            [np.cos(2 * np.pi * phase)[:, None] * 2 * np.pi * np.linspace(0.1, 0.3, 29)] * 3
         ),
         joint_partial_speed=np.zeros((3, 8, 29)),
         local_foot_position_m=np.zeros((3, 8, 2, 3)),
@@ -75,7 +74,9 @@ def test_reference_bank_numpy_torch_parity_and_arbitrary_batch(tmp_path: Path) -
 
     assert numpy_sample.joint_position.shape == (2, 2, 29)
     np.testing.assert_allclose(torch_sample.joint_position.numpy(), numpy_sample.joint_position)
-    np.testing.assert_allclose(torch_sample.joint_partial_phase.numpy(), numpy_sample.joint_partial_phase)
+    np.testing.assert_allclose(
+        torch_sample.joint_partial_phase.numpy(), numpy_sample.joint_partial_phase
+    )
     np.testing.assert_array_equal(torch_sample.contact.numpy(), numpy_sample.contact)
 
 

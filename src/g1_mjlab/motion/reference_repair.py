@@ -73,9 +73,7 @@ def repair_reference_collisions(
     if not isinstance(inherited, dict) or inherited.get("passed") is not True:
         raise ValueError("collision repair requires a passing adaptation report")
     with np.load(reference_path, allow_pickle=False) as archive:
-        arrays: dict[str, Any] = {
-            name: np.asarray(archive[name]) for name in archive.files
-        }
+        arrays: dict[str, Any] = {name: np.asarray(archive[name]) for name in archive.files}
     joint_position = np.asarray(arrays["joint_pos"], dtype=np.float64).copy()
     body_position = np.asarray(arrays["body_pos_w"], dtype=np.float64).copy()
     body_quaternion = np.asarray(arrays["body_quat_w"], dtype=np.float64).copy()
@@ -84,14 +82,8 @@ def repair_reference_collisions(
     pelvis = body_names.index("pelvis")
     model = mujoco.MjModel.from_binary_path(str(model_path))
     data = mujoco.MjData(model)
-    joint_ids = [
-        _model_id(mujoco, model, mujoco.mjtObj.mjOBJ_JOINT, name)
-        for name in joint_names
-    ]
-    body_ids = [
-        _model_id(mujoco, model, mujoco.mjtObj.mjOBJ_BODY, name)
-        for name in body_names
-    ]
+    joint_ids = [_model_id(mujoco, model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in joint_names]
+    body_ids = [_model_id(mujoco, model, mujoco.mjtObj.mjOBJ_BODY, name) for name in body_names]
     if any(identifier < 0 for identifier in (*joint_ids, *body_ids)):
         raise ValueError("reference names do not match the repair model")
     qpos_addresses = np.asarray(
@@ -115,10 +107,9 @@ def repair_reference_collisions(
         forbidden_ground = 0
         for frame in range(len(joint_position) - 1):
             pose = joint_position[frame].copy()
-            pose[arm_indices] = (
-                (1.0 - arm_blend) * pose[arm_indices]
-                + arm_blend * nominal[arm_indices]
-            )
+            pose[arm_indices] = (1.0 - arm_blend) * pose[arm_indices] + arm_blend * nominal[
+                arm_indices
+            ]
             data.qpos[:] = model.qpos0
             data.qpos[:3] = body_position[frame, pelvis]
             data.qpos[2] += root_lift_m
@@ -137,11 +128,7 @@ def repair_reference_collisions(
                 if first_robot != second_robot:
                     maximum_ground = max(maximum_ground, depth)
                     robot_geom = first if first_robot else second
-                    name = str(
-                        mujoco.mj_id2name(
-                            model, mujoco.mjtObj.mjOBJ_GEOM, robot_geom
-                        )
-                    )
+                    name = str(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, robot_geom))
                     if "foot" not in name.lower() and depth > 1e-4:
                         forbidden_ground += 1
                 elif first_robot and second_robot:
@@ -155,9 +142,7 @@ def repair_reference_collisions(
     before = collision_metrics(0.0, 0.0)
     root_lift = max(
         0.0,
-        float(before["maximum_ground_penetration_m"])
-        - settings.target_ground_penetration_m
-        + 1e-6,
+        float(before["maximum_ground_penetration_m"]) - settings.target_ground_penetration_m + 1e-6,
     )
     if root_lift > settings.maximum_root_lift_m:
         raise ValueError("required root lift exceeds the frozen repair bound")
@@ -168,8 +153,7 @@ def repair_reference_collisions(
         candidate_blend = min(1.0, step * settings.arm_blend_increment)
         candidate_metrics = collision_metrics(root_lift, candidate_blend)
         if (
-            candidate_metrics["maximum_self_penetration_m"]
-            <= settings.target_self_penetration_m
+            candidate_metrics["maximum_self_penetration_m"] <= settings.target_self_penetration_m
             and candidate_metrics["maximum_ground_penetration_m"]
             <= settings.target_ground_penetration_m
             and candidate_metrics["forbidden_ground_contact_count"] == 0
@@ -180,10 +164,9 @@ def repair_reference_collisions(
     if after is None:
         raise ValueError("bounded arm-to-nominal search did not remove collisions")
 
-    joint_position[:, arm_indices] = (
-        (1.0 - arm_blend) * joint_position[:, arm_indices]
-        + arm_blend * nominal[arm_indices]
-    )
+    joint_position[:, arm_indices] = (1.0 - arm_blend) * joint_position[
+        :, arm_indices
+    ] + arm_blend * nominal[arm_indices]
     body_position[:, pelvis, 2] += root_lift
     pre_margin_joint_position = joint_position.copy()
     joint_position = np.clip(

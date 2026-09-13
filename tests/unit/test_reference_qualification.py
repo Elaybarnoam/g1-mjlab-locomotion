@@ -20,7 +20,11 @@ def test_qualification_is_fail_closed_for_missing_or_failed_speed(tmp_path: Path
             "040-a1", 0.4, 1, _report(tmp_path / "a.json", True), _report(tmp_path / "d.json", True)
         ),
         ReferenceCandidateEvidence(
-            "060-a1", 0.6, 1, _report(tmp_path / "b.json", True), _report(tmp_path / "e.json", False)
+            "060-a1",
+            0.6,
+            1,
+            _report(tmp_path / "b.json", True),
+            _report(tmp_path / "e.json", False),
         ),
     )
 

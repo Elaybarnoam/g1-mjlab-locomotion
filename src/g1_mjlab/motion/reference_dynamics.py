@@ -78,7 +78,9 @@ def solve_contact_wrenches(
         else np.asarray(actuator_contact_jacobians, dtype=np.float64)
     )
     force_limits = (
-        None if actuator_force_limits is None else np.asarray(actuator_force_limits, dtype=np.float64)
+        None
+        if actuator_force_limits is None
+        else np.asarray(actuator_force_limits, dtype=np.float64)
     )
     actuator_inputs = (actuator_required, actuator_jacobians, force_limits)
     if any(value is None for value in actuator_inputs) and not all(
@@ -86,7 +88,11 @@ def solve_contact_wrenches(
     ):
         raise ValueError("actuator wrench constraints must be supplied together")
     actuator_mapping: FloatArray | None = None
-    if actuator_required is not None and actuator_jacobians is not None and force_limits is not None:
+    if (
+        actuator_required is not None
+        and actuator_jacobians is not None
+        and force_limits is not None
+    ):
         if (
             actuator_required.ndim != 1
             or actuator_jacobians.shape != (2, 6, len(actuator_required))
@@ -94,9 +100,7 @@ def solve_contact_wrenches(
             or np.any(force_limits <= 0)
         ):
             raise ValueError("actuator wrench constraint shapes are invalid")
-        actuator_mapping = np.concatenate(
-            [actuator_jacobians[foot].T for foot in range(2)], axis=1
-        )
+        actuator_mapping = np.concatenate([actuator_jacobians[foot].T for foot in range(2)], axis=1)
     normalization = np.array(
         [total_weight_n] * 3 + [total_weight_n * robot_height_m] * 3,
         dtype=np.float64,
@@ -105,13 +109,15 @@ def solve_contact_wrenches(
     def objective(flat: FloatArray) -> float:
         residual = (mapping @ flat - required) / normalization
         actuator_cost = 0.0
-        if actuator_mapping is not None and actuator_required is not None and force_limits is not None:
+        if (
+            actuator_mapping is not None
+            and actuator_required is not None
+            and force_limits is not None
+        ):
             torque_ratio = (actuator_required - actuator_mapping @ flat) / force_limits
             actuator_cost = 1e-4 * float(torque_ratio @ torque_ratio)
         return float(
-            residual @ residual
-            + actuator_cost
-            + 1e-10 * (flat @ flat) / total_weight_n**2
+            residual @ residual + actuator_cost + 1e-10 * (flat @ flat) / total_weight_n**2
         )
 
     constraint_rows: list[FloatArray] = []
@@ -154,11 +160,7 @@ def solve_contact_wrenches(
         np.asarray(constraint_lower),
         np.asarray(constraint_upper),
     )
-    bounds = [
-        (None, None) if active[foot] else (0.0, 0.0)
-        for foot in range(2)
-        for _ in range(6)
-    ]
+    bounds = [(None, None) if active[foot] else (0.0, 0.0) for foot in range(2) for _ in range(6)]
     initial = np.zeros(12, dtype=np.float64)
     if np.any(active):
         initial.reshape(2, 6)[active, 2] = max(required[2], total_weight_n) / np.count_nonzero(
@@ -206,7 +208,9 @@ def actuator_force_limits_by_joint(model: Any, joint_ids: list[int]) -> FloatArr
         for actuator in range(model.nu)
         if int(model.actuator_trnid[actuator, 0]) >= 0
     }
-    if len(actuator_by_joint) != model.nu or any(joint not in actuator_by_joint for joint in joint_ids):
+    if len(actuator_by_joint) != model.nu or any(
+        joint not in actuator_by_joint for joint in joint_ids
+    ):
         raise ValueError("model must map exactly one actuator to every reference joint")
     limits = np.asarray(
         [
@@ -243,21 +247,17 @@ def audit_reference_dynamics(
         body_names = tuple(str(name) for name in reference["body_names"].tolist())
         fps = float(np.asarray(reference["fps"]).reshape(-1)[0])
     pelvis = body_names.index("pelvis")
+
     def model_id(kind: Any, name: str) -> int:
         result = int(mujoco.mj_name2id(model, kind, name))
-        return result if result >= 0 else int(
-            mujoco.mj_name2id(model, kind, f"robot/{name}")
-        )
+        return result if result >= 0 else int(mujoco.mj_name2id(model, kind, f"robot/{name}"))
 
     joint_ids = [model_id(mujoco.mjtObj.mjOBJ_JOINT, name) for name in joint_names]
     if any(joint_id < 0 for joint_id in joint_ids):
         raise ValueError("reference joint is absent from model")
     qpos_addresses = [int(model.jnt_qposadr[joint_id]) for joint_id in joint_ids]
     dof_addresses = [int(model.jnt_dofadr[joint_id]) for joint_id in joint_ids]
-    site_ids = [
-        model_id(mujoco.mjtObj.mjOBJ_SITE, name)
-        for name in ("left_foot", "right_foot")
-    ]
+    site_ids = [model_id(mujoco.mjtObj.mjOBJ_SITE, name) for name in ("left_foot", "right_foot")]
     if any(site_id < 0 for site_id in site_ids):
         raise ValueError("model must expose left_foot and right_foot sites")
     qpos = np.zeros((len(joint_position), model.nq), dtype=np.float64)
@@ -302,16 +302,10 @@ def audit_reference_dynamics(
             gravity_force = np.asarray(data.qfrc_bias, dtype=np.float64).copy()
             data.qvel[:] = saved_velocity
             data.qacc[:] = source_qacc[frame] * scale**2
-            required = (
-                inertia_force
-                + bias_force
-                - passive_force
-            )
+            required = inertia_force + bias_force - passive_force
             jacobians = np.zeros((2, 6, model.nv), dtype=np.float64)
             for foot, site_id in enumerate(site_ids):
-                mujoco.mj_jacSite(
-                    model, data, jacobians[foot, :3], jacobians[foot, 3:], site_id
-                )
+                mujoco.mj_jacSite(model, data, jacobians[foot, :3], jacobians[foot, 3:], site_id)
             solution = solve_contact_wrenches(
                 required[:6],
                 jacobians[:, :, :6],
@@ -337,16 +331,12 @@ def audit_reference_dynamics(
             gravity_ratio_by_joint.append(np.abs(gravity_force[dof_addresses]) / force_limits)
             inertia_ratio_by_joint.append(np.abs(inertia_force[dof_addresses]) / force_limits)
             velocity_passive_ratio_by_joint.append(
-                np.abs((bias_force - gravity_force - passive_force)[dof_addresses])
-                / force_limits
+                np.abs((bias_force - gravity_force - passive_force)[dof_addresses]) / force_limits
             )
-            contact_ratio_by_joint.append(
-                np.abs(contact_generalized[dof_addresses]) / force_limits
-            )
+            contact_ratio_by_joint.append(np.abs(contact_generalized[dof_addresses]) / force_limits)
             successes += int(
                 solution.success
-                and solution.normalized_base_residual
-                <= criteria.maximum_normalized_base_residual
+                and solution.normalized_base_residual <= criteria.maximum_normalized_base_residual
             )
         feasible_fraction = successes / len(qpos)
         torque_p95 = float(np.percentile(torque_ratios, 95))

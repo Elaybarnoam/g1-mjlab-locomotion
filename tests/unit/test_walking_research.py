@@ -117,9 +117,9 @@ def test_reward_return_audit_distinguishes_aggregate_from_sample_level(tmp_path:
 
     assert result["sample_level_returns_available"] is False
     assert result["gamma"] == pytest.approx(0.99)
-    assert result["metrics"]["Episode_Reward/reference_joint_pose"]["zero_fraction"] == pytest.approx(
-        1 / 3
-    )
+    assert result["metrics"]["Episode_Reward/reference_joint_pose"][
+        "zero_fraction"
+    ] == pytest.approx(1 / 3)
     assert result["hypothesis"] == "inconclusive"
 
 

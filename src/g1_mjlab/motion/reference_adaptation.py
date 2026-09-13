@@ -80,7 +80,10 @@ def _normalized_linear_resample(values: FloatArray, output_frames: int) -> Float
     extended_phase = np.append(source_phase, 1.0)
     extended = np.concatenate((flat, flat[:1]), axis=0)
     result = np.stack(
-        [np.interp(target_phase, extended_phase, extended[:, column]) for column in range(flat.shape[1])],
+        [
+            np.interp(target_phase, extended_phase, extended[:, column])
+            for column in range(flat.shape[1])
+        ],
         axis=1,
     ).reshape((output_frames, *values.shape[1:]))
     return np.asarray(result, dtype=np.float64)
@@ -122,8 +125,7 @@ def _foot_ik_residual(
         (
             settings.foot_position_weight * foot_error,
             settings.root_regularization_weight * (root_position - target_root_position),
-            settings.root_temporal_regularization_weight
-            * (root_position - previous_root_position),
+            settings.root_temporal_regularization_weight * (root_position - previous_root_position),
             settings.pose_regularization_weight * (leg_position - target_pose),
             settings.temporal_regularization_weight * (leg_position - previous_pose),
         )
@@ -153,9 +155,7 @@ def adapt_reference_for_speed(
     pelvis = body_names.index("pelvis")
     model = mujoco.MjModel.from_binary_path(str(model_path))
     data = mujoco.MjData(model)
-    joint_ids = [
-        _model_id(mujoco, model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in joint_names
-    ]
+    joint_ids = [_model_id(mujoco, model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in joint_names]
     qpos_addresses = np.asarray([model.jnt_qposadr[joint] for joint in joint_ids], dtype=np.int64)
     site_ids = [
         _model_id(mujoco, model, mujoco.mjtObj.mjOBJ_SITE, name)
@@ -164,19 +164,25 @@ def adapt_reference_for_speed(
     if any(identifier < 0 for identifier in (*joint_ids, *site_ids)):
         raise ValueError("model does not satisfy adaptation joint/site contract")
     leg_indices = np.asarray(
-        [index for index, name in enumerate(joint_names) if any(token in name for token in ("hip_", "knee_", "ankle_"))],
+        [
+            index
+            for index, name in enumerate(joint_names)
+            if any(token in name for token in ("hip_", "knee_", "ankle_"))
+        ],
         dtype=np.int64,
     )
     arm_indices = np.asarray(
-        [index for index, name in enumerate(joint_names) if "shoulder_" in name or "elbow_" in name or "wrist_" in name],
+        [
+            index
+            for index, name in enumerate(joint_names)
+            if "shoulder_" in name or "elbow_" in name or "wrist_" in name
+        ],
         dtype=np.int64,
     )
     leg_qpos = qpos_addresses[leg_indices]
     source_frames = len(source_joint)
     output_frames = settings.output_frames
-    source_pose = periodic_fourier_resample(
-        source_joint, output_frames, settings.joint_harmonics
-    )
+    source_pose = periodic_fourier_resample(source_joint, output_frames, settings.joint_harmonics)
     source_pose[:, arm_indices] = periodic_fourier_resample(
         source_joint[:, arm_indices], output_frames, settings.arm_harmonics
     )
@@ -189,9 +195,7 @@ def adapt_reference_for_speed(
     detrended_root = root.copy()
     detrended_root[:, 0] -= source_phase * source_stride
     target_stride = settings.speed_m_s * settings.cycle_period_s
-    root_quaternion = _normalized_linear_resample(
-        source_body_quaternion[:, pelvis], output_frames
-    )
+    root_quaternion = _normalized_linear_resample(source_body_quaternion[:, pelvis], output_frames)
     root_quaternion /= np.linalg.norm(root_quaternion, axis=1, keepdims=True)
 
     source_resampled_root = periodic_fourier_resample(
@@ -269,7 +273,9 @@ def adapt_reference_for_speed(
         data.qpos[3:7] = root_quaternion[frame]
         data.qpos[qpos_addresses] = adapted_joint[frame]
         mujoco.mj_forward(model, data)
-        foot_error = float(np.max(np.linalg.norm(data.site_xpos[site_ids] - target_foot[frame], axis=1)))
+        foot_error = float(
+            np.max(np.linalg.norm(data.site_xpos[site_ids] - target_foot[frame], axis=1))
+        )
         convergence.append(
             {
                 "frame": frame,
@@ -300,9 +306,9 @@ def adapt_reference_for_speed(
         flight = np.flatnonzero(np.sum(contact, axis=1) == 0)
         contact[flight, np.argmin(support_score[flight], axis=1)] = 1
     else:
-        contact_indices = np.floor(
-            np.arange(output_frames) / output_frames * source_frames
-        ).astype(np.int64)
+        contact_indices = np.floor(np.arange(output_frames) / output_frames * source_frames).astype(
+            np.int64
+        )
         contact = source_contact[contact_indices]
     closed_contact = np.concatenate((contact, contact[:1]), axis=0)
     body_linear_velocity = np.gradient(closed_body_position, dt, axis=0)

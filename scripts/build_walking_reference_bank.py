@@ -35,18 +35,14 @@ def local_foot_positions(reference_path: Path, model_path: Path) -> np.ndarray:
         joint_names = tuple(str(name) for name in reference["joint_names"].tolist())
         body_names = tuple(str(name) for name in reference["body_names"].tolist())
     pelvis = body_names.index("pelvis")
+
     def model_id(kind: Any, name: str) -> int:
         result = int(mujoco.mj_name2id(model, kind, name))
-        return result if result >= 0 else int(
-            mujoco.mj_name2id(model, kind, f"robot/{name}")
-        )
+        return result if result >= 0 else int(mujoco.mj_name2id(model, kind, f"robot/{name}"))
 
     joint_ids = [model_id(mujoco.mjtObj.mjOBJ_JOINT, name) for name in joint_names]
     qpos_addresses = [int(model.jnt_qposadr[joint_id]) for joint_id in joint_ids]
-    site_ids = [
-        model_id(mujoco.mjtObj.mjOBJ_SITE, name)
-        for name in ("left_foot", "right_foot")
-    ]
+    site_ids = [model_id(mujoco.mjtObj.mjOBJ_SITE, name) for name in ("left_foot", "right_foot")]
     if any(value < 0 for value in (*joint_ids, *site_ids)):
         raise ValueError("model does not satisfy reference joint/site contract")
     world = np.empty((len(joint_position), 2, 3), dtype=np.float64)
@@ -90,9 +86,7 @@ def main() -> int:
     selected_paths = (references[0.4], references[0.6], references[0.8])
     selected_hashes = tuple(sha256_file(path) for path in selected_paths)
     try:
-        expected_hashes = authorized_reference_hashes(
-            qualification, (0.4, 0.6, 0.8)
-        )
+        expected_hashes = authorized_reference_hashes(qualification, (0.4, 0.6, 0.8))
     except ValueError as error:
         raise SystemExit(f"{error}; refusing to build bank") from error
     if selected_hashes != expected_hashes:
