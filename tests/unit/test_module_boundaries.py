@@ -45,6 +45,22 @@ def test_cli_routes_to_new_module_commands() -> None:
     )
 
 
+def test_train_cli_exposes_dedicated_walking_v2_curriculum_profile() -> None:
+    args = parser().parse_args(
+        [
+            "train",
+            "--config",
+            "run.json",
+            "--walking-v2-curriculum-profile",
+            "stage.json",
+            "--output",
+            "run",
+        ]
+    )
+
+    assert args.walking_v2_curriculum_profile == Path("stage.json")
+
+
 def test_evaluate_walking_v2_requests_required_physics_trace(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

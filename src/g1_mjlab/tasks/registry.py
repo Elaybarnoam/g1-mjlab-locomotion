@@ -68,12 +68,14 @@ class TaskDefinition:
         randomized_reset: bool = True,
         task_profile: Any = None,
         stage19_reward_profile: Any = None,
+        curriculum_profile: Any = None,
     ) -> None:
         self._implementation().configure_environment(
             env,
             randomized_reset=randomized_reset,
             task_profile=task_profile,
             stage19_reward_profile=stage19_reward_profile,
+            curriculum_profile=curriculum_profile,
         )
 
 

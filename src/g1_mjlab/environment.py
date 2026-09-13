@@ -12,6 +12,7 @@ from .config import (
     Stage19RewardProfile,
     StandingRewardProfile,
     WalkingTrainingProfile,
+    WalkingV2CurriculumProfile,
 )
 from .tasks import STANDING_TASK_ID, TaskCapability, get_task
 
@@ -25,6 +26,7 @@ def build_train_config(
     ppo_profile: PpoProfile | None = None,
     walking_profile: WalkingTrainingProfile | None = None,
     walking_reward_profile: Stage19RewardProfile | None = None,
+    walking_v2_curriculum_profile: WalkingV2CurriculumProfile | None = None,
 ) -> Any:
     """Build a supported task after validating capability without simulator imports."""
     task = get_task(config.task_id).require(TaskCapability.TRAIN)
@@ -47,6 +49,7 @@ def build_train_config(
         randomized_reset=randomized_reset,
         task_profile=walking_profile,
         stage19_reward_profile=walking_reward_profile,
+        curriculum_profile=walking_v2_curriculum_profile,
     )
     if task.termination_penalty is not None:
         cfg.env.rewards["termination"].weight = task.termination_penalty / config.control_dt

@@ -23,6 +23,7 @@ from .config import (
     Stage19RewardProfile,
     StandingRewardProfile,
     WalkingTrainingProfile,
+    WalkingV2CurriculumProfile,
 )
 from .environment import build_train_config
 from .evaluation import StandingCriteria, TrialAccumulator, wilson_interval
@@ -136,6 +137,7 @@ def train(
     fine_tune: Path | None = None,
     walking_profile: WalkingTrainingProfile | None = None,
     walking_reward_profile: Stage19RewardProfile | None = None,
+    walking_v2_curriculum_profile: WalkingV2CurriculumProfile | None = None,
 ) -> Path:
     """Execute one bounded upstream training run and finalize local evidence."""
     task = get_task(config.task_id).require(TaskCapability.TRAIN)
@@ -153,6 +155,7 @@ def train(
             ppo_profile,
             walking_profile,
             walking_reward_profile,
+            walking_v2_curriculum_profile,
         )
     if initialize_actor is not None:
         from .training import validate_actor_initialization
@@ -174,6 +177,9 @@ def train(
             "walking_profile_sha256": walking_profile.sha256 if walking_profile else None,
             "walking_reward_profile_sha256": (
                 walking_reward_profile.sha256 if walking_reward_profile else None
+            ),
+            "walking_v2_curriculum_profile_sha256": (
+                walking_v2_curriculum_profile.sha256 if walking_v2_curriculum_profile else None
             ),
             "max_iterations": config.max_iterations,
             **source,
@@ -202,6 +208,11 @@ def train(
             json.dumps(walking_reward_profile.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+    if walking_v2_curriculum_profile is not None:
+        (run_dir / "walking-v2-curriculum-profile.json").write_text(
+            json.dumps(walking_v2_curriculum_profile.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     store.transition("starting")
     try:
         snapshot = snapshot_source(
@@ -219,6 +230,7 @@ def train(
             ppo_profile=ppo_profile,
             walking_profile=walking_profile,
             walking_reward_profile=walking_reward_profile,
+            walking_v2_curriculum_profile=walking_v2_curriculum_profile,
         )
         (run_dir / "algorithm.json").write_text(
             json.dumps(asdict(train_cfg.agent), indent=2, sort_keys=True) + "\n",

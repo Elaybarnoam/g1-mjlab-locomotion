@@ -191,6 +191,30 @@ class WalkingTrainingProfile:
 
 
 @dataclass(frozen=True)
+class WalkingV2CurriculumProfile:
+    """One immutable walking-v2 curriculum stage and its robustness envelope."""
+
+    schema_version: int
+    name: str
+    stage: str
+    standing_fraction: float
+    forward_speed_range_m_s: tuple[float, float]
+    resampling_time_range_s: tuple[float, float]
+    observation_noise: bool
+    startup_domain_randomization: bool
+    push_disturbance: bool
+    terminate_reference_deviation: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @property
+    def sha256(self) -> str:
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@dataclass(frozen=True)
 class Stage19RewardTerm:
     """One allowlisted reward with explicit units and integration semantics."""
 
@@ -467,6 +491,73 @@ def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
         or profile.reference_foot_position_std_m <= 0
     ):
         raise ValueError("reference_foot_position_std_m must be positive and finite")
+    return profile
+
+
+def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile:
+    """Load a fail-closed walking-v2 stage declaration."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    expected = set(WalkingV2CurriculumProfile.__dataclass_fields__)
+    if not isinstance(raw, dict) or set(raw) != expected:
+        raise ValueError("walking-v2 curriculum profile fields do not match schema")
+    values = dict(raw)
+    for name in ("forward_speed_range_m_s", "resampling_time_range_s"):
+        value = values[name]
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError(f"{name} must contain [minimum, maximum]")
+        values[name] = tuple(value)
+    profile = WalkingV2CurriculumProfile(**values)
+    if profile.schema_version != 2:
+        raise ValueError("only walking-v2 curriculum schema_version 2 is supported")
+    if not profile.name or any(
+        char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        for char in profile.name
+    ):
+        raise ValueError("walking-v2 curriculum profile name is invalid")
+    stages = {"stand", "stand-walk-040", "add-060", "add-080", "transitions", "robustness"}
+    if profile.stage not in stages:
+        raise ValueError(f"walking-v2 curriculum stage must be one of {sorted(stages)}")
+    if (
+        isinstance(profile.standing_fraction, bool)
+        or not isinstance(profile.standing_fraction, (int, float))
+        or not math.isfinite(profile.standing_fraction)
+        or not 0.0 <= profile.standing_fraction <= 1.0
+    ):
+        raise ValueError("standing_fraction must be finite in [0, 1]")
+    for name, bounds in (
+        ("forward_speed_range_m_s", (0.0, 0.8)),
+        ("resampling_time_range_s", (0.02, math.inf)),
+    ):
+        low, high = getattr(profile, name)
+        if (
+            any(
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                for value in (low, high)
+            )
+            or not all(math.isfinite(value) for value in (low, high))
+            or low < bounds[0]
+            or high > bounds[1]
+            or high < low
+        ):
+            raise ValueError(f"{name} contains invalid or unordered bounds")
+    for name in (
+        "observation_noise",
+        "startup_domain_randomization",
+        "push_disturbance",
+        "terminate_reference_deviation",
+    ):
+        if not isinstance(getattr(profile, name), bool):
+            raise ValueError(f"{name} must be a boolean")
+    if profile.stage != "robustness" and any(
+        (profile.observation_noise, profile.startup_domain_randomization, profile.push_disturbance)
+    ):
+        raise ValueError("noise, startup randomization, and pushes are robustness-stage only")
+    if profile.stage == "robustness" and not all(
+        (profile.observation_noise, profile.startup_domain_randomization, profile.push_disturbance)
+    ):
+        raise ValueError("robustness stage must enable noise, startup randomization, and pushes")
+    if profile.stage != "stand" and profile.forward_speed_range_m_s[0] <= 0.0:
+        raise ValueError("moving curriculum stages require a positive minimum speed")
     return profile
 
 

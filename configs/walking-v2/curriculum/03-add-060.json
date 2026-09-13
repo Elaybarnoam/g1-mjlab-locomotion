@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "name": "add-060-v2",
+  "stage": "add-060",
+  "standing_fraction": 0.35,
+  "forward_speed_range_m_s": [0.4, 0.6],
+  "resampling_time_range_s": [3.0, 6.0],
+  "observation_noise": false,
+  "startup_domain_randomization": false,
+  "push_disturbance": false,
+  "terminate_reference_deviation": false
+}

@@ -13,8 +13,9 @@ def configure_environment(
     randomized_reset: bool = True,
     task_profile: Any = None,
     stage19_reward_profile: Any = None,
+    curriculum_profile: Any = None,
 ) -> None:
-    if task_profile is not None:
+    if task_profile is not None or curriculum_profile is not None:
         raise ValueError("standing-v1 does not accept a walking training profile")
     if stage19_reward_profile is not None:
         raise ValueError("standing-v1 does not accept a Stage 19 reward profile")

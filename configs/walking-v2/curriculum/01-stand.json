@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "name": "stand-v2",
+  "stage": "stand",
+  "standing_fraction": 1.0,
+  "forward_speed_range_m_s": [0.0, 0.0],
+  "resampling_time_range_s": [4.0, 10.0],
+  "observation_noise": false,
+  "startup_domain_randomization": false,
+  "push_disturbance": false,
+  "terminate_reference_deviation": false
+}

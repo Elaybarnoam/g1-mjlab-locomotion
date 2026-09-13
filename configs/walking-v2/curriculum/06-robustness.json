@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "name": "robustness-v2",
+  "stage": "robustness",
+  "standing_fraction": 0.4,
+  "forward_speed_range_m_s": [0.4, 0.8],
+  "resampling_time_range_s": [1.5, 4.0],
+  "observation_noise": true,
+  "startup_domain_randomization": true,
+  "push_disturbance": true,
+  "terminate_reference_deviation": false
+}

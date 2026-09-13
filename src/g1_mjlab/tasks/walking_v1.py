@@ -85,10 +85,13 @@ def configure_environment(
     randomized_reset: bool = True,
     task_profile: Any = None,
     stage19_reward_profile: Any = None,
+    curriculum_profile: Any = None,
 ) -> None:
     from ..config import Stage19RewardProfile, WalkingTrainingProfile
     from .walking_mdp import WalkingCommandCfg
 
+    if curriculum_profile is not None:
+        raise ValueError("walking-v1 does not accept a walking-v2 curriculum profile")
     command = env.commands["twist"]
     if not isinstance(command, WalkingCommandCfg):
         raise TypeError("walking-v1 requires WalkingCommandCfg")

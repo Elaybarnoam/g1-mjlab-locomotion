@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from g1_mjlab.config import WalkingV2CurriculumProfile, load_walking_v2_curriculum_profile
 from g1_mjlab.contracts import validate_contract
 from g1_mjlab.tasks.registry import TaskCapability, get_task
 from g1_mjlab.tasks.walking_v2 import (
@@ -25,6 +26,7 @@ class _Environment:
         command.reference_initialization = False
         self.observations = {"actor": actor}
         self.commands = {"twist": command}
+        self.terminations = {"reference_deviation": object(), "fell_over": object()}
         self.events = {
             "reset_base": object(),
             "reset_robot_joints": object(),
@@ -104,3 +106,62 @@ def test_acquisition_mode_excludes_robustness_randomization() -> None:
     assert set(environment.events) == {"reset_base", "reset_robot_joints"}
     assert environment.commands["twist"].randomize_phase is True
     assert environment.commands["twist"].reference_initialization is True
+
+
+def test_walking_v2_curriculum_profile_is_strict_and_hashable(tmp_path) -> None:
+    path = tmp_path / "profile.json"
+    path.write_text(
+        """{
+  "schema_version": 2,
+  "name": "transitions-v2",
+  "stage": "transitions",
+  "standing_fraction": 0.4,
+  "forward_speed_range_m_s": [0.4, 0.8],
+  "resampling_time_range_s": [1.5, 4.0],
+  "observation_noise": false,
+  "startup_domain_randomization": false,
+  "push_disturbance": false,
+  "terminate_reference_deviation": false
+}\n""",
+        encoding="utf-8",
+    )
+
+    profile = load_walking_v2_curriculum_profile(path)
+
+    assert profile.stage == "transitions"
+    assert profile.forward_speed_range_m_s == (0.4, 0.8)
+    assert profile.resampling_time_range_s == (1.5, 4.0)
+    assert len(profile.sha256) == 64
+
+
+def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -> None:
+    environment = _Environment()
+    profile = WalkingV2CurriculumProfile(
+        schema_version=2,
+        name="robustness-v2",
+        stage="robustness",
+        standing_fraction=0.4,
+        forward_speed_range_m_s=(0.4, 0.8),
+        resampling_time_range_s=(1.5, 4.0),
+        observation_noise=True,
+        startup_domain_randomization=True,
+        push_disturbance=True,
+        terminate_reference_deviation=False,
+    )
+
+    configure_environment(environment, curriculum_profile=profile)
+
+    assert environment.observations["actor"].enable_corruption is True
+    assert set(environment.events) == {
+        "base_com",
+        "encoder_bias",
+        "foot_friction",
+        "push_robot",
+        "reset_base",
+        "reset_robot_joints",
+    }
+    command = environment.commands["twist"]
+    assert command.standing_fraction == 0.4
+    assert command.forward_speed_range_m_s == (0.4, 0.8)
+    assert command.resampling_time_range == (1.5, 4.0)
+    assert "reference_deviation" not in environment.terminations

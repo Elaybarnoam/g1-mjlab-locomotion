@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 from g1_mjlab.artifacts import snapshot_source
-from g1_mjlab.config import WalkingTrainingProfile, load_config, load_stage19_reward_profile
+from g1_mjlab.config import (
+    WalkingTrainingProfile,
+    WalkingV2CurriculumProfile,
+    load_config,
+    load_stage19_reward_profile,
+)
 from g1_mjlab.runtime import summarize_training_metrics
 from g1_mjlab.training import (
     initialize_walking_v2_actor_mean,
@@ -110,6 +115,27 @@ def test_resume_rejects_changed_stage19_reward_profile(tmp_path: Path) -> None:
     validate_resume(config, checkpoint, None, None, walking_reward_profile=arm_c)
     with pytest.raises(ValueError, match="walking-reward-profile"):
         validate_resume(config, checkpoint, None, None, walking_reward_profile=arm_b)
+
+
+def test_resume_rejects_changed_walking_v2_curriculum_profile(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_config(root / "configs/walking-v2/acquisition-seed42-0500.json")
+    profile = WalkingV2CurriculumProfile(
+        2, "add-080-v2", "add-080", 0.25, (0.4, 0.8), (3.0, 6.0), False, False, False, False
+    )
+    run = tmp_path / "run"
+    (run / "checkpoints").mkdir(parents=True)
+    checkpoint = run / "checkpoints" / "model_1.pt"
+    checkpoint.touch()
+    (run / "config.json").write_text(json.dumps(config.to_dict()), encoding="utf-8")
+    (run / "walking-v2-curriculum-profile.json").write_text(
+        json.dumps(profile.to_dict()), encoding="utf-8"
+    )
+
+    validate_resume(config, checkpoint, None, None, walking_v2_curriculum_profile=profile)
+    changed = replace(profile, standing_fraction=0.5)
+    with pytest.raises(ValueError, match="walking-v2-curriculum-profile"):
+        validate_resume(config, checkpoint, None, None, walking_v2_curriculum_profile=changed)
 
 
 def test_actor_initialization_requires_same_task_and_is_not_resume(tmp_path: Path) -> None:

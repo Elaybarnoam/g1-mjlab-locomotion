@@ -31,6 +31,7 @@ _ROBOT = SceneEntityCfg("robot")
 class WalkingV2CommandCfg(CommandTermCfg):
     bank_file: str
     standing_fraction: float = 0.2
+    forward_speed_range_m_s: tuple[float, float] = (0.4, 0.8)
     randomize_phase: bool = True
     reference_initialization: bool = True
 
@@ -53,6 +54,9 @@ class WalkingV2Command(CommandTerm):
             raise ValueError("walking-v2 requires a 0.020 s policy interval")
         if not 0.0 <= cfg.standing_fraction <= 1.0:
             raise ValueError("standing_fraction must be in [0, 1]")
+        low, high = cfg.forward_speed_range_m_s
+        if not 0.0 <= low <= high <= self.profile.maximum_forward_speed_m_s:
+            raise ValueError("forward_speed_range_m_s must be ordered within [0, 0.8]")
         self.bank = ReferenceBank.load(Path(cfg.bank_file))
         robot: Entity = env.scene["robot"]
         if self.bank.metadata.joint_names != tuple(robot.joint_names):
@@ -142,7 +146,7 @@ class WalkingV2Command(CommandTerm):
     def _resample_command(self, env_ids: torch.Tensor) -> None:
         standing = torch.rand(len(env_ids), device=self.device) < self.cfg.standing_fraction
         moving_speed = torch.empty(len(env_ids), device=self.device).uniform_(
-            self.bank.speed_knots[0], self.profile.maximum_forward_speed_m_s
+            *self.cfg.forward_speed_range_m_s
         )
         self._requested[env_ids] = 0.0
         self._requested[env_ids, 0] = torch.where(standing, 0.0, moving_speed)

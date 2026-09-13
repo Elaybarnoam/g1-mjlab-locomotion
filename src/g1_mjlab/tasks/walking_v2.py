@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ..config import WalkingV2CurriculumProfile
 from ..contracts import PolicyContract, fields_from_sizes
 from ..motion import G1_JOINT_NAMES
 
@@ -87,22 +88,36 @@ def configure_environment(
     randomized_reset: bool = True,
     task_profile: Any = None,
     stage19_reward_profile: Any = None,
+    curriculum_profile: WalkingV2CurriculumProfile | None = None,
 ) -> None:
     """Configure nominal acquisition; robustness randomization is a later explicit stage."""
     if task_profile is not None or stage19_reward_profile is not None:
         raise ValueError("walking-v2 does not accept walking-v1 training or Stage 19 profiles")
-    env.observations["actor"].enable_corruption = False
+    profile = curriculum_profile
+    env.observations["actor"].enable_corruption = (
+        profile.observation_noise if profile is not None else False
+    )
     if not randomized_reset:
         env.events = {}
     else:
-        required_reset_events = {"reset_base", "reset_robot_joints"}
-        missing = required_reset_events - set(env.events)
+        selected_events = {"reset_base", "reset_robot_joints"}
+        if profile is not None and profile.startup_domain_randomization:
+            selected_events.update({"foot_friction", "encoder_bias", "base_com"})
+        if profile is not None and profile.push_disturbance:
+            selected_events.add("push_robot")
+        missing = selected_events - set(env.events)
         if missing:
-            raise ValueError(f"walking-v2 acquisition is missing reset events: {sorted(missing)}")
-        env.events = {name: env.events[name] for name in sorted(required_reset_events)}
+            raise ValueError(f"walking-v2 is missing declared events: {sorted(missing)}")
+        env.events = {name: env.events[name] for name in sorted(selected_events)}
     command = env.commands["twist"]
     command.randomize_phase = randomized_reset
     command.reference_initialization = randomized_reset
+    if profile is not None:
+        command.standing_fraction = profile.standing_fraction
+        command.forward_speed_range_m_s = profile.forward_speed_range_m_s
+        command.resampling_time_range = profile.resampling_time_range_s
+        if not profile.terminate_reference_deviation:
+            env.terminations.pop("reference_deviation", None)
 
 
 def register_task() -> None:

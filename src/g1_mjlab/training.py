@@ -17,6 +17,7 @@ from .config import (
     Stage19RewardProfile,
     StandingRewardProfile,
     WalkingTrainingProfile,
+    WalkingV2CurriculumProfile,
 )
 from .qualification import describe, resolved_contract
 
@@ -83,6 +84,7 @@ def validate_resume(
     ppo_profile: PpoProfile | None,
     walking_profile: WalkingTrainingProfile | None = None,
     walking_reward_profile: Stage19RewardProfile | None = None,
+    walking_v2_curriculum_profile: WalkingV2CurriculumProfile | None = None,
 ) -> None:
     """Only full-state continuation of the same declared learning problem is allowed."""
     checkpoint.resolve(strict=True)
@@ -120,6 +122,15 @@ def validate_resume(
     )
     if old != current_reward:
         raise ValueError("resume changes walking-reward-profile")
+    path = root / "walking-v2-curriculum-profile.json"
+    old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    current_curriculum = (
+        json.loads(json.dumps(walking_v2_curriculum_profile.to_dict()))
+        if walking_v2_curriculum_profile is not None
+        else None
+    )
+    if old != current_curriculum:
+        raise ValueError("resume changes walking-v2-curriculum-profile")
 
 
 def validate_actor_initialization(config: ResolvedRunConfig, checkpoint: Path) -> dict[str, Any]:
