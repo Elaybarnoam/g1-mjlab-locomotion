@@ -70,4 +70,4 @@ def test_touchdown_reward_requires_alternation_and_reference_stance() -> None:
         single, touchdown_foot, last_touchdown, expected_contact
     )
 
-    torch.testing.assert_close(signal, torch.tensor([1.0, 0.0, -1.0, 0.0]))
+    torch.testing.assert_close(signal, torch.tensor([1.0, -0.25, -1.0, 0.0]))

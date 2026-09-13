@@ -349,14 +349,19 @@ def gait_touchdown_event_signal(
     single: torch.Tensor,
     touchdown_foot: torch.Tensor,
     last_touchdown: torch.Tensor,
-    expected_contact: torch.Tensor,
+    expected_touchdown_window: torch.Tensor,
 ) -> torch.Tensor:
-    """Score only alternating touchdowns that agree with the reference stance phase."""
-    expected_stance = expected_contact.gather(1, touchdown_foot[:, None]).squeeze(1)
+    """Score alternating touchdowns near the reference event, not across all stance."""
+    expected_window = expected_touchdown_window.gather(1, touchdown_foot[:, None]).squeeze(1)
     alternating = single & (last_touchdown >= 0) & (touchdown_foot != last_touchdown)
-    rewarded = alternating & expected_stance
+    rewarded = alternating & expected_window
+    off_phase = alternating & ~expected_window
     repeated = single & (touchdown_foot == last_touchdown)
-    return rewarded.to(torch.float32) - repeated.to(torch.float32)
+    return (
+        rewarded.to(torch.float32)
+        - repeated.to(torch.float32)
+        - 0.25 * off_phase.to(torch.float32)
+    )
 
 
 def swing_clearance_error(
@@ -390,6 +395,10 @@ class walking_v2_rate:
         self._candidate_age_s = torch.zeros(shape, device=env.device)
         self._last_touchdown = torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device)
         self._touchdown_age_s = torch.full((env.num_envs,), 1.0, device=env.device)
+        self._previous_expected_contact = torch.zeros(
+            shape, dtype=torch.bool, device=env.device
+        )
+        self._expected_touchdown_age_s = torch.full(shape, 1.0, device=env.device)
 
     def __call__(
         self,
@@ -417,6 +426,14 @@ class walking_v2_rate:
         self._candidate_age_s[reset] = 0.0
         self._last_touchdown[reset] = -1
         self._touchdown_age_s[reset] = 1.0
+        self._previous_expected_contact[reset] = command.expected_contact[reset]
+        self._expected_touchdown_age_s[reset] = 1.0
+        expected_rising = command.expected_contact & ~self._previous_expected_contact
+        expected_rising[reset] = False
+        self._expected_touchdown_age_s += env.step_dt
+        self._expected_touchdown_age_s[expected_rising] = 0.0
+        expected_touchdown_window = self._expected_touchdown_age_s <= 0.20
+        self._previous_expected_contact.copy_(command.expected_contact)
         previous_stable = self._stable_contact.clone()
         (
             self._stable_contact,
@@ -441,7 +458,7 @@ class walking_v2_rate:
             single,
             touchdown_foot,
             self._last_touchdown,
-            command.expected_contact,
+            expected_touchdown_window,
         )
         self._last_touchdown[single] = touchdown_foot[single]
         self._touchdown_age_s += env.step_dt
