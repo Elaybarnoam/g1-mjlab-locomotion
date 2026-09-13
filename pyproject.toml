@@ -125,6 +125,7 @@ omit = [
   "*/g1_mjlab/walking_measurement.py",
   "*/g1_mjlab/walking_viewer.py",
   "*/g1_mjlab/walking_runtime.py",
+  "*/g1_mjlab/walking_v2_smoke.py",
 ]
 
 [tool.coverage.report]

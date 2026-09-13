@@ -274,6 +274,7 @@ class ReferenceBank:
         import torch
 
         phase_array, speed = torch.broadcast_tensors(phase, speed_m_s)  # type: ignore[no-untyped-call]
+        phase_array, speed = phase_array.contiguous(), speed.contiguous()
         if not bool(torch.isfinite(phase_array).all()) or not bool(torch.isfinite(speed).all()):
             raise ValueError("reference phase and speed must be finite")
         if bool((speed < 0).any()) or bool((speed > 0.8).any()):

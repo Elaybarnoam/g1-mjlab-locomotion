@@ -136,7 +136,9 @@ _TASKS = {
         unavailable_reason=(
             "walking-v2 controller qualification requires a learned policy to pass final gates"
         ),
-        termination_penalty=-2.0,
+        # Walking-v2 owns its true-fall event reward explicitly; applying the generic
+        # termination override would both double-count falls and require a hidden term.
+        termination_penalty=None,
     ),
 }
 

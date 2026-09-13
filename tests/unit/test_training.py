@@ -9,10 +9,30 @@ from g1_mjlab.artifacts import snapshot_source
 from g1_mjlab.config import WalkingTrainingProfile, load_config, load_stage19_reward_profile
 from g1_mjlab.runtime import summarize_training_metrics
 from g1_mjlab.training import (
+    initialize_walking_v2_actor_mean,
     validate_actor_initialization,
     validate_fine_tune_initialization,
     validate_resume,
 )
+
+
+def test_walking_v2_actor_mean_uses_small_orthogonal_output() -> None:
+    torch = pytest.importorskip("torch")
+
+    class Distribution:
+        output_dim = 3
+
+    class Actor:
+        distribution = Distribution()
+        mlp = torch.nn.Sequential(torch.nn.Linear(4, 5), torch.nn.ELU(), torch.nn.Linear(5, 3))
+
+    actor = Actor()
+    initialize_walking_v2_actor_mean(actor)
+
+    output = actor.mlp[-1]
+    gram = output.weight @ output.weight.T
+    torch.testing.assert_close(gram, torch.eye(3) * 0.01**2, atol=1e-10, rtol=1e-5)
+    torch.testing.assert_close(output.bias, torch.zeros(3))
 
 
 def test_source_snapshot_includes_untracked_implementation(tmp_path: Path) -> None:

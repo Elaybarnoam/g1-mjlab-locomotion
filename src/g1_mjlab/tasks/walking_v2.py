@@ -231,4 +231,16 @@ def register_task() -> None:
         **(runner.actor.distribution_cfg or {}),
         "init_std": 0.2,
     }
+    runner.algorithm.gamma = 0.99
+    runner.algorithm.lam = 0.95
+    runner.algorithm.clip_param = 0.2
+    runner.algorithm.value_loss_coef = 1.0
+    runner.algorithm.use_clipped_value_loss = True
+    runner.algorithm.entropy_coef = 0.005
+    runner.algorithm.schedule = "adaptive"
+    runner.algorithm.desired_kl = 0.01
+    runner.algorithm.learning_rate = 3e-4
+    runner.algorithm.max_grad_norm = 1.0
+    runner.algorithm.num_learning_epochs = 5
+    runner.algorithm.num_mini_batches = 4
     register_mjlab_task(TASK_ID, env, env, runner)

@@ -20,6 +20,27 @@ from .config import (
 )
 from .qualification import describe, resolved_contract
 
+WALKING_V2_TASK_ID = "G1-Walking-Flat-v2"
+
+
+def initialize_walking_v2_actor_mean(actor: Any, *, gain: float = 0.01) -> None:
+    """Apply the frozen small-output initialization without replacing RSL-RL's model."""
+    import torch
+
+    if not math.isfinite(gain) or gain <= 0.0:
+        raise ValueError("actor output gain must be finite and positive")
+    distribution = actor.distribution
+    output_dim = int(distribution.output_dim)
+    output_layer = next(
+        (module for module in reversed(actor.mlp) if isinstance(module, torch.nn.Linear)),
+        None,
+    )
+    if output_layer is None or output_layer.out_features != output_dim:
+        raise ValueError("walking-v2 requires one validated linear Gaussian-mean output layer")
+    with torch.no_grad():
+        torch.nn.init.orthogonal_(output_layer.weight, gain=gain)
+        torch.nn.init.zeros_(output_layer.bias)
+
 
 def configure_transferred_action_std(
     actor: Any, initial_action_std: float, *, reset: bool
@@ -156,6 +177,16 @@ def execute_training(
     from .runtime import harvest_tensorboard
 
     configure_torch_backends(allow_tf32=True, deterministic=False)
+    runtime_device: dict[str, Any] = {"configured": config.device}
+    if config.device.startswith("cuda"):
+        runtime_device.update(
+            {
+                "name": torch.cuda.get_device_name(config.device),
+                "capability": list(torch.cuda.get_device_capability(config.device)),
+                "total_memory_bytes": torch.cuda.get_device_properties(config.device).total_memory,
+                "torch_cuda": torch.version.cuda,
+            }
+        )
     (run_dir / "runtime.json").write_text(
         json.dumps(
             {
@@ -173,6 +204,7 @@ def execute_training(
                 "allow_tf32": True,
                 "deterministic_backends": False,
                 "timeout_bootstrap": "stored-current-value; true termination takes precedence",
+                "device": runtime_device,
             },
             indent=2,
         )
@@ -230,8 +262,17 @@ def execute_training(
                 harvest_tensorboard(log_dir, RunStore.open(run_dir))
 
         runner = RecordingRunner(wrapped, agent_cfg, str(log_dir), device=config.device)
+        if (
+            config.task_id == WALKING_V2_TASK_ID
+            and resume is None
+            and initialize_actor is None
+            and fine_tune is None
+        ):
+            initialize_walking_v2_actor_mean(runner.alg.actor)
         kl_samples: list[Any] = []
+        rollout_diagnostics: list[dict[str, float | int]] = []
         original_kl_divergence = runner.alg.actor.get_kl_divergence
+        original_update = runner.alg.update
 
         def record_kl_divergence(*args: Any, **kwargs: Any) -> Any:
             value = original_kl_divergence(*args, **kwargs)
@@ -239,6 +280,37 @@ def execute_training(
             return value
 
         runner.alg.actor.get_kl_divergence = record_kl_divergence
+
+        def record_update() -> Any:
+            storage = runner.alg.storage
+            returns = storage.returns.detach()
+            values = storage.values.detach()
+            rewards = storage.rewards.detach()
+            return_variance = torch.var(returns, unbiased=False)
+            residual_variance = torch.var(returns - values, unbiased=False)
+            explained_variance = torch.where(
+                return_variance > 1e-12,
+                1.0 - residual_variance / return_variance,
+                torch.zeros_like(return_variance),
+            )
+            rollout_diagnostics.append(
+                {
+                    "update": len(rollout_diagnostics),
+                    "samples": int(rewards.numel()),
+                    "reward_mean": float(rewards.mean()),
+                    "reward_std": float(rewards.std(unbiased=False)),
+                    "return_mean": float(returns.mean()),
+                    "return_std": float(returns.std(unbiased=False)),
+                    "advantage_mean_before_normalization": float((returns - values).mean()),
+                    "advantage_std_before_normalization": float(
+                        (returns - values).std(unbiased=False)
+                    ),
+                    "explained_variance": float(explained_variance),
+                }
+            )
+            return original_update()
+
+        runner.alg.update = record_update
         if sum(value is not None for value in (resume, initialize_actor, fine_tune)) > 1:
             raise ValueError("resume, initialize_actor, and fine_tune are mutually exclusive")
         if resume is not None:
@@ -385,6 +457,7 @@ def execute_training(
                     "kl_divergence_samples": kl_values,
                     "kl_samples_per_update": kl_samples_per_update,
                     "all_kl_samples_finite": all(math.isfinite(value) for value in kl_values),
+                    "rollout_diagnostics": rollout_diagnostics,
                     "optimizer_state_entries": len(runner.alg.optimizer.state),
                     "final_learning_rate": runner.alg.learning_rate,
                 },

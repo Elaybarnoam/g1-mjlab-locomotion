@@ -87,6 +87,7 @@ def resolved_contract(env: Any, config: ResolvedRunConfig, output: Path) -> dict
             offset += size
         observations[group] = fields
     task = get_task(config.task_id)
+    reference_centered = hasattr(action.cfg, "command_name")
     actor_size = sum(item["size"] for item in observations["actor"])
     critic_size = sum(item["size"] for item in observations["critic"])
     if actor_size != task.actor_size or critic_size != task.critic_size:
@@ -118,7 +119,11 @@ def resolved_contract(env: Any, config: ResolvedRunConfig, output: Path) -> dict
         "critic_fields": observations["critic"],
         "action_target_ids": action.target_ids.cpu().tolist(),
         "action_scale": action_array(action.scale),
-        "nominal_joint_position": action_array(action.offset),
+        "nominal_joint_position": (
+            robot.data.default_joint_pos[0].cpu().tolist()
+            if reference_centered
+            else action_array(action.offset)
+        ),
         "action_clip": config.action_clip,
         "target_clip": describe(action.cfg.clip),
         "encoder_bias": robot.data.encoder_bias[0].cpu().tolist(),
@@ -150,7 +155,10 @@ def resolved_contract(env: Any, config: ResolvedRunConfig, output: Path) -> dict
         "initial_root_position": robot.data.root_link_pos_w[0].cpu().tolist(),
         "initial_root_quaternion_wxyz": robot.data.root_link_quat_w[0].cpu().tolist(),
         "action_semantics": (
-            "raw policy -> optional symmetric action clip -> scale + nominal -> "
+            "raw residual -> optional symmetric action clip -> per-joint residual scale + "
+            "causal reference center -> built-in position actuator; PD applied exactly once"
+            if reference_centered
+            else "raw policy -> optional symmetric action clip -> scale + nominal -> "
             "built-in position actuator; no extra PD"
         ),
     }
