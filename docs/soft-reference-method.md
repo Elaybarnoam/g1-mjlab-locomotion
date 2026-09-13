@@ -35,3 +35,13 @@ arrays and records old/new hashes, corrections, collision measurements and added
 Repair is not dynamics qualification. Its output must pass a fresh kinematic audit and retain a
 fresh failed/passed dynamics diagnostic. The reference bank builder accepts only exact hashes from
 an explicitly training-authorized decision and emits a separate admission-to-bank binding manifest.
+
+## Interval-end target state
+
+`WalkingTargetState` owns only the applied command, periodic phase and actual stand/walk blend. Its
+pure transition computes the next rate-limited command, the smoothstep desired blend, the next
+rate-limited actual blend and phase, then composes the exact `k+1` joint-position and joint-velocity
+targets. The returned transition is the cache shared by action centering and post-step rewards; its
+`next_state` is committed only after that interval. This prevents observations, actions and rewards
+from silently using different reference times. NumPy and Torch adapters implement the same contract,
+and indexed resets return copies while leaving every unselected environment unchanged.

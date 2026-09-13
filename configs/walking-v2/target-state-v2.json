@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "semantics": "walking-v2-interval-end-target-state",
+  "policy_dt_s": 0.02,
+  "maximum_forward_speed_m_s": 0.8,
+  "full_walk_blend_speed_m_s": 0.4,
+  "acceleration_m_s2": 0.6,
+  "deceleration_m_s2": 0.8,
+  "blend_rate_s": 1.0,
+  "transition_order": [
+    "rate_limit_command",
+    "compute_smoothstep_desired_blend",
+    "rate_limit_actual_blend",
+    "advance_phase",
+    "compose_interval_end_reference"
+  ],
+  "reward_reference_time": "k+1",
+  "commit_rule": "commit the exact cached next_state after reward and termination"
+}
