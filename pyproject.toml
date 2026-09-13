@@ -103,6 +103,8 @@ omit = [
   "*/g1_mjlab/native_media.py",
   "*/g1_mjlab/reporting/policy_spec.py",
   "*/g1_mjlab/motion/preparation.py",
+  "*/g1_mjlab/motion/reference_adaptation.py",
+  "*/g1_mjlab/motion/reference_dynamics.py",
   "*/g1_mjlab/motion/reference_feasibility.py",
   "*/g1_mjlab/tasks/walking_mdp.py",
   "*/g1_mjlab/tasks/walking_contact.py",
