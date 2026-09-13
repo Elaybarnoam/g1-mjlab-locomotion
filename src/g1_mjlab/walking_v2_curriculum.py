@@ -154,6 +154,8 @@ def assess_fixed_speed_stage(
                     "alternation": float(row["alternation_fraction"]) >= 0.80,
                     "contact_chatter": float(row["contact_transition_rate_s"]) <= 6.0,
                     "minimum_steps": int(row["touchdown_count"]) >= 6,
+                    "forward_progress": float(row["forward_progress_m"])
+                    >= 0.25 * speed * horizon_s,
                 }
             )
         checks.append({"speed_m_s": speed, "passed": all(limits.values()), "checks": limits})

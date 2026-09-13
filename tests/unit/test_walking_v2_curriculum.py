@@ -20,6 +20,7 @@ def _row(speed: float) -> dict[str, object]:
         "maximum_torso_tilt_rad": 0.20,
         "torque_ratio_p95": 0.30,
         "torque_ratio_peak": 0.80,
+        "forward_progress_m": speed * 5.0,
         "cadence_steps_s": 1.8 if speed else 0.0,
         "alternation_fraction": 0.9 if speed else 1.0,
         "contact_transition_rate_s": 3.6 if speed else 0.0,
@@ -35,6 +36,9 @@ def test_fixed_speed_stage_requires_exact_speed_frontier_and_gait() -> None:
     assert result["passed"] is True
     assert result["required_speeds_m_s"] == [0.0, 0.4, 0.6]
     rows[1]["alternation_fraction"] = 0.79
+    assert assess_fixed_speed_stage("add-060", rows, horizon_s=10.0)["passed"] is False
+    rows[1]["alternation_fraction"] = 0.9
+    rows[1]["forward_progress_m"] = 0.99
     assert assess_fixed_speed_stage("add-060", rows, horizon_s=10.0)["passed"] is False
 
 
