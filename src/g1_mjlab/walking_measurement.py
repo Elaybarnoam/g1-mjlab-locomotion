@@ -231,6 +231,8 @@ def diagnose_walking(
             startup_domain_randomization=robustness,
             push_disturbance=robustness,
             terminate_reference_deviation=False,
+            gait_contact_weight=1.0,
+            fall_penalty=-10.0,
         )
         train_cfg = build_train_config(
             eval_config,

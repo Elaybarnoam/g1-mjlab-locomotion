@@ -205,6 +205,8 @@ class WalkingV2CurriculumProfile:
     startup_domain_randomization: bool
     push_disturbance: bool
     terminate_reference_deviation: bool
+    gait_contact_weight: float
+    fall_penalty: float
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -560,6 +562,13 @@ def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile
         raise ValueError("robustness stage must enable noise, startup randomization, and pushes")
     if profile.stage != "stand" and profile.forward_speed_range_m_s[0] <= 0.0:
         raise ValueError("moving curriculum stages require a positive minimum speed")
+    if (
+        not math.isfinite(profile.gait_contact_weight)
+        or profile.gait_contact_weight < 0.0
+        or not math.isfinite(profile.fall_penalty)
+        or profile.fall_penalty > 0.0
+    ):
+        raise ValueError("gait_contact_weight and fall_penalty are invalid")
     return profile
 
 

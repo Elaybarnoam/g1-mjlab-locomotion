@@ -9,5 +9,7 @@
   "observation_noise": false,
   "startup_domain_randomization": false,
   "push_disturbance": false,
-  "terminate_reference_deviation": false
+  "terminate_reference_deviation": false,
+  "gait_contact_weight": 1.0,
+  "fall_penalty": -10.0
 }

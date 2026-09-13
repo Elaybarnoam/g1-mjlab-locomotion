@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from dataclasses import replace
@@ -24,6 +25,13 @@ def _run(command: list[str], log: Path) -> int:
 
 def _status(path: Path, value: dict[str, Any]) -> None:
     write_atomic_json(path, {"schema_version": 1, **value})
+
+
+def _iteration(path: Path) -> int:
+    match = re.fullmatch(r"model_(\d+)\.pt", path.name)
+    if match is None:
+        raise ValueError(f"invalid checkpoint filename: {path.name}")
+    return int(match.group(1))
 
 
 def main() -> int:
@@ -60,6 +68,7 @@ def main() -> int:
     for index, stage in enumerate(method.stages, start=1):
         stage_root = args.output / f"stage-{index:02d}-{stage.stage}"
         stage_root.mkdir()
+        candidates = [checkpoint]
         if stage.updates:
             run_name = f"walking-v2-s{args.seed}-p{index:02d}-{stage.stage}"
             config = replace(
@@ -95,43 +104,63 @@ def main() -> int:
                 state.update(status="failed", failed_stage=stage.stage, reason="training_failed")
                 _status(status_path, state)
                 return returncode
-            checkpoint = run / "checkpoints" / f"model_{stage.updates - 1}.pt"
-            checkpoint.resolve(strict=True)
-        gate = stage_root / "gate"
-        command = [
-            sys.executable,
-            str(evaluator),
-            "--stage",
-            stage.stage,
-            "--config",
-            str(config_path),
-            "--checkpoint",
-            str(checkpoint),
-            "--output",
-            str(gate),
-            "--horizon-seconds",
-            str(method.fixed_speed_evaluation_horizon_s),
-            "--scenarios",
-            str(method.development_scenarios),
-            "--criteria",
-            str(method.development_criteria),
-        ]
-        returncode = _run(command, stage_root / "gate.log")
-        decision_path = gate / "decision.json"
+            all_checkpoints = sorted((run / "checkpoints").glob("model_*.pt"), key=_iteration)
+            candidates = [
+                path
+                for path in all_checkpoints
+                if (_iteration(path) + 1) % method.save_interval_updates == 0
+                or _iteration(path) == stage.updates - 1
+            ]
+            if not candidates:
+                raise RuntimeError("completed curriculum stage has no evaluation checkpoints")
+        evaluations: list[dict[str, Any]] = []
+        selected: Path | None = None
+        for candidate in candidates:
+            gate = stage_root / f"gate-u{_iteration(candidate) + 1:04d}"
+            command = [
+                sys.executable,
+                str(evaluator),
+                "--stage",
+                stage.stage,
+                "--config",
+                str(config_path),
+                "--checkpoint",
+                str(candidate),
+                "--output",
+                str(gate),
+                "--horizon-seconds",
+                str(method.fixed_speed_evaluation_horizon_s),
+                "--scenarios",
+                str(method.development_scenarios),
+                "--criteria",
+                str(method.development_criteria),
+            ]
+            returncode = _run(command, stage_root / f"gate-u{_iteration(candidate) + 1:04d}.log")
+            decision_path = gate / "decision.json"
+            evaluations.append(
+                {
+                    "checkpoint": str(candidate),
+                    "checkpoint_sha256": sha256_file(candidate),
+                    "decision": str(decision_path),
+                    "decision_sha256": sha256_file(decision_path),
+                    "passed": returncode == 0,
+                }
+            )
+            if returncode == 0:
+                selected = candidate
+                break
         stage_result = {
             "stage": stage.stage,
             "updates": stage.updates,
-            "checkpoint": str(checkpoint),
-            "checkpoint_sha256": sha256_file(checkpoint),
-            "decision": str(decision_path),
-            "decision_sha256": sha256_file(decision_path),
-            "passed": returncode == 0,
+            "evaluations": evaluations,
+            "passed": selected is not None,
         }
         state["stages"].append(stage_result)
-        if returncode:
+        if selected is None:
             state.update(status="failed", failed_stage=stage.stage, reason="promotion_failed")
             _status(status_path, state)
             return 2
+        checkpoint = selected
         _status(status_path, state)
     state.update(
         status="completed",

@@ -308,7 +308,13 @@ class walking_v2_rate:
         )
         self._effort_limit = _effort_limits(robot, env.device)
 
-    def __call__(self, env: ManagerBasedRlEnv, command_name: str, sensor_name: str) -> torch.Tensor:
+    def __call__(
+        self,
+        env: ManagerBasedRlEnv,
+        command_name: str,
+        sensor_name: str,
+        gait_contact_weight: float = 0.0,
+    ) -> torch.Tensor:
         robot: Entity = env.scene["robot"]
         command = _command(env, command_name)
         contact_sensor: ContactSensor = env.scene[sensor_name]
@@ -388,6 +394,7 @@ class walking_v2_rate:
             - 0.10 * raw["action_rate"]
             - 0.05 * raw["normalized_torque"]
             - 0.50 * raw["soft_joint_limit"]
+            + gait_contact_weight * command.blend * agreement
         )
         weights = {
             "imitation_joint_pose": 0.80 * command.blend,
@@ -411,6 +418,9 @@ class walking_v2_rate:
         env.extras["log"]["WalkingV2/task"] = task.mean()
         env.extras["log"]["WalkingV2/stand"] = stand.mean()
         env.extras["log"]["WalkingV2/rate"] = rate.mean()
+        env.extras["log"]["WalkingV2/gait_contact_bonus"] = (
+            gait_contact_weight * command.blend * agreement
+        ).mean()
         return rate
 
 

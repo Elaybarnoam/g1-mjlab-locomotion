@@ -120,6 +120,11 @@ def configure_environment(
         command.resampling_time_range = profile.resampling_time_range_s
         if not profile.terminate_reference_deviation:
             env.terminations.pop("reference_deviation", None)
+        reward = env.rewards["walking_v2_rate"]
+        reward.params = {**reward.params, "gait_contact_weight": profile.gait_contact_weight}
+        env.rewards["true_fall_event"].weight = profile.fall_penalty / (
+            env.sim.mujoco.timestep * env.decimation
+        )
 
 
 def register_task() -> None:

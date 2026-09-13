@@ -121,17 +121,19 @@ def test_resume_rejects_changed_walking_v2_curriculum_profile(tmp_path: Path) ->
     root = Path(__file__).resolve().parents[2]
     config = load_config(root / "configs/walking-v2/acquisition-seed42-0500.json")
     profile = WalkingV2CurriculumProfile(
-        2,
-        "add-080-v2",
-        "add-080",
-        0.25,
-        (0.4, 0.8),
-        (3.0, 6.0),
-        False,
-        False,
-        False,
-        False,
-        False,
+        schema_version=2,
+        name="add-080-v2",
+        stage="add-080",
+        standing_fraction=0.25,
+        forward_speed_range_m_s=(0.4, 0.8),
+        resampling_time_range_s=(3.0, 6.0),
+        reference_initialization=False,
+        observation_noise=False,
+        startup_domain_randomization=False,
+        push_disturbance=False,
+        terminate_reference_deviation=False,
+        gait_contact_weight=1.0,
+        fall_penalty=-10.0,
     )
     run = tmp_path / "run"
     (run / "checkpoints").mkdir(parents=True)

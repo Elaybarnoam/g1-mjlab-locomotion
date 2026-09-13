@@ -26,6 +26,15 @@ class _Environment:
         command.reference_initialization = False
         self.observations = {"actor": actor}
         self.commands = {"twist": command}
+        walking_reward = _Value()
+        walking_reward.params = {"command_name": "twist", "sensor_name": "feet"}
+        fall_reward = _Value()
+        fall_reward.weight = -100.0
+        self.rewards = {"walking_v2_rate": walking_reward, "true_fall_event": fall_reward}
+        self.decimation = 4
+        self.sim = _Value()
+        self.sim.mujoco = _Value()
+        self.sim.mujoco.timestep = 0.005
         self.terminations = {"reference_deviation": object(), "fell_over": object()}
         self.events = {
             "reset_base": object(),
@@ -122,7 +131,9 @@ def test_walking_v2_curriculum_profile_is_strict_and_hashable(tmp_path) -> None:
   "observation_noise": false,
   "startup_domain_randomization": false,
   "push_disturbance": false,
-  "terminate_reference_deviation": false
+  "terminate_reference_deviation": false,
+  "gait_contact_weight": 1.0,
+  "fall_penalty": -10.0
 }\n""",
         encoding="utf-8",
     )
@@ -149,6 +160,8 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
         startup_domain_randomization=True,
         push_disturbance=True,
         terminate_reference_deviation=False,
+        gait_contact_weight=1.0,
+        fall_penalty=-10.0,
     )
 
     configure_environment(environment, curriculum_profile=profile)
@@ -168,3 +181,5 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
     assert command.resampling_time_range == (1.5, 4.0)
     assert command.reference_initialization is False
     assert "reference_deviation" not in environment.terminations
+    assert environment.rewards["walking_v2_rate"].params["gait_contact_weight"] == 1.0
+    assert environment.rewards["true_fall_event"].weight == -500.0
