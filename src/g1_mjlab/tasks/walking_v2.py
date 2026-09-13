@@ -111,7 +111,9 @@ def configure_environment(
         env.events = {name: env.events[name] for name in sorted(selected_events)}
     command = env.commands["twist"]
     command.randomize_phase = randomized_reset
-    command.reference_initialization = randomized_reset
+    command.reference_initialization = (
+        profile.reference_initialization if profile is not None else randomized_reset
+    )
     if profile is not None:
         command.standing_fraction = profile.standing_fraction
         command.forward_speed_range_m_s = profile.forward_speed_range_m_s

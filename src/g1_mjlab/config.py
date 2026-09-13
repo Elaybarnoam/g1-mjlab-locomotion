@@ -200,6 +200,7 @@ class WalkingV2CurriculumProfile:
     standing_fraction: float
     forward_speed_range_m_s: tuple[float, float]
     resampling_time_range_s: tuple[float, float]
+    reference_initialization: bool
     observation_noise: bool
     startup_domain_randomization: bool
     push_disturbance: bool
@@ -541,6 +542,7 @@ def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile
         ):
             raise ValueError(f"{name} contains invalid or unordered bounds")
     for name in (
+        "reference_initialization",
         "observation_noise",
         "startup_domain_randomization",
         "push_disturbance",

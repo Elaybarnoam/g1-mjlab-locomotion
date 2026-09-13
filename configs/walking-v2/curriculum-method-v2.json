@@ -1,0 +1,64 @@
+{
+  "schema_version": 2,
+  "name": "walking-v2-frozen-curriculum-2026-09",
+  "source_policy_role": "one shared acquisition initialization; independent curriculum RNG per seed",
+  "seeds": [42, 43, 44],
+  "num_envs": 256,
+  "rollout_steps": 24,
+  "save_interval_updates": 100,
+  "fixed_speed_evaluation_horizon_s": 10.0,
+  "development_scenarios": {
+    "path": "development-scenarios-v2.json",
+    "sha256": "d2bf2e359a2d2b1733d0888066f0b35887e2d8a913db2df6c7bcd257521dc050"
+  },
+  "development_criteria": {
+    "path": "development-criteria-v2.json",
+    "sha256": "8757a91b48c7725d70ca546dd1490bd040078bc765b81984f35d5f9a427df40d"
+  },
+  "stages": [
+    {
+      "stage": "stand",
+      "profile": "curriculum/01-stand.json",
+      "profile_sha256": "35378f7a45161ecf154538bcae8d8d5a0eedc62b2d271ea68c2d9be962aa3a83",
+      "updates": 0,
+      "gate": "fixed-speed"
+    },
+    {
+      "stage": "stand-walk-040",
+      "profile": "curriculum/02-stand-walk-040.json",
+      "profile_sha256": "20c4e8b86f7eac04e7d6157ebcb2d79aea0d03ec99e241bd8d866405c1c6f421",
+      "updates": 500,
+      "gate": "fixed-speed"
+    },
+    {
+      "stage": "add-060",
+      "profile": "curriculum/03-add-060.json",
+      "profile_sha256": "4432c612da5fd1f7686767c64c734ea5c0ed79edafa2747844be1aaf6298889c",
+      "updates": 500,
+      "gate": "fixed-speed"
+    },
+    {
+      "stage": "add-080",
+      "profile": "curriculum/04-add-080.json",
+      "profile_sha256": "9e8693839a58b1682c1e309bd998785ee14f0004e8fb71aeda844153bce39887",
+      "updates": 500,
+      "gate": "fixed-speed"
+    },
+    {
+      "stage": "transitions",
+      "profile": "curriculum/05-transitions.json",
+      "profile_sha256": "f1289d17aeaaf47ff2bad5454d9b4fc40e56eb040bcc9a164c999971db4d66e0",
+      "updates": 500,
+      "gate": "schema-2-transition"
+    },
+    {
+      "stage": "robustness",
+      "profile": "curriculum/06-robustness.json",
+      "profile_sha256": "c6add882927335c30539aa89ce3ca6aff8207124c059b5a56ce16ecb9ee710ec",
+      "updates": 500,
+      "gate": "schema-2-robustness"
+    }
+  ],
+  "failure_policy": "stop at first failed promotion gate; never tune one seed independently",
+  "qualification_claim": false
+}

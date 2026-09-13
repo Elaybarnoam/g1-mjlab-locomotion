@@ -198,6 +198,7 @@ def parser() -> argparse.ArgumentParser:
     )
     diagnose_walking.add_argument("--physics-trace", action="store_true")
     diagnose_walking.add_argument("--video", action="store_true")
+    diagnose_walking.add_argument("--robustness", action="store_true")
     play_walking = commands.add_parser("play-walking")
     play_walking.add_argument("--config", required=True, type=Path)
     play_walking.add_argument("--checkpoint", required=True, type=Path)
@@ -494,6 +495,7 @@ def main(argv: list[str] | None = None) -> int:
                     criteria_path=args.criteria,
                     physics_trace=args.physics_trace,
                     video=args.video,
+                    robustness=args.robustness,
                 ),
                 indent=2,
                 sort_keys=True,

@@ -5,6 +5,7 @@
   "standing_fraction": 0.25,
   "forward_speed_range_m_s": [0.4, 0.8],
   "resampling_time_range_s": [3.0, 6.0],
+  "reference_initialization": false,
   "observation_noise": false,
   "startup_domain_randomization": false,
   "push_disturbance": false,

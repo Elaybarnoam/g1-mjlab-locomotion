@@ -118,6 +118,7 @@ def test_walking_v2_curriculum_profile_is_strict_and_hashable(tmp_path) -> None:
   "standing_fraction": 0.4,
   "forward_speed_range_m_s": [0.4, 0.8],
   "resampling_time_range_s": [1.5, 4.0],
+  "reference_initialization": false,
   "observation_noise": false,
   "startup_domain_randomization": false,
   "push_disturbance": false,
@@ -143,6 +144,7 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
         standing_fraction=0.4,
         forward_speed_range_m_s=(0.4, 0.8),
         resampling_time_range_s=(1.5, 4.0),
+        reference_initialization=False,
         observation_noise=True,
         startup_domain_randomization=True,
         push_disturbance=True,
@@ -164,4 +166,5 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
     assert command.standing_fraction == 0.4
     assert command.forward_speed_range_m_s == (0.4, 0.8)
     assert command.resampling_time_range == (1.5, 4.0)
+    assert command.reference_initialization is False
     assert "reference_deviation" not in environment.terminations

@@ -15,7 +15,6 @@ from .config import (
     ResolvedRunConfig,
     WalkingTrainingProfile,
     WalkingV2CurriculumProfile,
-    load_walking_v2_curriculum_profile,
 )
 from .gait_evaluation.diagnostic_plot import render_measurement_svg
 from .gait_evaluation.scenarios import ScenarioSet, load_scenario_set
@@ -175,6 +174,7 @@ def diagnose_walking(
     criteria_path: Path,
     physics_trace: bool = False,
     video: bool = False,
+    robustness: bool = False,
 ) -> dict[str, Any]:
     """Replay up to four worlds and write schema-2 contact diagnostics."""
     get_task(config.task_id).require(TaskCapability.WALKING_EVALUATION)
@@ -219,28 +219,23 @@ def diagnose_walking(
     )
     reference_initialization = first.initialization != "standing"
     if config.task_id == WALKING_V2_TASK_ID:
-        source_profile_path = checkpoint.parent.parent / "walking-v2-curriculum-profile.json"
-        source_profile = (
-            load_walking_v2_curriculum_profile(source_profile_path)
-            if source_profile_path.exists()
-            else None
-        )
         evaluation_profile_v2 = WalkingV2CurriculumProfile(
             schema_version=2,
             name="deterministic-evaluation-v2",
-            stage=source_profile.stage if source_profile is not None else "transitions",
+            stage="robustness" if robustness else "transitions",
             standing_fraction=1.0,
             forward_speed_range_m_s=(0.4, 0.8),
             resampling_time_range_s=(1.5, 4.0),
-            observation_noise=False,
-            startup_domain_randomization=False,
-            push_disturbance=False,
+            reference_initialization=False,
+            observation_noise=robustness,
+            startup_domain_randomization=robustness,
+            push_disturbance=robustness,
             terminate_reference_deviation=False,
         )
         train_cfg = build_train_config(
             eval_config,
             output,
-            randomized_reset=False,
+            randomized_reset=robustness,
             walking_v2_curriculum_profile=evaluation_profile_v2,
         )
     else:
