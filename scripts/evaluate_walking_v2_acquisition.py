@@ -33,6 +33,7 @@ def main() -> int:
     parser.add_argument("--run", required=True, type=Path, action="append")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--horizon-seconds", default=5.0, type=float)
+    parser.add_argument("--previous-decision", type=Path)
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(f"output already exists: {args.output}")
@@ -58,14 +59,38 @@ def main() -> int:
             iteration = _iteration(checkpoint)
             candidates[iteration] = (run / "config.json", checkpoint)
         manifest_hashes.append(sha256_file(run / "manifest.json"))
-    expected_iterations = [0, 100, 200, 300, 400, 499]
-    if sorted(candidates) != expected_iterations:
-        raise ValueError(f"acquisition checkpoint cadence differs: {sorted(candidates)}")
+    previous_rows: list[dict[str, Any]] = []
+    previous_update = 0
+    if args.previous_decision is not None:
+        previous = _object(args.previous_decision.resolve(strict=True))
+        previous_rows = previous["checkpoints"]
+        previous_update = int(previous_rows[-1]["update"])
+    final_iteration = max(candidates)
+    selected_iterations = (
+        sorted(candidates)
+        if not previous_rows
+        else [
+            iteration
+            for iteration in sorted(candidates)
+            if iteration + 1 > previous_update
+            and (iteration + 1 - previous_update >= 100 or iteration == final_iteration)
+        ]
+    )
+    if not selected_iterations:
+        raise ValueError("no new acquisition checkpoints satisfy the evaluation cadence")
+    cadence_updates = [int(row["update"]) for row in previous_rows] + [
+        iteration + 1 for iteration in selected_iterations
+    ]
+    if (not previous_rows and selected_iterations[0] != 0) or any(
+        right - left not in {99, 100, 101}
+        for left, right in zip(cadence_updates, cadence_updates[1:], strict=False)
+    ):
+        raise ValueError(f"acquisition checkpoint cadence differs: {cadence_updates}")
     args.output.mkdir(parents=True)
-    rows: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = list(previous_rows)
     jobs: list[dict[str, Any]] = []
     recorder = Path(__file__).with_name("record_walking_v2_rollout.py")
-    for iteration in expected_iterations:
+    for iteration in selected_iterations:
         config, checkpoint = candidates[iteration]
         update = _iteration(checkpoint) + 1
         evaluations: list[dict[str, Any]] = []
@@ -106,8 +131,14 @@ def main() -> int:
                 }
             )
         rows.append(summarize_checkpoint(update, sha256_file(checkpoint), evaluations))
+        previous_update = update
     result = acquisition_decision(rows)
     result["run_manifest_sha256"] = manifest_hashes
+    result["previous_decision_sha256"] = (
+        sha256_file(args.previous_decision.resolve(strict=True))
+        if args.previous_decision is not None
+        else None
+    )
     result["evaluation_horizon_seconds"] = args.horizon_seconds
     result["jobs"] = jobs
     write_atomic_json(args.output / "decision.json", result)
