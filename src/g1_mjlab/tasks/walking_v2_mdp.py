@@ -297,6 +297,30 @@ def _effort_limits(robot: Entity, device: str) -> torch.Tensor:
     return torch.tensor(values, device=device)
 
 
+def update_debounced_contact(
+    raw: torch.Tensor,
+    stable: torch.Tensor,
+    candidate: torch.Tensor,
+    age_s: torch.Tensor,
+    *,
+    dt: float,
+    confirmation_s: float = 0.06,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Advance a per-foot persistence debounce without mutating caller tensors."""
+    differs = raw != stable
+    same_candidate = raw == candidate
+    next_candidate = torch.where(differs, raw, stable)
+    next_age = torch.where(
+        differs,
+        torch.where(same_candidate, age_s + dt, torch.full_like(age_s, dt)),
+        torch.zeros_like(age_s),
+    )
+    confirmed = differs & (next_age >= confirmation_s - 1e-9)
+    next_stable = torch.where(confirmed, next_candidate, stable)
+    next_age = torch.where(confirmed, torch.zeros_like(next_age), next_age)
+    return next_stable, next_candidate, next_age
+
+
 class walking_v2_rate:
     """Single auditable reward term that logs every raw and weighted component."""
 
@@ -307,7 +331,11 @@ class walking_v2_rate:
             device=env.device,
         )
         self._effort_limit = _effort_limits(robot, env.device)
-        self._previous_contact = torch.zeros((env.num_envs, 2), dtype=torch.bool, device=env.device)
+        shape = (env.num_envs, 2)
+        self._stable_contact = torch.zeros(shape, dtype=torch.bool, device=env.device)
+        self._candidate_contact = torch.zeros(shape, dtype=torch.bool, device=env.device)
+        self._candidate_age_s = torch.zeros(shape, device=env.device)
+        self._previous_raw_contact = torch.zeros(shape, dtype=torch.bool, device=env.device)
         self._last_touchdown = torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device)
         self._touchdown_age_s = torch.full((env.num_envs,), 1.0, device=env.device)
 
@@ -319,6 +347,7 @@ class walking_v2_rate:
         gait_contact_weight: float = 0.0,
         gait_foot_trajectory_weight: float = 0.0,
         gait_alternation_event_weight: float = 0.0,
+        gait_contact_chatter_weight: float = 0.0,
     ) -> torch.Tensor:
         robot: Entity = env.scene["robot"]
         command = _command(env, command_name)
@@ -326,9 +355,23 @@ class walking_v2_rate:
         assert contact_sensor.data.found is not None
         actual_contact = contact_sensor.data.found.reshape(env.num_envs, -1)[:, :2] > 0
         reset = env.episode_length_buf <= 1
+        self._stable_contact[reset] = actual_contact[reset]
+        self._candidate_contact[reset] = actual_contact[reset]
+        self._candidate_age_s[reset] = 0.0
+        self._previous_raw_contact[reset] = actual_contact[reset]
         self._last_touchdown[reset] = -1
         self._touchdown_age_s[reset] = 1.0
-        rising = actual_contact & ~self._previous_contact
+        previous_stable = self._stable_contact.clone()
+        self._stable_contact, self._candidate_contact, self._candidate_age_s = (
+            update_debounced_contact(
+                actual_contact,
+                self._stable_contact,
+                self._candidate_contact,
+                self._candidate_age_s,
+                dt=env.step_dt,
+            )
+        )
+        rising = self._stable_contact & ~previous_stable
         rising[reset] = False
         eligible = rising & (self._touchdown_age_s >= 0.12)[:, None]
         single = eligible.sum(dim=1) == 1
@@ -341,7 +384,9 @@ class walking_v2_rate:
         self._last_touchdown[single] = touchdown_foot[single]
         self._touchdown_age_s += env.step_dt
         self._touchdown_age_s[single] = 0.0
-        self._previous_contact.copy_(actual_contact)
+        raw_transition = (actual_contact != self._previous_raw_contact).float().mean(dim=1)
+        raw_transition[reset] = 0.0
+        self._previous_raw_contact.copy_(actual_contact)
         actual_foot = _heading_frame_delta(
             robot.data.site_pos_w[:, self._site_ids] - robot.data.root_link_pos_w[:, None, :],
             robot.data.root_link_quat_w,
@@ -360,7 +405,7 @@ class walking_v2_rate:
         orientation_error = torch.acos(
             torch.clamp(-robot.data.projected_gravity_b[:, 2], -1.0, 1.0)
         )
-        agreement = (actual_contact == command.expected_contact).float().mean(dim=1)
+        agreement = (self._stable_contact == command.expected_contact).float().mean(dim=1)
         raw = {
             "imitation_joint_pose": torch.exp(-joint_error.square().mean(dim=1) / 0.30**2),
             "imitation_joint_velocity": torch.exp(-velocity_error.square().mean(dim=1) / 3.0**2),
@@ -419,6 +464,7 @@ class walking_v2_rate:
             + gait_contact_weight * command.blend * agreement
             + gait_foot_trajectory_weight * command.blend * raw["imitation_local_feet"]
             + gait_alternation_event_weight * command.blend * event_signal / env.step_dt
+            - gait_contact_chatter_weight * command.blend * raw_transition / env.step_dt
         )
         weights = {
             "imitation_joint_pose": 0.80 * command.blend,
@@ -449,6 +495,7 @@ class walking_v2_rate:
             gait_foot_trajectory_weight * command.blend * raw["imitation_local_feet"]
         ).mean()
         env.extras["log"]["WalkingV2/gait_alternation_event"] = event_signal.mean()
+        env.extras["log"]["WalkingV2/gait_contact_chatter_event"] = raw_transition.mean()
         return rate
 
 

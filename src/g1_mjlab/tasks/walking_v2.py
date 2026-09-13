@@ -126,6 +126,7 @@ def configure_environment(
             "gait_contact_weight": profile.gait_contact_weight,
             "gait_foot_trajectory_weight": profile.gait_foot_trajectory_weight,
             "gait_alternation_event_weight": profile.gait_alternation_event_weight,
+            "gait_contact_chatter_weight": profile.gait_contact_chatter_weight,
         }
         env.rewards["true_fall_event"].weight = profile.fall_penalty / (
             env.sim.mujoco.timestep * env.decimation
