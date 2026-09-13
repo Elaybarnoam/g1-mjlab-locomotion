@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "task_id": "G1-Walking-Flat-v2",
+  "selection_rule": "maximum valid sustained transitions per second after warmup",
+  "minimum_device_free_ratio": 0.2,
+  "selected_num_envs": 256,
+  "rollout_steps": 24,
+  "transitions_per_update": 6144,
+  "estimated_4000_update_wall_seconds": {
+    "lower": 5501.678979180658,
+    "upper": 7212.179423215823,
+    "method": "measured sustained rate; upper uses 20% slowdown plus 40 measured evaluations"
+  },
+  "probes": [
+    {
+      "num_envs": 64,
+      "valid": true,
+      "sustained_transitions_per_second": 1063.0,
+      "sustained_samples": [1030.0, 1096.0],
+      "end_to_end_transitions_per_second": 99.34432492017693,
+      "training_wall_seconds": 33.937963345,
+      "evaluation_wall_seconds": 12.446165830999973,
+      "torch_peak_allocated_bytes": 88985088,
+      "torch_peak_reserved_bytes": 111149056,
+      "device_free_ratio_at_end": 0.81847111779095,
+      "run_manifest_sha256": "54f40d5a2aa4c8ce0d843a77ef69d7ef80915195c3f82a282cbc89b56854de21",
+      "evaluation_summary_sha256": "afd9de015994e59c2d159f169b45bf0d69f5ab49cbbcf9108a72ee53b737f132"
+    },
+    {
+      "num_envs": 128,
+      "valid": true,
+      "sustained_transitions_per_second": 2410.0,
+      "sustained_samples": [2425.0, 2395.0],
+      "end_to_end_transitions_per_second": 261.57223094095855,
+      "training_wall_seconds": 27.152072633000003,
+      "evaluation_wall_seconds": 8.081025188000012,
+      "torch_peak_allocated_bytes": 102229504,
+      "torch_peak_reserved_bytes": 148897792,
+      "device_free_ratio_at_end": 0.8140542447223734,
+      "run_manifest_sha256": "ecd583fe03d010ce7f744d3c4c0b3153594e66d349d283a6858abc1ac72b8e41",
+      "evaluation_summary_sha256": "69e8e034864a9e97061fba6c187bb773613a51e04dc5788ac6f836b66c23ad07"
+    },
+    {
+      "num_envs": 256,
+      "valid": true,
+      "sustained_transitions_per_second": 4467.0,
+      "sustained_samples": [4679.0, 4255.0],
+      "end_to_end_transitions_per_second": 474.9131565510534,
+      "training_wall_seconds": 30.43428885099999,
+      "evaluation_wall_seconds": 8.377017480999996,
+      "torch_peak_allocated_bytes": 128731136,
+      "torch_peak_reserved_bytes": 201326592,
+      "device_free_ratio_at_end": 0.8039935893995046,
+      "run_manifest_sha256": "2ea2964cb155c86b63b335dfa3e3e1156dda6be085224983e4d9d9e1215fe489",
+      "evaluation_summary_sha256": "5e20faba63de86f8c9998e7fdede5e28118b0c54e544c993f525d60cbae7e6d1"
+    }
+  ],
+  "limitations": [
+    "Torch memory excludes allocations owned by MuJoCo Warp.",
+    "The estimate is local-laptop evidence, not a service-level guarantee."
+  ]
+}

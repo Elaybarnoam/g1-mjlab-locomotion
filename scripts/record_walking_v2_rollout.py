@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from dataclasses import asdict, replace
 from pathlib import Path
 
@@ -21,6 +22,7 @@ def main() -> int:
     from mjlab.envs import ManagerBasedRlEnv
     from mjlab.rl import MjlabOnPolicyRunner
 
+    started = time.monotonic()
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--checkpoint", required=True, type=Path)
@@ -134,7 +136,9 @@ def main() -> int:
         raise FloatingPointError("deterministic rollout is empty or non-finite")
     args.output.mkdir(parents=True)
     trace_path = args.output / "deterministic-rollout.npz"
-    np.savez_compressed(trace_path, **arrays)
+    # NumPy's stubs do not model dynamically named array members, although the
+    # runtime API explicitly supports them through ``**kwds``.
+    np.savez_compressed(trace_path, **arrays)  # type: ignore[arg-type]
     summary = {
         "schema_version": 2,
         "task_id": config.task_id,
@@ -150,6 +154,7 @@ def main() -> int:
         "terminated": bool(arrays["terminated"].any()),
         "truncated": bool(arrays["truncated"].any()),
         "mean_reward": float(arrays["reward"].mean()),
+        "wall_seconds_including_startup": time.monotonic() - started,
         "qualification_claim": False,
     }
     write_atomic_json(args.output / "summary.json", summary)
