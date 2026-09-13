@@ -363,6 +363,7 @@ class walking_v2_rate:
         gait_alternation_event_weight: float = 0.0,
         gait_contact_chatter_weight: float = 0.0,
         gait_forward_progress_weight: float = 0.0,
+        gait_action_rate_weight: float = 0.0,
     ) -> torch.Tensor:
         robot: Entity = env.scene["robot"]
         command = _command(env, command_name)
@@ -485,6 +486,7 @@ class walking_v2_rate:
             + gait_alternation_event_weight * command.blend * event_signal / env.step_dt
             - gait_contact_chatter_weight * command.blend * chatter_event / env.step_dt
             + gait_forward_progress_weight * command.blend * actual_velocity[:, 0]
+            - gait_action_rate_weight * command.blend * raw["action_rate"]
         )
         weights = {
             "imitation_joint_pose": 0.80 * command.blend,
@@ -518,6 +520,9 @@ class walking_v2_rate:
         env.extras["log"]["WalkingV2/gait_contact_chatter_event"] = chatter_event.mean()
         env.extras["log"]["WalkingV2/gait_forward_progress_m_s"] = (
             command.blend * actual_velocity[:, 0]
+        ).mean()
+        env.extras["log"]["WalkingV2/gait_action_rate_penalty"] = (
+            gait_action_rate_weight * command.blend * raw["action_rate"]
         ).mean()
         return rate
 

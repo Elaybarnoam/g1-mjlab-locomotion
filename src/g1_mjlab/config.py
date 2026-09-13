@@ -210,6 +210,7 @@ class WalkingV2CurriculumProfile:
     gait_alternation_event_weight: float
     gait_contact_chatter_weight: float
     gait_forward_progress_weight: float
+    gait_action_rate_weight: float
     fall_penalty: float
 
     def to_dict(self) -> dict[str, Any]:
@@ -577,6 +578,8 @@ def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile
         or profile.gait_contact_chatter_weight < 0.0
         or not math.isfinite(profile.gait_forward_progress_weight)
         or profile.gait_forward_progress_weight < 0.0
+        or not math.isfinite(profile.gait_action_rate_weight)
+        or profile.gait_action_rate_weight < 0.0
         or not math.isfinite(profile.fall_penalty)
         or profile.fall_penalty > 0.0
     ):

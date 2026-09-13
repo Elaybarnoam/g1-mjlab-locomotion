@@ -136,7 +136,8 @@ def test_resume_rejects_changed_walking_v2_curriculum_profile(tmp_path: Path) ->
         gait_foot_trajectory_weight=2.0,
         gait_alternation_event_weight=1.0,
         gait_contact_chatter_weight=0.5,
-        gait_forward_progress_weight=2.0,
+        gait_forward_progress_weight=1.0,
+        gait_action_rate_weight=0.4,
         fall_penalty=-10.0,
     )
     run = tmp_path / "run"

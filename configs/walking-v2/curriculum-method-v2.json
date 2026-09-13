@@ -19,42 +19,42 @@
     {
       "stage": "stand",
       "profile": "curriculum/01-stand.json",
-      "profile_sha256": "6ff513c33ba9c9f5a3aeeadd6e8d07bb87af420485c8b1ac2e4229f22b329686",
+      "profile_sha256": "efe1c35c5d0ebc076b9ccbe1ef15bd599de29e8f2a0d1833f11495c81bf9ff33",
       "updates": 0,
       "gate": "fixed-speed"
     },
     {
       "stage": "stand-walk-040",
       "profile": "curriculum/02-stand-walk-040.json",
-      "profile_sha256": "d65a1752fea5a4ad641af25328cdebc0042d5ae59c6719e22e2a8d6f1cac935f",
+      "profile_sha256": "ac8c0c1ac5b00f58e193ab557d1fde45a74dafca836093bedd235b5888c654f3",
       "updates": 500,
       "gate": "fixed-speed"
     },
     {
       "stage": "add-060",
       "profile": "curriculum/03-add-060.json",
-      "profile_sha256": "b4f13a017a9dcc08e3407d13af7c9110aa04639e49f62a24d17f59faf10305c7",
+      "profile_sha256": "5c57e40f4557b9512843d3824db2c4f5196844bf76749fcb7bc50f72d543ae69",
       "updates": 500,
       "gate": "fixed-speed"
     },
     {
       "stage": "add-080",
       "profile": "curriculum/04-add-080.json",
-      "profile_sha256": "a42327b268bfe4ca5c422b65d682fd91822668225f4a513fc8730c4f8611892d",
+      "profile_sha256": "25863f6026530dac899f5c7653649e784fd41c62f0c66c273ec84e9d30609c4f",
       "updates": 500,
       "gate": "fixed-speed"
     },
     {
       "stage": "transitions",
       "profile": "curriculum/05-transitions.json",
-      "profile_sha256": "a9c082918e8f5ef66e933a6fca3e9a19cf2d043acc3b603e24d7e01cda6d19a7",
+      "profile_sha256": "b9a01b57d21925f1cc91f7b6d07fdac928ebf4a57df4f7056f1fa4c904fd7187",
       "updates": 500,
       "gate": "schema-2-transition"
     },
     {
       "stage": "robustness",
       "profile": "curriculum/06-robustness.json",
-      "profile_sha256": "7da9ed9a7e274a95a60c7978037ddbc462b7e44d2ee274b9ed0b197bea0c9e68",
+      "profile_sha256": "fee2e8eec4d18a03a1ae105c9b27b079bdc9130c77b5d38c9d6f919d670eddfa",
       "updates": 500,
       "gate": "schema-2-robustness"
     }

@@ -15,5 +15,6 @@
   "gait_alternation_event_weight": 0.0,
   "gait_contact_chatter_weight": 0.0,
   "gait_forward_progress_weight": 0.0,
+  "gait_action_rate_weight": 0.0,
   "fall_penalty": -10.0
 }

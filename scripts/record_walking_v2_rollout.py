@@ -62,7 +62,8 @@ def main() -> int:
         gait_foot_trajectory_weight=2.0,
         gait_alternation_event_weight=1.0,
         gait_contact_chatter_weight=0.5,
-        gait_forward_progress_weight=2.0,
+        gait_forward_progress_weight=1.0,
+        gait_action_rate_weight=0.4,
         fall_penalty=-10.0,
     )
     train_cfg = build_train_config(
