@@ -22,3 +22,16 @@ does not mean balanced, dynamically feasible, humanlike, deployable or qualified
 The checked-in criteria are in `configs/walking-v2/soft-reference-admission-v2.json`. Native audits
 are produced by `scripts/audit_soft_walking_reference.py`; the final hash-bound decision is produced
 by `scripts/admit_soft_walking_references.py`.
+
+## Collision repair
+
+`scripts/repair_walking_reference_collisions.py` implements a bounded preprocessing step. It applies
+the minimum uniform root lift needed to clear the model's actual foot collision hulls, then searches
+in 0.01 increments for the smallest blend of retargeted arm joints toward the model nominal pose
+that removes hand/wrist collisions. It reserves a 0.023 rad source-joint margin so cubic speed
+interpolation remains above the 0.019 rad admission margin. The script regenerates FK-dependent
+arrays and records old/new hashes, corrections, collision measurements and added foot-path error.
+
+Repair is not dynamics qualification. Its output must pass a fresh kinematic audit and retain a
+fresh failed/passed dynamics diagnostic. The reference bank builder accepts only exact hashes from
+an explicitly training-authorized decision and emits a separate admission-to-bank binding manifest.

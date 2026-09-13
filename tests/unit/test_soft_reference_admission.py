@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from g1_mjlab.motion.soft_reference_admission import (
     SoftReferenceCandidate,
+    authorized_reference_hashes,
     decide_soft_reference_admission,
 )
 
@@ -91,3 +94,24 @@ def test_soft_reference_rejects_missing_dynamics_or_hash_mismatch(tmp_path: Path
     reasons = result["candidates"][0]["reasons"]
     assert "kinematics_reference_hash_mismatch" in reasons
     assert "missing_dynamics_diagnostic" in reasons
+
+
+def test_authorized_hashes_accept_soft_admission_and_reject_p05_blocked(
+    tmp_path: Path,
+) -> None:
+    candidates = tuple(_candidate(tmp_path, speed) for speed in (0.4, 0.6, 0.8))
+    admitted = decide_soft_reference_admission(candidates, tmp_path / "decision.json")
+
+    hashes = authorized_reference_hashes(admitted, (0.4, 0.6, 0.8))
+
+    assert hashes == tuple(
+        item["reference_sha256"] for item in admitted["candidates"]
+    )
+    blocked = {
+        **admitted,
+        "schema_version": 1,
+        "status": "blocked",
+        "downstream_training_authorized": False,
+    }
+    with pytest.raises(ValueError, match="not training-authorized"):
+        authorized_reference_hashes(blocked, (0.4, 0.6, 0.8))

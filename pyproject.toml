@@ -107,6 +107,7 @@ omit = [
   "*/g1_mjlab/motion/reference_dynamics.py",
   "*/g1_mjlab/motion/reference_feasibility.py",
   "*/g1_mjlab/motion/reference_kinematics.py",
+  "*/g1_mjlab/motion/reference_repair.py",
   "*/g1_mjlab/tasks/walking_mdp.py",
   "*/g1_mjlab/tasks/walking_contact.py",
   "*/g1_mjlab/tasks/walking_v1.py",

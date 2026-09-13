@@ -1,4 +1,4 @@
-"""Build a bank only from three qualified speed-specific walking references."""
+"""Build a bank from three hash-bound, training-authorized references."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ from typing import Any
 
 import numpy as np
 
-from g1_mjlab.artifacts import sha256_file
+from g1_mjlab.artifacts import sha256_file, write_atomic_json
 from g1_mjlab.motion.reference_bank import build_reference_bank
+from g1_mjlab.motion.soft_reference_admission import authorized_reference_hashes
 
 
 def _rotate_inverse(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
@@ -78,8 +79,6 @@ def main() -> int:
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
     motion = json.loads(args.motion_manifest.read_text(encoding="utf-8"))
     qualification = json.loads(args.qualification.read_text(encoding="utf-8"))
-    if qualification.get("status") != "qualified":
-        raise SystemExit("reference qualification is not qualified; refusing to build bank")
     references: dict[float, Path] = {}
     for value in args.reference:
         speed_text, separator, path_text = value.partition("=")
@@ -90,15 +89,14 @@ def main() -> int:
         raise SystemExit("exactly one reference is required for 0.4, 0.6 and 0.8 m/s")
     selected_paths = (references[0.4], references[0.6], references[0.8])
     selected_hashes = tuple(sha256_file(path) for path in selected_paths)
-    accepted = qualification.get("accepted_candidates", {})
-    candidates = {
-        candidate["candidate_id"]: candidate for candidate in qualification.get("candidates", [])
-    }
-    expected_hashes = tuple(
-        candidates[accepted[str(speed)]]["reference_sha256"] for speed in (0.4, 0.6, 0.8)
-    )
+    try:
+        expected_hashes = authorized_reference_hashes(
+            qualification, (0.4, 0.6, 0.8)
+        )
+    except ValueError as error:
+        raise SystemExit(f"{error}; refusing to build bank") from error
     if selected_hashes != expected_hashes:
-        raise SystemExit("selected references do not match the qualified candidate hashes")
+        raise SystemExit("selected references do not match the admitted candidate hashes")
     metadata = build_reference_bank(
         selected_paths,
         args.output,
@@ -114,7 +112,31 @@ def main() -> int:
             local_foot_positions(selected_paths[2], args.model),
         ),
     )
-    print(json.dumps({"metadata": str(args.output), "npz_sha256": metadata.npz_sha256}, indent=2))
+    binding_path = args.output.with_name(f"{args.output.stem}-admission.json")
+    write_atomic_json(
+        binding_path,
+        {
+            "schema_version": 1,
+            "semantics": "soft-reference-admission-bound-bank",
+            "reference_bank_metadata": args.output.name,
+            "reference_bank_metadata_sha256": sha256_file(args.output),
+            "reference_bank_npz_sha256": metadata.npz_sha256,
+            "admission_decision_sha256": sha256_file(args.qualification),
+            "source_reference_sha256_by_speed": list(expected_hashes),
+            "training_authorized": True,
+            "policy_qualification_required": True,
+        },
+    )
+    print(
+        json.dumps(
+            {
+                "metadata": str(args.output),
+                "binding": str(binding_path),
+                "npz_sha256": metadata.npz_sha256,
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

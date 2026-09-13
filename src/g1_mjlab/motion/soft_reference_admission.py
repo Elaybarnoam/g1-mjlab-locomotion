@@ -90,6 +90,44 @@ def decide_soft_reference_admission(
     return decision
 
 
+def authorized_reference_hashes(
+    decision: dict[str, Any], required_speeds_m_s: tuple[float, ...]
+) -> tuple[str, ...]:
+    """Resolve selected hashes only from an explicitly training-authorized decision."""
+    legacy_qualified = (
+        decision.get("schema_version") == 1
+        and decision.get("status") == "qualified"
+        and decision.get("downstream_training_authorized") is True
+    )
+    soft_admitted = (
+        decision.get("schema_version") == 2
+        and decision.get("semantics")
+        == "soft-reference-training-admission-not-policy-qualification"
+        and decision.get("status") == "admitted"
+        and decision.get("training_authorized") is True
+    )
+    if not (legacy_qualified or soft_admitted):
+        raise ValueError("reference decision is not training-authorized")
+    accepted = decision.get("accepted_candidates")
+    candidate_values = decision.get("candidates")
+    if not isinstance(accepted, dict) or not isinstance(candidate_values, list):
+        raise ValueError("reference decision has malformed candidate selection")
+    candidates = {
+        value.get("candidate_id"): value
+        for value in candidate_values
+        if isinstance(value, dict) and isinstance(value.get("candidate_id"), str)
+    }
+    hashes: list[str] = []
+    for speed in required_speeds_m_s:
+        candidate_id = accepted.get(str(speed))
+        candidate = candidates.get(candidate_id)
+        reference_hash = None if candidate is None else candidate.get("reference_sha256")
+        if not isinstance(reference_hash, str) or len(reference_hash) != 64:
+            raise ValueError(f"reference decision has no valid hash for {speed} m/s")
+        hashes.append(reference_hash)
+    return tuple(hashes)
+
+
 def _read_object(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
