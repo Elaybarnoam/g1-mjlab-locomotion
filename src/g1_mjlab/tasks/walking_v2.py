@@ -130,6 +130,7 @@ def configure_environment(
             "gait_forward_progress_weight": profile.gait_forward_progress_weight,
             "gait_action_rate_weight": profile.gait_action_rate_weight,
         }
+        env.actions["joint_pos"].filter_alpha = profile.residual_action_filter_alpha
         env.rewards["true_fall_event"].weight = profile.fall_penalty / (
             env.sim.mujoco.timestep * env.decimation
         )

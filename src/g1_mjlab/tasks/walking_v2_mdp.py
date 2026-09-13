@@ -214,6 +214,7 @@ class WalkingV2Command(CommandTerm):
 @dataclass(kw_only=True)
 class ReferenceResidualActionCfg(JointPositionActionCfg):
     command_name: str
+    filter_alpha: float = 1.0
 
     def build(self, env: ManagerBasedRlEnv) -> ReferenceResidualAction:
         return ReferenceResidualAction(self, env)
@@ -224,6 +225,12 @@ class ReferenceResidualAction(JointPositionAction):
 
     cfg: ReferenceResidualActionCfg
 
+    def __init__(self, cfg: ReferenceResidualActionCfg, env: ManagerBasedRlEnv):
+        super().__init__(cfg, env)
+        if not 0.0 < cfg.filter_alpha <= 1.0:
+            raise ValueError("residual action filter alpha must be in (0, 1]")
+        self._filtered_residual = torch.zeros_like(self._processed_actions)
+
     @property
     def joint_target(self) -> torch.Tensor:
         return self._processed_actions
@@ -233,7 +240,23 @@ class ReferenceResidualAction(JointPositionAction):
         command = _command(self._env, self.cfg.command_name)
         if command.target_joint_position.shape != self._processed_actions.shape:
             raise ValueError("reference target and action shapes differ")
-        self._processed_actions = command.target_joint_position + self._processed_actions
+        self._filtered_residual = filter_residual_action(
+            self._filtered_residual, self._processed_actions, alpha=self.cfg.filter_alpha
+        )
+        self._processed_actions = command.target_joint_position + self._filtered_residual
+
+    def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+        super().reset(env_ids)
+        self._filtered_residual[slice(None) if env_ids is None else env_ids] = 0.0
+
+
+def filter_residual_action(
+    previous: torch.Tensor, current: torch.Tensor, *, alpha: float
+) -> torch.Tensor:
+    """Apply the controller's causal first-order residual-action filter."""
+    if not 0.0 < alpha <= 1.0:
+        raise ValueError("residual action filter alpha must be in (0, 1]")
+    return previous + alpha * (current - previous)
 
 
 def _command(env: ManagerBasedRlEnv, command_name: str) -> WalkingV2Command:

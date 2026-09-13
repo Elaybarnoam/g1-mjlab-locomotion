@@ -26,6 +26,7 @@ class _Environment:
         command.reference_initialization = False
         self.observations = {"actor": actor}
         self.commands = {"twist": command}
+        self.actions = {"joint_pos": _Value()}
         walking_reward = _Value()
         walking_reward.params = {"command_name": "twist", "sensor_name": "feet"}
         fall_reward = _Value()
@@ -137,7 +138,8 @@ def test_walking_v2_curriculum_profile_is_strict_and_hashable(tmp_path) -> None:
   "gait_alternation_event_weight": 1.0,
   "gait_contact_chatter_weight": 0.5,
   "gait_forward_progress_weight": 1.0,
-  "gait_action_rate_weight": 0.4,
+  "gait_action_rate_weight": 0.1,
+  "residual_action_filter_alpha": 0.25,
   "fall_penalty": -10.0
 }\n""",
         encoding="utf-8",
@@ -170,7 +172,8 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
         gait_alternation_event_weight=1.0,
         gait_contact_chatter_weight=0.5,
         gait_forward_progress_weight=1.0,
-        gait_action_rate_weight=0.4,
+        gait_action_rate_weight=0.1,
+        residual_action_filter_alpha=0.25,
         fall_penalty=-10.0,
     )
 
@@ -196,5 +199,6 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
     assert environment.rewards["walking_v2_rate"].params["gait_alternation_event_weight"] == 1.0
     assert environment.rewards["walking_v2_rate"].params["gait_contact_chatter_weight"] == 0.5
     assert environment.rewards["walking_v2_rate"].params["gait_forward_progress_weight"] == 1.0
-    assert environment.rewards["walking_v2_rate"].params["gait_action_rate_weight"] == 0.4
+    assert environment.rewards["walking_v2_rate"].params["gait_action_rate_weight"] == 0.1
+    assert environment.actions["joint_pos"].filter_alpha == 0.25
     assert environment.rewards["true_fall_event"].weight == -500.0

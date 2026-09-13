@@ -7,8 +7,21 @@ pytest.importorskip("mjlab")
 
 from g1_mjlab.tasks.walking_v2_mdp import (  # noqa: E402
     gait_touchdown_event_signal,
+    filter_residual_action,
     update_debounced_contact,
 )
+
+
+def test_residual_action_filter_uses_bounded_ema() -> None:
+    previous = torch.tensor([[0.0, 1.0]])
+    current = torch.tensor([[1.0, -1.0]])
+
+    torch.testing.assert_close(
+        filter_residual_action(previous, current, alpha=0.25),
+        torch.tensor([[0.25, 0.5]]),
+    )
+    with pytest.raises(ValueError, match="alpha"):
+        filter_residual_action(previous, current, alpha=0.0)
 
 
 def test_debounced_contact_rejects_flicker_and_confirms_persistent_change() -> None:

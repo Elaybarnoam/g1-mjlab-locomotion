@@ -16,5 +16,6 @@
   "gait_contact_chatter_weight": 0.0,
   "gait_forward_progress_weight": 0.0,
   "gait_action_rate_weight": 0.0,
+  "residual_action_filter_alpha": 0.25,
   "fall_penalty": -10.0
 }
