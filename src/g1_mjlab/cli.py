@@ -646,11 +646,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     if args.command == "qualify-final-walking":
-        from .walking_final import qualify_final_walking
+        from .walking_final import qualify_final_walking_dispatch
 
         print(
             json.dumps(
-                qualify_final_walking(
+                qualify_final_walking_dispatch(
                     args.freeze, args.mjlab_summary, args.native_summary, args.output
                 ),
                 indent=2,

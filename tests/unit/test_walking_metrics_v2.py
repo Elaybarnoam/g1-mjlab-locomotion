@@ -6,6 +6,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from g1_mjlab.gait_evaluation.acceptance import (
+    FinalAcceptanceCriteria,
+    GaitTarget,
+    measure_final_trial,
+)
 from g1_mjlab.gait_evaluation.diagnostic_plot import render_measurement_svg
 from g1_mjlab.gait_evaluation.walking_v2 import (
     PhysicsTraceV2,
@@ -251,3 +256,31 @@ def test_measurement_plot_is_dependency_free_and_labels_physical_slip(tmp_path: 
     assert "Contact and normal force" in content
     assert "Physical contact slip" in content
     assert "Target tracking" in content
+
+
+def test_final_measurement_is_derived_from_raw_trace_with_final_windows() -> None:
+    source = synthetic_trace()
+    arrays = dict(source.arrays)
+    arrays["root_position_w"] = arrays["root_position_w"].copy()
+    arrays["root_position_w"][:, 0] = np.cumsum(arrays["root_lin_vel_w"][:, 0]) * 0.02
+    trace = WalkingTraceV2(source.metadata, arrays)
+
+    result = measure_final_trial(
+        trace,
+        physics_trace(0.08),
+        FinalAcceptanceCriteria(horizon_seconds=10.0),
+        {0.6: GaitTarget(cadence_steps_s=2.0, step_length_m=0.3)},
+        forbidden_ground_contact=False,
+        planned_horizon_s=10.0,
+    )
+
+    assert result.finite is True
+    assert result.steady_forward_tracking_rms_m_s == pytest.approx(0.0, abs=1e-12)
+    assert result.lateral_tracking_rms_m_s == pytest.approx(0.0, abs=1e-12)
+    assert result.heading_error_max_deg == pytest.approx(0.0, abs=1e-12)
+    assert result.stopped_speed_rms_max_m_s == pytest.approx(0.0, abs=1e-12)
+    assert result.stopped_horizontal_drift_max_m == pytest.approx(0.0, abs=1e-12)
+    assert result.physical_slip_rms_m_s == pytest.approx(0.08)
+    assert result.physical_slip_p95_m_s == pytest.approx(0.08)
+    assert result.unmatched_event_fraction == pytest.approx(0.0)
+    assert result.bilateral_flight_fraction == pytest.approx(0.08)

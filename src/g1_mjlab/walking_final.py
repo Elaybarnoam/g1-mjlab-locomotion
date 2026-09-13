@@ -12,6 +12,11 @@ from typing import Any
 import numpy as np
 
 from .artifacts import sha256_file
+from .gait_evaluation.acceptance import (
+    FinalAcceptanceCriteria,
+    FinalTrialMeasurements,
+    assess_final_trial,
+)
 
 _CATEGORIES = ("slow", "medium", "fast", "start_stop")
 
@@ -225,3 +230,156 @@ def qualify_final_walking(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return result
+
+
+_FINAL_IDENTITY_KEYS = frozenset(
+    {
+        "checkpoint",
+        "onnx",
+        "model",
+        "controller",
+        "contract",
+        "reference",
+        "host_profile",
+        "evaluator",
+        "acceptance",
+        "scenarios",
+    }
+)
+
+
+def _strict_hashes(value: Any, *, location: str) -> dict[str, str]:
+    if not isinstance(value, dict) or set(value) != _FINAL_IDENTITY_KEYS:
+        raise ValueError(f"{location} identities do not match schema")
+    result = {str(key): str(item) for key, item in value.items()}
+    if any(
+        len(item) != 64 or any(character not in "0123456789abcdef" for character in item)
+        for item in result.values()
+    ):
+        raise ValueError(f"{location} identities must be lowercase SHA-256 values")
+    return result
+
+
+def _v2_backend_result(
+    summary: dict[str, Any],
+    *,
+    backend: str,
+    identities: dict[str, str],
+    expected_trials: list[dict[str, Any]],
+    criteria: FinalAcceptanceCriteria,
+) -> dict[str, Any]:
+    if summary.get("schema_version") != 2 or summary.get("backend") != backend:
+        raise ValueError(f"{backend} final summary has an invalid identity")
+    if _strict_hashes(summary.get("identities"), location=backend) != identities:
+        raise ValueError(f"{backend} final summary artifact identities differ from the freeze")
+    trials = summary.get("trials")
+    if not isinstance(trials, list) or len(trials) != len(expected_trials):
+        raise ValueError(f"{backend} final summary must contain the complete frozen trial set")
+    fields = ("trial_id", "seed", "category", "initial_state_sha256")
+    actual_identities = [tuple(trial.get(field) for field in fields) for trial in trials]
+    expected_identities = [tuple(trial.get(field) for field in fields) for trial in expected_trials]
+    if actual_identities != expected_identities or len(set(actual_identities)) != len(
+        actual_identities
+    ):
+        raise ValueError(f"{backend} result does not contain the exact frozen trial identities")
+
+    accepted: list[bool] = []
+    failures: dict[str, list[str]] = {}
+    strata = Counter({category: 0 for category in _CATEGORIES})
+    for trial in trials:
+        measurements = trial.get("measurements")
+        if not isinstance(measurements, dict):
+            raise ValueError(f"{backend} trial is missing raw final measurements")
+        result = assess_final_trial(FinalTrialMeasurements.from_dict(measurements), criteria)
+        accepted.append(result.accepted)
+        if result.accepted:
+            strata[str(trial["category"])] += 1
+        else:
+            failures[str(trial["trial_id"])] = list(result.violations)
+    return {
+        "overall_passes": sum(accepted),
+        "stratum_passes": {category: strata[category] for category in _CATEGORIES},
+        "all_strata_pass": all(
+            strata[category] >= criteria.minimum_stratum_passes for category in _CATEGORIES
+        ),
+        "failures": failures,
+    }
+
+
+def qualify_final_walking_v2(
+    freeze_path: Path, mjlab_summary_path: Path, native_summary_path: Path, output: Path
+) -> dict[str, Any]:
+    """Recompute strict trial acceptance and bind both backends to one frozen suite."""
+    if output.exists():
+        raise FileExistsError(f"walking qualification output already exists: {output}")
+    freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
+    if not isinstance(freeze, dict) or freeze.get("schema_version") != 2:
+        raise ValueError("final freeze must use schema 2")
+    identities = _strict_hashes(freeze.get("identities"), location="freeze")
+    criteria_raw = freeze.get("criteria")
+    if not isinstance(criteria_raw, dict) or set(criteria_raw) != set(
+        FinalAcceptanceCriteria().to_dict()
+    ):
+        raise ValueError("final freeze criteria do not match schema")
+    criteria = FinalAcceptanceCriteria(**criteria_raw)
+    expected_trials = freeze.get("trials")
+    if (
+        not isinstance(expected_trials, list)
+        or len(expected_trials) != 4 * criteria.trials_per_stratum
+    ):
+        raise ValueError("final freeze does not contain the required trial count")
+    expected_categories = Counter(trial.get("category") for trial in expected_trials)
+    if expected_categories != Counter(
+        {category: criteria.trials_per_stratum for category in _CATEGORIES}
+    ):
+        raise ValueError("final freeze trial strata are not balanced")
+    summaries = {
+        "mjlab": json.loads(mjlab_summary_path.read_text(encoding="utf-8")),
+        "native": json.loads(native_summary_path.read_text(encoding="utf-8")),
+    }
+    if any(not isinstance(value, dict) for value in summaries.values()):
+        raise ValueError("final backend summaries must be JSON objects")
+    backend_results = {
+        name: _v2_backend_result(
+            summary,
+            backend=name,
+            identities=identities,
+            expected_trials=expected_trials,
+            criteria=criteria,
+        )
+        for name, summary in summaries.items()
+    }
+    qualified = all(
+        result["overall_passes"] >= criteria.minimum_overall_passes and result["all_strata_pass"]
+        for result in backend_results.values()
+    )
+    result = {
+        "schema_version": 2,
+        "qualified": qualified,
+        "policy_status": "qualified" if qualified else "failed_final_qualification",
+        "freeze_sha256": sha256_file(freeze_path),
+        "mjlab_summary_sha256": sha256_file(mjlab_summary_path),
+        "native_summary_sha256": sha256_file(native_summary_path),
+        "identities": identities,
+        "backends": backend_results,
+        "reuse_rule": "a failed final suite becomes development evidence and cannot be rerun as final",
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return result
+
+
+def qualify_final_walking_dispatch(
+    freeze_path: Path, mjlab_summary_path: Path, native_summary_path: Path, output: Path
+) -> dict[str, Any]:
+    """Route frozen qualification artifacts without weakening either schema."""
+    freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
+    if not isinstance(freeze, dict):
+        raise ValueError("final freeze must be a JSON object")
+    if freeze.get("schema_version") == 2:
+        return qualify_final_walking_v2(
+            freeze_path, mjlab_summary_path, native_summary_path, output
+        )
+    if freeze.get("schema_version") == 1:
+        return qualify_final_walking(freeze_path, mjlab_summary_path, native_summary_path, output)
+    raise ValueError("unsupported final freeze schema")
