@@ -32,6 +32,7 @@ def main() -> int:
     parser.add_argument("--horizon-seconds", type=float, default=2.0)
     parser.add_argument("--seed", type=int, default=10042)
     parser.add_argument("--residual-filter-alpha", type=float, default=1.0)
+    parser.add_argument("--zero-residual", action="store_true")
     args = parser.parse_args()
     if args.output.exists() and any(args.output.iterdir()):
         raise FileExistsError(f"output is not empty: {args.output}")
@@ -131,7 +132,13 @@ def main() -> int:
                 # requested speed on every policy interval so this fixed-speed probe
                 # cannot silently become a sampled stand command partway through.
                 command.set_requested_forward_speed(args.speed)
-                action = policy(observation)
+                action = (
+                    torch.zeros(
+                        (1, action_term.action_dim), device=config.device, dtype=torch.float32
+                    )
+                    if args.zero_residual
+                    else policy(observation)
+                )
                 observation, reward, done, extras = wrapped.step(action)
                 del extras
                 terminated = bool(env.termination_manager.terminated[0])

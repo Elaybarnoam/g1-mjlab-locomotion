@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
+from g1_mjlab.artifacts import sha256_file
 from g1_mjlab.walking_v2_curriculum import (
     assess_fixed_speed_stage,
     assess_transition_stage,
@@ -76,3 +79,20 @@ def test_frozen_curriculum_method_binds_every_stage() -> None:
         "robustness",
     ]
     assert sum(stage.updates for stage in method.stages) == 2500
+
+
+def test_failed_curriculum_result_is_fail_closed_and_binds_method() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    result = json.loads(
+        (root / "configs/walking-v2/curriculum-result-v2.json").read_text(encoding="utf-8")
+    )
+
+    assert result["status"] == "failed"
+    assert result["selected_checkpoint"] is None
+    assert result["qualification_claim"] is False
+    assert result["release_authorized"] is False
+    assert result["method_sha256"] == sha256_file(
+        root / "configs/walking-v2/curriculum-method-v2.json"
+    )

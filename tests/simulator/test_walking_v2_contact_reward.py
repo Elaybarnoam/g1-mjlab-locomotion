@@ -6,8 +6,8 @@ torch = pytest.importorskip("torch")
 pytest.importorskip("mjlab")
 
 from g1_mjlab.tasks.walking_v2_mdp import (  # noqa: E402
-    gait_touchdown_event_signal,
     filter_residual_action,
+    gait_touchdown_event_signal,
     swing_clearance_error,
     update_debounced_contact,
 )
