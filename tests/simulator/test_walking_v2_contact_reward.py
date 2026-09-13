@@ -13,17 +13,20 @@ def test_debounced_contact_rejects_flicker_and_confirms_persistent_change() -> N
     candidate = stable.clone()
     age = torch.zeros((1, 2))
 
-    stable, candidate, age = update_debounced_contact(
+    stable, candidate, age, flicker = update_debounced_contact(
         torch.tensor([[False, True]]), stable, candidate, age, dt=0.02
     )
     assert stable.tolist() == [[True, True]]
-    stable, candidate, age = update_debounced_contact(
+    assert not flicker.any()
+    stable, candidate, age, flicker = update_debounced_contact(
         torch.tensor([[True, True]]), stable, candidate, age, dt=0.02
     )
     assert stable.tolist() == [[True, True]]
+    assert flicker.tolist() == [[True, False]]
 
     for _ in range(3):
-        stable, candidate, age = update_debounced_contact(
+        stable, candidate, age, flicker = update_debounced_contact(
             torch.tensor([[False, True]]), stable, candidate, age, dt=0.02
         )
+        assert not flicker.any()
     assert stable.tolist() == [[False, True]]

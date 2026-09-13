@@ -305,9 +305,10 @@ def update_debounced_contact(
     *,
     dt: float,
     confirmation_s: float = 0.06,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Advance a per-foot persistence debounce without mutating caller tensors."""
     differs = raw != stable
+    flicker = ~differs & (candidate != stable) & (age_s > 0.0)
     same_candidate = raw == candidate
     next_candidate = torch.where(differs, raw, stable)
     next_age = torch.where(
@@ -318,7 +319,7 @@ def update_debounced_contact(
     confirmed = differs & (next_age >= confirmation_s - 1e-9)
     next_stable = torch.where(confirmed, next_candidate, stable)
     next_age = torch.where(confirmed, torch.zeros_like(next_age), next_age)
-    return next_stable, next_candidate, next_age
+    return next_stable, next_candidate, next_age, flicker
 
 
 class walking_v2_rate:
@@ -335,7 +336,6 @@ class walking_v2_rate:
         self._stable_contact = torch.zeros(shape, dtype=torch.bool, device=env.device)
         self._candidate_contact = torch.zeros(shape, dtype=torch.bool, device=env.device)
         self._candidate_age_s = torch.zeros(shape, device=env.device)
-        self._previous_raw_contact = torch.zeros(shape, dtype=torch.bool, device=env.device)
         self._last_touchdown = torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device)
         self._touchdown_age_s = torch.full((env.num_envs,), 1.0, device=env.device)
 
@@ -358,11 +358,15 @@ class walking_v2_rate:
         self._stable_contact[reset] = actual_contact[reset]
         self._candidate_contact[reset] = actual_contact[reset]
         self._candidate_age_s[reset] = 0.0
-        self._previous_raw_contact[reset] = actual_contact[reset]
         self._last_touchdown[reset] = -1
         self._touchdown_age_s[reset] = 1.0
         previous_stable = self._stable_contact.clone()
-        self._stable_contact, self._candidate_contact, self._candidate_age_s = (
+        (
+            self._stable_contact,
+            self._candidate_contact,
+            self._candidate_age_s,
+            flicker,
+        ) = (
             update_debounced_contact(
                 actual_contact,
                 self._stable_contact,
@@ -384,9 +388,8 @@ class walking_v2_rate:
         self._last_touchdown[single] = touchdown_foot[single]
         self._touchdown_age_s += env.step_dt
         self._touchdown_age_s[single] = 0.0
-        raw_transition = (actual_contact != self._previous_raw_contact).float().mean(dim=1)
-        raw_transition[reset] = 0.0
-        self._previous_raw_contact.copy_(actual_contact)
+        chatter_event = flicker.float().mean(dim=1)
+        chatter_event[reset] = 0.0
         actual_foot = _heading_frame_delta(
             robot.data.site_pos_w[:, self._site_ids] - robot.data.root_link_pos_w[:, None, :],
             robot.data.root_link_quat_w,
@@ -464,7 +467,7 @@ class walking_v2_rate:
             + gait_contact_weight * command.blend * agreement
             + gait_foot_trajectory_weight * command.blend * raw["imitation_local_feet"]
             + gait_alternation_event_weight * command.blend * event_signal / env.step_dt
-            - gait_contact_chatter_weight * command.blend * raw_transition / env.step_dt
+            - gait_contact_chatter_weight * command.blend * chatter_event / env.step_dt
         )
         weights = {
             "imitation_joint_pose": 0.80 * command.blend,
@@ -495,7 +498,7 @@ class walking_v2_rate:
             gait_foot_trajectory_weight * command.blend * raw["imitation_local_feet"]
         ).mean()
         env.extras["log"]["WalkingV2/gait_alternation_event"] = event_signal.mean()
-        env.extras["log"]["WalkingV2/gait_contact_chatter_event"] = raw_transition.mean()
+        env.extras["log"]["WalkingV2/gait_contact_chatter_event"] = chatter_event.mean()
         return rate
 
 

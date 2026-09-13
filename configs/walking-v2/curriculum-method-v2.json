@@ -19,42 +19,42 @@
     {
       "stage": "stand",
       "profile": "curriculum/01-stand.json",
-      "profile_sha256": "a82fde0daa5d89c3cae9e414d25f84331ca8b9110f3d81e690a4e83169aa792a",
+      "profile_sha256": "c593ff0b49f1de6f9ba9a108c671892157448551dd0f132634db7358a471edcf",
       "updates": 0,
       "gate": "fixed-speed"
     },
     {
       "stage": "stand-walk-040",
       "profile": "curriculum/02-stand-walk-040.json",
-      "profile_sha256": "e93a44f09b14159f233d135b559dee9fe97190b9bde96262d14384406cee8afe",
+      "profile_sha256": "49a462bf04b69eda426a95b23bf1fb83b9ef77d50d1848e2dd334be05bfaf580",
       "updates": 500,
       "gate": "fixed-speed"
     },
     {
       "stage": "add-060",
       "profile": "curriculum/03-add-060.json",
-      "profile_sha256": "58492d07972e52812847a3054c9cc1735a89ba763d389a31989f7d9a50a89248",
+      "profile_sha256": "e62eca5024772a8635786acedd31928787a93c66db8df80260fc8db7bc99f454",
       "updates": 500,
       "gate": "fixed-speed"
     },
     {
       "stage": "add-080",
       "profile": "curriculum/04-add-080.json",
-      "profile_sha256": "c8a07a7e4eb94f87f262bb69e8843da9d36d1e56c1ba92f04c1dc367a6986f29",
+      "profile_sha256": "a0fa9fc7fb65f6f596d8c66ad3248e4953ac10c6d9db9bbfc9c8df93733fc386",
       "updates": 500,
       "gate": "fixed-speed"
     },
     {
       "stage": "transitions",
       "profile": "curriculum/05-transitions.json",
-      "profile_sha256": "7a53b7f3491942f29710d9cfdcff6c8ac1878ea4117fd5f98078b6bdd83f2c82",
+      "profile_sha256": "35c80d3da7e17f1ab69dbb9c6497bf25ee4bcf40f02f1e70c6e337675e6dd150",
       "updates": 500,
       "gate": "schema-2-transition"
     },
     {
       "stage": "robustness",
       "profile": "curriculum/06-robustness.json",
-      "profile_sha256": "88009f32ea0f8a9ac4fd83746d6832050c0cc82d66c7639a8313d64dcd259da6",
+      "profile_sha256": "67a17671485bb613fec2fa32b0df08631cb5c72b11719561f4a7a26730413c0c",
       "updates": 500,
       "gate": "schema-2-robustness"
     }
