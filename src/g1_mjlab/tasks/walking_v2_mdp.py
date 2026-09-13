@@ -322,6 +322,20 @@ def update_debounced_contact(
     return next_stable, next_candidate, next_age, flicker
 
 
+def gait_touchdown_event_signal(
+    single: torch.Tensor,
+    touchdown_foot: torch.Tensor,
+    last_touchdown: torch.Tensor,
+    expected_contact: torch.Tensor,
+) -> torch.Tensor:
+    """Score only alternating touchdowns that agree with the reference stance phase."""
+    expected_stance = expected_contact.gather(1, touchdown_foot[:, None]).squeeze(1)
+    alternating = single & (last_touchdown >= 0) & (touchdown_foot != last_touchdown)
+    rewarded = alternating & expected_stance
+    invalid = single & ~rewarded & (last_touchdown >= 0)
+    return rewarded.to(torch.float32) - invalid.to(torch.float32)
+
+
 class walking_v2_rate:
     """Single auditable reward term that logs every raw and weighted component."""
 
@@ -380,11 +394,12 @@ class walking_v2_rate:
         eligible = rising & (self._touchdown_age_s >= 0.12)[:, None]
         single = eligible.sum(dim=1) == 1
         touchdown_foot = torch.argmax(eligible.to(torch.int64), dim=1)
-        alternating = (
-            single & (self._last_touchdown >= 0) & (touchdown_foot != self._last_touchdown)
+        event_signal = gait_touchdown_event_signal(
+            single,
+            touchdown_foot,
+            self._last_touchdown,
+            command.expected_contact,
         )
-        repeated = single & (touchdown_foot == self._last_touchdown)
-        event_signal = alternating.to(torch.float32) - repeated.to(torch.float32)
         self._last_touchdown[single] = touchdown_foot[single]
         self._touchdown_age_s += env.step_dt
         self._touchdown_age_s[single] = 0.0

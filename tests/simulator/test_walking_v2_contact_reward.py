@@ -5,7 +5,10 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("mjlab")
 
-from g1_mjlab.tasks.walking_v2_mdp import update_debounced_contact  # noqa: E402
+from g1_mjlab.tasks.walking_v2_mdp import (  # noqa: E402
+    gait_touchdown_event_signal,
+    update_debounced_contact,
+)
 
 
 def test_debounced_contact_rejects_flicker_and_confirms_persistent_change() -> None:
@@ -30,3 +33,18 @@ def test_debounced_contact_rejects_flicker_and_confirms_persistent_change() -> N
         )
         assert not flicker.any()
     assert stable.tolist() == [[False, True]]
+
+
+def test_touchdown_reward_requires_alternation_and_reference_stance() -> None:
+    single = torch.tensor([True, True, True, False])
+    touchdown_foot = torch.tensor([1, 1, 0, 1])
+    last_touchdown = torch.tensor([0, 0, 0, 0])
+    expected_contact = torch.tensor(
+        [[False, True], [True, False], [True, False], [False, True]]
+    )
+
+    signal = gait_touchdown_event_signal(
+        single, touchdown_foot, last_touchdown, expected_contact
+    )
+
+    torch.testing.assert_close(signal, torch.tensor([1.0, -1.0, -1.0, 0.0]))
