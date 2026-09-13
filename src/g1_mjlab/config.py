@@ -304,14 +304,27 @@ def _validate(data: Mapping[str, Any]) -> ResolvedRunConfig:
 
 
 def load_config(path: Path, overrides: Mapping[str, object] | None = None) -> ResolvedRunConfig:
-    """Load strict JSON configuration and apply explicit field overrides."""
+    """Load source or resolved JSON and verify any serialized derived fields."""
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("configuration root must be an object")
     merged: dict[str, Any] = dict(raw)
+    derived = {
+        name: merged.pop(name)
+        for name in ("control_dt", "transitions_per_update")
+        if name in merged
+    }
     if overrides:
         merged.update(overrides)
-    return _validate(merged)
+    config = _validate(merged)
+    expected = {
+        "control_dt": config.control_dt,
+        "transitions_per_update": config.transitions_per_update,
+    }
+    mismatched = [name for name, value in derived.items() if value != expected[name]]
+    if mismatched:
+        raise ValueError(f"serialized derived configuration fields mismatch: {mismatched}")
+    return config
 
 
 def load_reward_profile(path: Path) -> StandingRewardProfile:

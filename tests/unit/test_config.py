@@ -105,6 +105,16 @@ def test_config_derives_batch_and_stable_hash(tmp_path: Path) -> None:
     assert first.sha256 == second.sha256
 
 
+def test_resolved_config_round_trips_and_rejects_derived_field_tampering(tmp_path: Path) -> None:
+    source = load_config(_write(tmp_path, _data()))
+
+    assert load_config(_write(tmp_path, source.to_dict())) == source
+    tampered = source.to_dict()
+    tampered["transitions_per_update"] += 1
+    with pytest.raises(ValueError, match="derived"):
+        load_config(_write(tmp_path, tampered))
+
+
 def test_config_rejects_unknown_key(tmp_path: Path) -> None:
     data = _data()
     data["mystery"] = 1
