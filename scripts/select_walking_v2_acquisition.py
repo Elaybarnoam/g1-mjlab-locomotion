@@ -25,18 +25,24 @@ def main() -> int:
         nargs=6,
         action="append",
         metavar=("UPDATE", "SHA256", "STAND", "SPEED_040", "SPEED_060", "SPEED_080"),
-        required=True,
     )
+    parser.add_argument("--decision", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    rows = [
-        summarize_checkpoint(
-            int(group[0]),
-            group[1],
-            [_load(Path(path))["acquisition_metrics"] for path in group[2:]],
-        )
-        for group in args.checkpoint
-    ]
+    if (args.checkpoint is None) == (args.decision is None):
+        raise ValueError("provide exactly one of --checkpoint or --decision")
+    if args.decision is not None:
+        source = _load(args.decision)
+        rows = source["checkpoints"]
+    else:
+        rows = [
+            summarize_checkpoint(
+                int(group[0]),
+                group[1],
+                [_load(Path(path))["acquisition_metrics"] for path in group[2:]],
+            )
+            for group in args.checkpoint
+        ]
     result = acquisition_decision(rows)
     write_atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))

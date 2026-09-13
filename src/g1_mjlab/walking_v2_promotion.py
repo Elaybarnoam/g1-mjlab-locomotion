@@ -77,13 +77,18 @@ def acquisition_decision(checkpoints: list[dict[str, Any]]) -> dict[str, Any]:
         default=None,
     )
     first, last = checkpoints[0], checkpoints[-1]
+    safety_valid = bool(
+        last["all_finite"]
+        and last["torque_ratio_p95_max"] <= 0.80
+        and last["torque_ratio_peak_max"] <= 1.00
+    )
     positive_trend = bool(
         len(checkpoints) >= 3
+        and safety_valid
         and last["minimum_survival_s"] >= first["minimum_survival_s"]
         and last["terminated_count"] <= first["terminated_count"]
         and last["moving_command_rms_mean_m_s"] < first["moving_command_rms_mean_m_s"]
-        and last["reference_position_rms_mean_rad"] <= first["reference_position_rms_mean_rad"]
-        and last["torque_ratio_p95_max"] <= max(0.80, first["torque_ratio_p95_max"])
+        and last["functional_pass_count"] >= first["functional_pass_count"]
     )
     return {
         "schema_version": 1,
@@ -91,6 +96,7 @@ def acquisition_decision(checkpoints: list[dict[str, Any]]) -> dict[str, Any]:
         "selected_checkpoint_sha256": selected["checkpoint_sha256"] if selected else None,
         "selected_update": selected["update"] if selected else None,
         "positive_trend": positive_trend,
+        "safety_valid": safety_valid,
         "continuation_authorized": bool(
             selected is None and positive_trend and int(last["update"]) < 4000
         ),
