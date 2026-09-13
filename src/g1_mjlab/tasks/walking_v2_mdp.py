@@ -387,6 +387,7 @@ class walking_v2_rate:
         gait_contact_chatter_weight: float = 0.0,
         gait_forward_progress_weight: float = 0.0,
         gait_action_rate_weight: float = 0.0,
+        gait_contact_vertical_velocity_weight: float = 0.0,
     ) -> torch.Tensor:
         robot: Entity = env.scene["robot"]
         command = _command(env, command_name)
@@ -477,6 +478,10 @@ class walking_v2_rate:
             "normalized_torque": (robot.data.qfrc_actuator / self._effort_limit)
             .square()
             .mean(dim=1),
+            "contact_vertical_velocity": (
+                self._stable_contact.float()
+                * robot.data.site_lin_vel_w[:, self._site_ids, 2].square()
+            ).mean(dim=1),
         }
         limits = robot.data.soft_joint_pos_limits
         assert limits is not None
@@ -510,6 +515,9 @@ class walking_v2_rate:
             - gait_contact_chatter_weight * command.blend * chatter_event / env.step_dt
             + gait_forward_progress_weight * command.blend * actual_velocity[:, 0]
             - gait_action_rate_weight * command.blend * raw["action_rate"]
+            - gait_contact_vertical_velocity_weight
+            * command.blend
+            * raw["contact_vertical_velocity"]
         )
         weights = {
             "imitation_joint_pose": 0.80 * command.blend,
@@ -524,6 +532,9 @@ class walking_v2_rate:
             "stand_horizontal_velocity": 1.0 - command.blend,
             "action_rate": torch.full_like(command.blend, -0.10),
             "normalized_torque": torch.full_like(command.blend, -0.05),
+            "contact_vertical_velocity": (
+                -gait_contact_vertical_velocity_weight * command.blend
+            ),
             "soft_joint_limit": torch.full_like(command.blend, -0.50),
         }
         for name, value in raw.items():

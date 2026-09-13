@@ -236,8 +236,9 @@ def diagnose_walking(
             gait_alternation_event_weight=1.0,
             gait_contact_chatter_weight=0.5,
             gait_forward_progress_weight=1.0,
-            gait_action_rate_weight=0.1,
-            residual_action_filter_alpha=0.25,
+            gait_action_rate_weight=0.0,
+            residual_action_filter_alpha=1.0,
+            gait_contact_vertical_velocity_weight=2.0,
             fall_penalty=-10.0,
         )
         train_cfg = build_train_config(

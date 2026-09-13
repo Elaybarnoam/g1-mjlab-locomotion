@@ -31,6 +31,7 @@ def main() -> int:
     parser.add_argument("--speed", type=float, default=0.4)
     parser.add_argument("--horizon-seconds", type=float, default=2.0)
     parser.add_argument("--seed", type=int, default=10042)
+    parser.add_argument("--residual-filter-alpha", type=float, default=1.0)
     args = parser.parse_args()
     if args.output.exists() and any(args.output.iterdir()):
         raise FileExistsError(f"output is not empty: {args.output}")
@@ -63,8 +64,9 @@ def main() -> int:
         gait_alternation_event_weight=1.0,
         gait_contact_chatter_weight=0.5,
         gait_forward_progress_weight=1.0,
-        gait_action_rate_weight=0.1,
-        residual_action_filter_alpha=0.25,
+        gait_action_rate_weight=0.0,
+        residual_action_filter_alpha=args.residual_filter_alpha,
+        gait_contact_vertical_velocity_weight=2.0,
         fall_penalty=-10.0,
     )
     train_cfg = build_train_config(
