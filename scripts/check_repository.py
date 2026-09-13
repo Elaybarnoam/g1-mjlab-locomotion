@@ -71,6 +71,7 @@ def check_git_history() -> None:
         text=True,
         encoding="utf-8",
     )
+    historical_objects: list[tuple[str, str]] = []
     for line in result.stdout.splitlines():
         object_id, separator, name = line.partition(" ")
         if not separator:
@@ -78,15 +79,23 @@ def check_git_history() -> None:
         normalized = name.replace("\\", "/")
         if normalized.startswith(PROHIBITED_PREFIXES) or normalized.endswith(PROHIBITED_SUFFIXES):
             raise SystemExit(f"prohibited historical path: {normalized}")
-        size = subprocess.run(
-            ["git", "cat-file", "-s", object_id],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="ascii",
-        )
-        if int(size.stdout) > MAX_GIT_FILE_BYTES:
+        historical_objects.append((object_id, normalized))
+    sizes = subprocess.run(
+        ["git", "cat-file", "--batch-check=%(objectname) %(objectsize)"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="ascii",
+        input="".join(f"{object_id}\n" for object_id, _ in historical_objects),
+    ).stdout.splitlines()
+    if len(sizes) != len(historical_objects):
+        raise SystemExit("git history size audit returned an incomplete batch")
+    for (expected_id, normalized), row in zip(historical_objects, sizes, strict=True):
+        actual_id, separator, size = row.partition(" ")
+        if not separator or actual_id != expected_id:
+            raise SystemExit("git history size audit returned an unexpected object")
+        if int(size) > MAX_GIT_FILE_BYTES:
             raise SystemExit(f"historical blob exceeds {MAX_GIT_FILE_BYTES} bytes: {normalized}")
 
 
@@ -101,13 +110,9 @@ def check_media() -> None:
             raise SystemExit(f"media hash mismatch: {name}")
 
 
-def check_markdown_links() -> None:
+def check_markdown_links(files: list[Path]) -> None:
     pattern = re.compile(r"!?\[[^]]*]\(([^)]+)\)")
-    for document in ROOT.rglob("*.md"):
-        if any(
-            part.startswith(".") and part != ".github" for part in document.relative_to(ROOT).parts
-        ):
-            continue
+    for document in (path for path in files if path.suffix.lower() == ".md"):
         for destination in pattern.findall(document.read_text(encoding="utf-8")):
             clean = destination.strip("<>").split("#", 1)[0]
             if not clean or "://" in clean or clean.startswith("mailto:"):
@@ -136,7 +141,7 @@ def main() -> int:
                 if pattern.search(text):
                     raise SystemExit(f"private absolute path in {relative}: {pattern.pattern}")
     check_media()
-    check_markdown_links()
+    check_markdown_links(files)
     check_git_history()
     print(f"repository policy passed for {len(files)} tracked files")
     return 0
