@@ -132,6 +132,8 @@ def configure_environment(
             "gait_contact_vertical_velocity_weight": (
                 profile.gait_contact_vertical_velocity_weight
             ),
+            "gait_swing_clearance_weight": profile.gait_swing_clearance_weight,
+            "gait_swing_clearance_m": profile.gait_swing_clearance_m,
         }
         env.actions["joint_pos"].filter_alpha = profile.residual_action_filter_alpha
         env.rewards["true_fall_event"].weight = profile.fall_penalty / (

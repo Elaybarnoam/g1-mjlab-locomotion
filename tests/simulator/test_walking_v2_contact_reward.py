@@ -8,6 +8,7 @@ pytest.importorskip("mjlab")
 from g1_mjlab.tasks.walking_v2_mdp import (  # noqa: E402
     gait_touchdown_event_signal,
     filter_residual_action,
+    swing_clearance_error,
     update_debounced_contact,
 )
 
@@ -22,6 +23,15 @@ def test_residual_action_filter_uses_bounded_ema() -> None:
     )
     with pytest.raises(ValueError, match="alpha"):
         filter_residual_action(previous, current, alpha=0.0)
+
+
+def test_swing_clearance_penalizes_only_expected_airborne_foot() -> None:
+    height = torch.tensor([[0.01, 0.0], [0.04, 0.0]])
+    expected_contact = torch.tensor([[False, True], [False, True]])
+
+    error = swing_clearance_error(height, expected_contact, target_m=0.04)
+
+    torch.testing.assert_close(error, torch.tensor([0.5625, 0.0]))
 
 
 def test_debounced_contact_rejects_flicker_and_confirms_persistent_change() -> None:

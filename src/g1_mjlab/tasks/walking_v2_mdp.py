@@ -359,6 +359,21 @@ def gait_touchdown_event_signal(
     return rewarded.to(torch.float32) - repeated.to(torch.float32)
 
 
+def swing_clearance_error(
+    foot_height_m: torch.Tensor,
+    expected_contact: torch.Tensor,
+    *,
+    target_m: float,
+) -> torch.Tensor:
+    """Return normalized clearance deficit over reference-swing feet only."""
+    if not 0.0 < target_m <= 0.15:
+        raise ValueError("swing clearance target must be in (0, 0.15] m")
+    swing = ~expected_contact
+    deficit = torch.relu(target_m - foot_height_m) / target_m
+    numerator = (swing.float() * deficit.square()).sum(dim=1)
+    return numerator / swing.sum(dim=1).clamp(min=1)
+
+
 class walking_v2_rate:
     """Single auditable reward term that logs every raw and weighted component."""
 
@@ -388,6 +403,8 @@ class walking_v2_rate:
         gait_forward_progress_weight: float = 0.0,
         gait_action_rate_weight: float = 0.0,
         gait_contact_vertical_velocity_weight: float = 0.0,
+        gait_swing_clearance_weight: float = 0.0,
+        gait_swing_clearance_m: float = 0.04,
     ) -> torch.Tensor:
         robot: Entity = env.scene["robot"]
         command = _command(env, command_name)
@@ -482,6 +499,11 @@ class walking_v2_rate:
                 self._stable_contact.float()
                 * robot.data.site_lin_vel_w[:, self._site_ids, 2].square()
             ).mean(dim=1),
+            "swing_clearance": swing_clearance_error(
+                robot.data.site_pos_w[:, self._site_ids, 2],
+                command.expected_contact,
+                target_m=gait_swing_clearance_m,
+            ),
         }
         limits = robot.data.soft_joint_pos_limits
         assert limits is not None
@@ -518,6 +540,7 @@ class walking_v2_rate:
             - gait_contact_vertical_velocity_weight
             * command.blend
             * raw["contact_vertical_velocity"]
+            - gait_swing_clearance_weight * command.blend * raw["swing_clearance"]
         )
         weights = {
             "imitation_joint_pose": 0.80 * command.blend,
@@ -535,6 +558,7 @@ class walking_v2_rate:
             "contact_vertical_velocity": (
                 -gait_contact_vertical_velocity_weight * command.blend
             ),
+            "swing_clearance": -gait_swing_clearance_weight * command.blend,
             "soft_joint_limit": torch.full_like(command.blend, -0.50),
         }
         for name, value in raw.items():

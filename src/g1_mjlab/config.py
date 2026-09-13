@@ -213,6 +213,8 @@ class WalkingV2CurriculumProfile:
     gait_action_rate_weight: float
     residual_action_filter_alpha: float
     gait_contact_vertical_velocity_weight: float
+    gait_swing_clearance_weight: float
+    gait_swing_clearance_m: float
     fall_penalty: float
 
     def to_dict(self) -> dict[str, Any]:
@@ -586,6 +588,10 @@ def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile
         or not 0.0 < profile.residual_action_filter_alpha <= 1.0
         or not math.isfinite(profile.gait_contact_vertical_velocity_weight)
         or profile.gait_contact_vertical_velocity_weight < 0.0
+        or not math.isfinite(profile.gait_swing_clearance_weight)
+        or profile.gait_swing_clearance_weight < 0.0
+        or not math.isfinite(profile.gait_swing_clearance_m)
+        or not 0.0 < profile.gait_swing_clearance_m <= 0.15
         or not math.isfinite(profile.fall_penalty)
         or profile.fall_penalty > 0.0
     ):

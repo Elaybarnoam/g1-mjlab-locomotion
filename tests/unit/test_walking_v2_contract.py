@@ -141,6 +141,8 @@ def test_walking_v2_curriculum_profile_is_strict_and_hashable(tmp_path) -> None:
   "gait_action_rate_weight": 0.0,
   "residual_action_filter_alpha": 1.0,
   "gait_contact_vertical_velocity_weight": 2.0,
+  "gait_swing_clearance_weight": 2.0,
+  "gait_swing_clearance_m": 0.04,
   "fall_penalty": -10.0
 }\n""",
         encoding="utf-8",
@@ -176,6 +178,8 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
         gait_action_rate_weight=0.0,
         residual_action_filter_alpha=1.0,
         gait_contact_vertical_velocity_weight=2.0,
+        gait_swing_clearance_weight=2.0,
+        gait_swing_clearance_m=0.04,
         fall_penalty=-10.0,
     )
 
@@ -209,4 +213,6 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
         ]
         == 2.0
     )
+    assert environment.rewards["walking_v2_rate"].params["gait_swing_clearance_weight"] == 2.0
+    assert environment.rewards["walking_v2_rate"].params["gait_swing_clearance_m"] == 0.04
     assert environment.rewards["true_fall_event"].weight == -500.0
