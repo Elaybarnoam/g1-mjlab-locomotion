@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "name": "walking-v2-development-transitions",
+  "scenarios": [
+    {
+      "name": "seed-10420-stand-speed-transitions",
+      "seed": 10420,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.4, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.8, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "name": "seed-10421-stand-speed-transitions",
+      "seed": 10421,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.4, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.8, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "name": "seed-10422-stand-speed-transitions",
+      "seed": 10422,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.4, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.8, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "name": "seed-10423-stand-speed-transitions",
+      "seed": 10423,
+      "initialization": "standing",
+      "segments": [
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.4, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.6, 0.0, 0.0]},
+        {"duration_s": 2.0, "command": [0.0, 0.0, 0.0]},
+        {"duration_s": 8.0, "command": [0.8, 0.0, 0.0]},
+        {"duration_s": 3.0, "command": [0.0, 0.0, 0.0]}
+      ]
+    }
+  ]
+}

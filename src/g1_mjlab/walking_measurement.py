@@ -11,7 +11,12 @@ from typing import Any
 import numpy as np
 
 from .artifacts import sha256_file
-from .config import ResolvedRunConfig, WalkingTrainingProfile
+from .config import (
+    ResolvedRunConfig,
+    WalkingTrainingProfile,
+    WalkingV2CurriculumProfile,
+    load_walking_v2_curriculum_profile,
+)
 from .gait_evaluation.diagnostic_plot import render_measurement_svg
 from .gait_evaluation.scenarios import ScenarioSet, load_scenario_set
 from .gait_evaluation.walking_v2 import (
@@ -25,6 +30,7 @@ from .gait_evaluation.walking_v2 import (
 )
 from .motion.contact import ContactProfile
 from .tasks import TaskCapability, get_task
+from .tasks.registry import WALKING_V2_TASK_ID
 
 
 def _canonical_hash(value: Any) -> str:
@@ -147,6 +153,9 @@ def _apply_explicit_initial_states(
         dtype=command.phase.dtype,
         device=command.phase.device,
     )
+    refresh = getattr(command, "refresh_reference_after_state_override", None)
+    if refresh is not None:
+        refresh()
     env.sim.forward()
 
 
@@ -176,8 +185,11 @@ def diagnose_walking(
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"diagnostic output is not empty: {output}")
     identities = _run_identities(checkpoint)
+    repository_root = Path(__file__).resolve().parents[2]
     reference_path = (
-        Path(__file__).resolve().parents[2] / "configs/walking-v1/reference/g1-walk-a057-cycle.npz"
+        repository_root / "configs/walking-v2/reference/reference-bank-v2.json"
+        if config.task_id == WALKING_V2_TASK_ID
+        else repository_root / "configs/walking-v1/reference/g1-walk-a057-cycle.npz"
     )
     reference_sha256 = sha256_file(reference_path.resolve(strict=True))
     output.mkdir(parents=True, exist_ok=True)
@@ -194,6 +206,7 @@ def diagnose_walking(
         add_diagnostic_contact_sensor,
     )
     from .tasks.walking_mdp import WalkingCommand, heading_frame_delta
+    from .tasks.walking_v2_mdp import ReferenceResidualAction, WalkingV2Command
 
     first = scenarios.scenarios[0]
     horizon_s = first.horizon_s
@@ -205,16 +218,42 @@ def diagnose_walking(
         episode_length_s=horizon_s + config.control_dt,
     )
     reference_initialization = first.initialization != "standing"
-    evaluation_profile = WalkingTrainingProfile(
-        1,
-        f"diagnostic-{first.initialization}",
-        0.0 if reference_initialization else 1.0,
-        reference_initialization,
-        first.initialization == "reference",
-    )
-    train_cfg = build_train_config(
-        eval_config, output, randomized_reset=False, walking_profile=evaluation_profile
-    )
+    if config.task_id == WALKING_V2_TASK_ID:
+        source_profile_path = checkpoint.parent.parent / "walking-v2-curriculum-profile.json"
+        source_profile = (
+            load_walking_v2_curriculum_profile(source_profile_path)
+            if source_profile_path.exists()
+            else None
+        )
+        evaluation_profile_v2 = WalkingV2CurriculumProfile(
+            schema_version=2,
+            name="deterministic-evaluation-v2",
+            stage=source_profile.stage if source_profile is not None else "transitions",
+            standing_fraction=1.0,
+            forward_speed_range_m_s=(0.4, 0.8),
+            resampling_time_range_s=(1.5, 4.0),
+            observation_noise=False,
+            startup_domain_randomization=False,
+            push_disturbance=False,
+            terminate_reference_deviation=False,
+        )
+        train_cfg = build_train_config(
+            eval_config,
+            output,
+            randomized_reset=False,
+            walking_v2_curriculum_profile=evaluation_profile_v2,
+        )
+    else:
+        evaluation_profile = WalkingTrainingProfile(
+            1,
+            f"diagnostic-{first.initialization}",
+            0.0 if reference_initialization else 1.0,
+            reference_initialization,
+            first.initialization == "reference",
+        )
+        train_cfg = build_train_config(
+            eval_config, output, randomized_reset=False, walking_profile=evaluation_profile
+        )
     train_cfg.env.auto_reset = False
     if physics_trace:
         add_diagnostic_contact_sensor(train_cfg.env)
@@ -248,8 +287,8 @@ def diagnose_walking(
         policy = runner.get_inference_policy(device=config.device)
         env.reset(seed=first.seed)
         command = env.command_manager.get_term("twist")
-        if not isinstance(command, WalkingCommand):
-            raise TypeError("walking diagnostic requires WalkingCommand")
+        if not isinstance(command, (WalkingCommand, WalkingV2Command)):
+            raise TypeError("walking diagnostic requires a supported walking command")
         robot = env.scene["robot"]
         _apply_explicit_initial_states(env, robot, command, scenarios)
         observations = wrapped.get_observations()
@@ -280,22 +319,31 @@ def diagnose_walking(
                 observations, _, _, _ = wrapped.step(raw_actions)
                 action_term: Any = env.action_manager.get_term("joint_pos")
                 applied_actions = action_term.raw_action
-                q_target = action_term.offset + action_term.scale * applied_actions
+                q_target = (
+                    action_term.joint_target
+                    if isinstance(action_term, ReferenceResidualAction)
+                    else action_term.offset + action_term.scale * applied_actions
+                )
                 force = torch.abs(contact_sensor.data.force[:, :, 2])
                 sole_position = robot.data.site_pos_w[:, site_ids]
                 contact = contact_state.update(force, config.control_dt, sole_position[:, :, 2])
-                reference_body = command.interpolate(command.reference_body_position)
-                reference_ids = torch.tensor(
-                    [
-                        command.reference_body_names.index("left_ankle_roll_link"),
-                        command.reference_body_names.index("right_ankle_roll_link"),
-                    ],
-                    device=config.device,
-                )
-                expected_foot = heading_frame_delta(
-                    reference_body[:, reference_ids] - reference_body[:, 0:1],
-                    command.interpolate(command.reference_body_quaternion)[:, 0],
-                )
+                if isinstance(command, WalkingV2Command):
+                    expected_foot = command.expected_foot_position
+                    expected_contact = command.expected_contact
+                else:
+                    reference_body = command.interpolate(command.reference_body_position)
+                    reference_ids = torch.tensor(
+                        [
+                            command.reference_body_names.index("left_ankle_roll_link"),
+                            command.reference_body_names.index("right_ankle_roll_link"),
+                        ],
+                        device=config.device,
+                    )
+                    expected_foot = heading_frame_delta(
+                        reference_body[:, reference_ids] - reference_body[:, 0:1],
+                        command.interpolate(command.reference_body_quaternion)[:, 0],
+                    )
+                    expected_contact = command.foot_contact
                 terminated = env.termination_manager.terminated.clone()
                 truncated = env.termination_manager.time_outs.clone()
                 finite = (
@@ -315,7 +363,7 @@ def diagnose_walking(
                     "root_ang_vel_w": robot.data.root_link_ang_vel_w,
                     "phase": command.phase,
                     "blend": command.blend,
-                    "expected_contact": command.foot_contact,
+                    "expected_contact": expected_contact,
                     "joint_pos": robot.data.joint_pos,
                     "joint_vel": robot.data.joint_vel,
                     "raw_action": raw_actions,

@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from g1_mjlab.artifacts import sha256_file, write_atomic_json
-from g1_mjlab.config import load_config
+from g1_mjlab.config import load_config, load_walking_v2_curriculum_profile
 from g1_mjlab.environment import build_train_config
 from g1_mjlab.rl_adapter import MjlabVecEnvWrapper
 from g1_mjlab.tasks.walking_v2_mdp import ReferenceResidualAction, WalkingV2Command
@@ -32,8 +32,9 @@ def main() -> int:
     parser.add_argument("--horizon-seconds", type=float, default=2.0)
     parser.add_argument("--seed", type=int, default=10042)
     args = parser.parse_args()
-    if args.output.exists():
-        raise FileExistsError(f"output already exists: {args.output}")
+    if args.output.exists() and any(args.output.iterdir()):
+        raise FileExistsError(f"output is not empty: {args.output}")
+    args.output.mkdir(parents=True, exist_ok=True)
     config = load_config(args.config)
     steps = round(args.horizon_seconds / config.control_dt)
     if steps <= 0 or abs(steps * config.control_dt - args.horizon_seconds) > 1e-9:
@@ -45,7 +46,18 @@ def main() -> int:
         max_iterations=1,
         episode_length_s=args.horizon_seconds + config.control_dt,
     )
-    train_cfg = build_train_config(eval_config, args.output, randomized_reset=False)
+    curriculum_path = args.checkpoint.resolve(strict=True).parent.parent / (
+        "walking-v2-curriculum-profile.json"
+    )
+    curriculum_profile = (
+        load_walking_v2_curriculum_profile(curriculum_path) if curriculum_path.exists() else None
+    )
+    train_cfg = build_train_config(
+        eval_config,
+        args.output,
+        randomized_reset=False,
+        walking_v2_curriculum_profile=curriculum_profile,
+    )
     train_cfg.env.auto_reset = False
     train_cfg.env.commands["twist"].standing_fraction = 1.0
     train_cfg.env.commands["twist"].randomize_phase = False
@@ -139,7 +151,6 @@ def main() -> int:
         np.isfinite(value).all() for value in arrays.values() if value.dtype.kind != "b"
     ):
         raise FloatingPointError("deterministic rollout is empty or non-finite")
-    args.output.mkdir(parents=True)
     trace_path = args.output / "deterministic-rollout.npz"
     # NumPy's stubs do not model dynamically named array members, although the
     # runtime API explicitly supports them through ``**kwds``.

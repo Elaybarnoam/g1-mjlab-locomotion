@@ -98,6 +98,10 @@ class WalkingV2Command(CommandTerm):
         self._requested.zero_()
         self._requested[:, 0] = float(validated[0, 0])
 
+    def refresh_reference_after_state_override(self) -> None:
+        """Synchronize cached reference tensors after an evaluator overrides phase/state."""
+        self._refresh_reference()
+
     def _refresh_reference(self, ids: Any = slice(None)) -> None:
         sample = self.bank.sample_torch(self.phase[ids], self._applied[ids, 0])
         nominal = self.nominal_joint_position
