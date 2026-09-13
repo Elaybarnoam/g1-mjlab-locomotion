@@ -6,9 +6,33 @@ from g1_mjlab.contracts import validate_contract
 from g1_mjlab.tasks.registry import TaskCapability, get_task
 from g1_mjlab.tasks.walking_v2 import (
     TASK_ID,
+    configure_environment,
     validate_walking_v2_checkpoint_metadata,
     walking_v2_policy_contract,
 )
+
+
+class _Value:
+    pass
+
+
+class _Environment:
+    def __init__(self) -> None:
+        actor = _Value()
+        actor.enable_corruption = True
+        command = _Value()
+        command.randomize_phase = False
+        command.reference_initialization = False
+        self.observations = {"actor": actor}
+        self.commands = {"twist": command}
+        self.events = {
+            "reset_base": object(),
+            "reset_robot_joints": object(),
+            "push_robot": object(),
+            "foot_friction": object(),
+            "encoder_bias": object(),
+            "base_com": object(),
+        }
 
 
 def test_walking_v2_contract_freezes_actor_critic_and_action_layouts() -> None:
@@ -69,3 +93,14 @@ def test_walking_v2_checkpoint_metadata_rejects_old_layout() -> None:
     validate_walking_v2_checkpoint_metadata(valid)
     with pytest.raises(ValueError, match="incompatible"):
         validate_walking_v2_checkpoint_metadata({**valid, "layout_id": "g1-walking-actor-v1"})
+
+
+def test_acquisition_mode_excludes_robustness_randomization() -> None:
+    environment = _Environment()
+
+    configure_environment(environment)
+
+    assert environment.observations["actor"].enable_corruption is False
+    assert set(environment.events) == {"reset_base", "reset_robot_joints"}
+    assert environment.commands["twist"].randomize_phase is True
+    assert environment.commands["twist"].reference_initialization is True

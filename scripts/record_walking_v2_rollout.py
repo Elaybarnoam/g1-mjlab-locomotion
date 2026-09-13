@@ -16,6 +16,7 @@ from g1_mjlab.config import load_config
 from g1_mjlab.environment import build_train_config
 from g1_mjlab.rl_adapter import MjlabVecEnvWrapper
 from g1_mjlab.tasks.walking_v2_mdp import ReferenceResidualAction, WalkingV2Command
+from g1_mjlab.walking_v2_acquisition import summarize_acquisition_trace
 
 
 def main() -> int:
@@ -67,6 +68,8 @@ def main() -> int:
             "phase",
             "blend",
             "contact",
+            "expected_contact",
+            "reference_joint_velocity",
             "terminated",
             "truncated",
         )
@@ -117,6 +120,8 @@ def main() -> int:
                     "phase": command.phase[0],
                     "blend": command.blend[0],
                     "contact": (found.reshape(1, -1)[0, :2] > 0),
+                    "expected_contact": command.expected_contact[0],
+                    "reference_joint_velocity": command.target_joint_velocity[0],
                     "terminated": terminated,
                     "truncated": truncated,
                 }
@@ -156,6 +161,9 @@ def main() -> int:
         "mean_reward": float(arrays["reward"].mean()),
         "wall_seconds_including_startup": time.monotonic() - started,
         "qualification_claim": False,
+        "acquisition_metrics": summarize_acquisition_trace(
+            arrays, control_dt=config.control_dt, requested_speed_m_s=args.speed
+        ),
     }
     write_atomic_json(args.output / "summary.json", summary)
     print(json.dumps(summary, indent=2, sort_keys=True))
