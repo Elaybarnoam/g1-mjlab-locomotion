@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from g1_mjlab.artifacts import sha256_file, write_atomic_json
-from g1_mjlab.config import load_config, load_walking_v2_curriculum_profile
+from g1_mjlab.config import WalkingV2CurriculumProfile, load_config
 from g1_mjlab.environment import build_train_config
 from g1_mjlab.rl_adapter import MjlabVecEnvWrapper
 from g1_mjlab.tasks.walking_v2_mdp import ReferenceResidualAction, WalkingV2Command
@@ -46,17 +46,27 @@ def main() -> int:
         max_iterations=1,
         episode_length_s=args.horizon_seconds + config.control_dt,
     )
-    curriculum_path = args.checkpoint.resolve(strict=True).parent.parent / (
-        "walking-v2-curriculum-profile.json"
-    )
-    curriculum_profile = (
-        load_walking_v2_curriculum_profile(curriculum_path) if curriculum_path.exists() else None
+    evaluation_profile = WalkingV2CurriculumProfile(
+        schema_version=2,
+        name="deterministic-evaluation-v2",
+        stage="transitions",
+        standing_fraction=1.0,
+        forward_speed_range_m_s=(0.4, 0.8),
+        resampling_time_range_s=(1.5, 4.0),
+        reference_initialization=False,
+        observation_noise=False,
+        startup_domain_randomization=False,
+        push_disturbance=False,
+        terminate_reference_deviation=False,
+        gait_contact_weight=2.0,
+        gait_alternation_event_weight=1.0,
+        fall_penalty=-10.0,
     )
     train_cfg = build_train_config(
         eval_config,
         args.output,
         randomized_reset=False,
-        walking_v2_curriculum_profile=curriculum_profile,
+        walking_v2_curriculum_profile=evaluation_profile,
     )
     train_cfg.env.auto_reset = False
     train_cfg.env.commands["twist"].standing_fraction = 1.0

@@ -13,6 +13,24 @@ from .motion import G1_JOINT_NAMES
 FloatArray = npt.NDArray[np.floating[Any]]
 
 
+def _debounce_contact(contact: npt.NDArray[np.bool_], minimum_frames: int) -> npt.NDArray[np.bool_]:
+    """Require a state change to persist before accepting it for gait events."""
+    result = np.empty_like(contact)
+    for foot in range(contact.shape[1]):
+        state = bool(contact[0, foot])
+        candidate_frames = 0
+        for frame, measured in enumerate(contact[:, foot]):
+            if bool(measured) == state:
+                candidate_frames = 0
+            else:
+                candidate_frames += 1
+                if candidate_frames >= minimum_frames:
+                    state = bool(measured)
+                    candidate_frames = 0
+            result[frame, foot] = state
+    return result
+
+
 def effort_limits_nm(joint_names: tuple[str, ...] = G1_JOINT_NAMES) -> FloatArray:
     """Return the actuator-limit convention used by the walking-v2 reward."""
     values: list[float] = []
@@ -55,8 +73,9 @@ def summarize_acquisition_trace(
     contact = np.asarray(arrays["contact"], dtype=bool)
     expected = np.asarray(arrays["expected_contact"], dtype=bool)
     transitions = np.count_nonzero(np.diff(contact.astype(np.int8), axis=0))
+    stable_contact = _debounce_contact(contact, max(1, math.ceil(0.06 / control_dt)))
     duration = sample_count * control_dt
-    touchdowns = np.argwhere(contact[1:] & ~contact[:-1])
+    touchdowns = np.argwhere(stable_contact[1:] & ~stable_contact[:-1])
     touchdown_sides = touchdowns[:, 1] if len(touchdowns) else np.empty(0, dtype=int)
     alternating = np.count_nonzero(touchdown_sides[1:] != touchdown_sides[:-1])
     alternation = alternating / max(1, len(touchdown_sides) - 1)
@@ -84,7 +103,7 @@ def summarize_acquisition_trace(
         ),
         "torque_ratio_p95": float(np.percentile(torque_ratio, 95)),
         "torque_ratio_peak": float(np.max(torque_ratio)),
-        "contact_mismatch_fraction": float(np.mean(contact != expected)),
+        "contact_mismatch_fraction": float(np.mean(stable_contact != expected)),
         "contact_transition_rate_s": float(transitions / duration),
         "touchdown_count": int(len(touchdowns)),
         "alternation_fraction": float(alternation),

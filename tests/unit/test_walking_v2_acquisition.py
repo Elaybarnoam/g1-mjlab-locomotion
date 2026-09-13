@@ -17,6 +17,7 @@ def test_acquisition_summary_detects_stable_alternating_walk() -> None:
     count = 150
     contact = np.ones((count, 2), dtype=bool)
     contact[60:70, 0] = False
+    contact[80, 0] = False  # one-frame sensor dropout must not become a same-side touchdown
     contact[90:100, 1] = False
     contact[120:130, 0] = False
     root = np.zeros((count, 3))
