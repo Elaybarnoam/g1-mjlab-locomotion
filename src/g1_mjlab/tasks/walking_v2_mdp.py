@@ -332,8 +332,8 @@ def gait_touchdown_event_signal(
     expected_stance = expected_contact.gather(1, touchdown_foot[:, None]).squeeze(1)
     alternating = single & (last_touchdown >= 0) & (touchdown_foot != last_touchdown)
     rewarded = alternating & expected_stance
-    invalid = single & ~rewarded & (last_touchdown >= 0)
-    return rewarded.to(torch.float32) - invalid.to(torch.float32)
+    repeated = single & (touchdown_foot == last_touchdown)
+    return rewarded.to(torch.float32) - repeated.to(torch.float32)
 
 
 class walking_v2_rate:
