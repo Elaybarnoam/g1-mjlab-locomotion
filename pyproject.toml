@@ -160,3 +160,23 @@ module = [
   "warp.*",
 ]
 ignore_missing_imports = true
+
+# The portable CI matrix installs native playback, not the pinned GPU-only
+# mjlab training stack. Limit suppressions to error codes caused by unresolved
+# optional simulator bases and their attributes in these integration modules.
+[[tool.mypy.overrides]]
+module = [
+  "g1_mjlab.rl_adapter",
+  "g1_mjlab.training",
+  "g1_mjlab.tasks.walking_mdp",
+  "g1_mjlab.tasks.walking_v2_mdp",
+  "g1_mjlab.walking_viewer",
+]
+disable_error_code = ["misc", "no-any-return", "has-type", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+module = [
+  "g1_mjlab.motion.reference_bank",
+  "g1_mjlab.walking_measurement",
+]
+disable_error_code = ["unused-ignore"]
