@@ -37,14 +37,17 @@ jobs:
       - name: Install development and native dependencies
         run: uv sync --locked --group dev --extra native --extra video
       - name: Format
-        run: uv run ruff format --check .
+        run: uv run --no-sync ruff format --check .
       - name: Lint
-        run: uv run ruff check .
+        run: uv run --no-sync ruff check .
       - name: Type check
-        run: uv run mypy
+        run: uv run --no-sync mypy
       - name: Test
+        # Portable runners omit Torch; its parity tests skip, so their branches
+        # cannot contribute to coverage. The full training environment keeps
+        # the project-wide 80% gate from pyproject.toml.
         run: >-
-          uv run pytest -m "not simulator and not gpu and not slow"
-          --cov --cov-report=term-missing
+          uv run --no-sync pytest -m "not simulator and not gpu and not slow"
+          --cov --cov-report=term-missing --cov-fail-under=79
       - name: Repository policy
-        run: uv run python scripts/check_repository.py
+        run: uv run --no-sync python scripts/check_repository.py

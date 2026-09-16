@@ -648,6 +648,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "scipy" },
     { name = "twine" },
 ]
 
@@ -678,6 +679,7 @@ dev = [
     { name = "pytest", specifier = ">=9,<10" },
     { name = "pytest-cov", specifier = ">=7,<8" },
     { name = "ruff", specifier = ">=0.16,<1" },
+    { name = "scipy", specifier = ">=1.15,<2" },
     { name = "twine", specifier = ">=6,<7" },
 ]
 

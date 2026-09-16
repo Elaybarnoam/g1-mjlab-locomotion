@@ -156,7 +156,7 @@ def test_action_mapping_applies_clip_scale_nominal_and_bias_once() -> None:
 
 
 def test_numpy_and_torch_gait_match_over_random_dt_and_more_than_ten_cycles() -> None:
-    import torch
+    torch = pytest.importorskip("torch")
 
     rng = np.random.default_rng(90409)
     profile = CommandProfile(1.16381159304071, 1.06, 0.6, 0.8, 1.0, 0.05, 0.15)
