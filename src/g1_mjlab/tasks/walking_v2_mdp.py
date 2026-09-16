@@ -358,9 +358,7 @@ def gait_touchdown_event_signal(
     off_phase = alternating & ~expected_window
     repeated = single & (touchdown_foot == last_touchdown)
     return (
-        rewarded.to(torch.float32)
-        - repeated.to(torch.float32)
-        - 0.25 * off_phase.to(torch.float32)
+        rewarded.to(torch.float32) - repeated.to(torch.float32) - 0.25 * off_phase.to(torch.float32)
     )
 
 
@@ -395,9 +393,7 @@ class walking_v2_rate:
         self._candidate_age_s = torch.zeros(shape, device=env.device)
         self._last_touchdown = torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device)
         self._touchdown_age_s = torch.full((env.num_envs,), 1.0, device=env.device)
-        self._previous_expected_contact = torch.zeros(
-            shape, dtype=torch.bool, device=env.device
-        )
+        self._previous_expected_contact = torch.zeros(shape, dtype=torch.bool, device=env.device)
         self._expected_touchdown_age_s = torch.full(shape, 1.0, device=env.device)
 
     def __call__(
@@ -440,14 +436,12 @@ class walking_v2_rate:
             self._candidate_contact,
             self._candidate_age_s,
             flicker,
-        ) = (
-            update_debounced_contact(
-                actual_contact,
-                self._stable_contact,
-                self._candidate_contact,
-                self._candidate_age_s,
-                dt=env.step_dt,
-            )
+        ) = update_debounced_contact(
+            actual_contact,
+            self._stable_contact,
+            self._candidate_contact,
+            self._candidate_age_s,
+            dt=env.step_dt,
         )
         rising = self._stable_contact & ~previous_stable
         rising[reset] = False
@@ -572,9 +566,7 @@ class walking_v2_rate:
             "stand_horizontal_velocity": 1.0 - command.blend,
             "action_rate": torch.full_like(command.blend, -0.10),
             "normalized_torque": torch.full_like(command.blend, -0.05),
-            "contact_vertical_velocity": (
-                -gait_contact_vertical_velocity_weight * command.blend
-            ),
+            "contact_vertical_velocity": (-gait_contact_vertical_velocity_weight * command.blend),
             "swing_clearance": -gait_swing_clearance_weight * command.blend,
             "soft_joint_limit": torch.full_like(command.blend, -0.50),
         }

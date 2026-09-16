@@ -11,9 +11,7 @@ from g1_mjlab.artifacts import sha256_file
 def test_active_walking_baseline_is_hash_bound_and_fail_closed() -> None:
     root = Path(__file__).resolve().parents[2]
     baseline = json.loads(
-        (root / "configs/walking-v1/active-development-baseline.json").read_text(
-            encoding="utf-8"
-        )
+        (root / "configs/walking-v1/active-development-baseline.json").read_text(encoding="utf-8")
     )
 
     assert baseline["task_id"] == "G1-Walking-Flat-v1"

@@ -62,12 +62,8 @@ def test_touchdown_reward_requires_alternation_and_reference_stance() -> None:
     single = torch.tensor([True, True, True, False])
     touchdown_foot = torch.tensor([1, 1, 0, 1])
     last_touchdown = torch.tensor([0, 0, 0, 0])
-    expected_contact = torch.tensor(
-        [[False, True], [True, False], [True, False], [False, True]]
-    )
+    expected_contact = torch.tensor([[False, True], [True, False], [True, False], [False, True]])
 
-    signal = gait_touchdown_event_signal(
-        single, touchdown_foot, last_touchdown, expected_contact
-    )
+    signal = gait_touchdown_event_signal(single, touchdown_foot, last_touchdown, expected_contact)
 
     torch.testing.assert_close(signal, torch.tensor([1.0, -0.25, -1.0, 0.0]))

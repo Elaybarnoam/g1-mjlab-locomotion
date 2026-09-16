@@ -208,9 +208,7 @@ def test_walking_v2_curriculum_profile_controls_only_declared_stage_features() -
     assert environment.rewards["walking_v2_rate"].params["gait_action_rate_weight"] == 0.0
     assert environment.actions["joint_pos"].filter_alpha == 1.0
     assert (
-        environment.rewards["walking_v2_rate"].params[
-            "gait_contact_vertical_velocity_weight"
-        ]
+        environment.rewards["walking_v2_rate"].params["gait_contact_vertical_velocity_weight"]
         == 2.0
     )
     assert environment.rewards["walking_v2_rate"].params["gait_swing_clearance_weight"] == 2.0
