@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "name": "walking-v1-pre-style-bootstrap",
+  "role": "active_development_baseline",
+  "task_id": "G1-Walking-Flat-v1",
+  "status": "unqualified_development",
+  "method": "nominal_joint_position_offset_ppo",
+  "checkpoint": {
+    "local_run_hint": ".runtime/walking-bootstrap-resume-10600-64",
+    "file": "checkpoints/model_13398.pt",
+    "sha256": "e3cbd37746fbfad9d6cce90bcbfc5371d851c619ffcda7b59aac8c3f6783cd64"
+  },
+  "policy": {
+    "actor_observation_size": 102,
+    "actor_action_size": 29,
+    "action_center": "nominal_joint_position",
+    "actor_layers": [102, 512, 256, 128, 29]
+  },
+  "evidence": {
+    "earlier_development": {
+      "local_summary_hint": ".runtime/eval-bootstrap-final-13398/summary.json",
+      "summary_sha256": "c03dd1661db1073c525b1c29e382515edb35d3c84493ecec09d5d8494cce7631",
+      "functional_passed": 16,
+      "trials": 16,
+      "style_passed": 0
+    },
+    "later_strict_measurement": {
+      "local_summary_hint": ".runtime/plan04-measurement-bootstrap-003/summary.json",
+      "summary_sha256": "2708d285481e143ba5719e213486d1080c55e7047a4799e81360274d1e6370b6",
+      "functional_passed": 0,
+      "trials": 4,
+      "style_passed": 0,
+      "dominant_failures": ["physical_slip", "physical_contact_chatter"]
+    },
+    "deterministic_replay": {
+      "file": "docs/assets/walking-v1/bootstrap-pre-style-13398.mp4",
+      "sha256": "8e30f4d52c5dd57e2fb30e1ee34886eabd3902eacde6d3cef2125c2e399965a1",
+      "source_trace_sha256": "64fb4ed8c3e42a49a8b94d4c417a497a2bbbbd9844b8071918ac7acd489faa82",
+      "duration_s": 15.0,
+      "fps": 30,
+      "resolution": [960, 720]
+    }
+  },
+  "qualification_claim": false,
+  "release_authorized": false,
+  "walking_v2_role": "experimental_history_only"
+}

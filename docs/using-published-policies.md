@@ -32,8 +32,9 @@ The installed bundle contains:
 
 ## Walking-v1 development archives
 
-Walking-v1 is not published in the default catalog because its best checkpoint passed 16/16
-development function trials but 0/16 combined function/style trials. A maintainer can build two
+Walking-v1 is not published in the default catalog. The active pre-style bootstrap passed 16/16
+earlier development function trials but 0/4 later, stricter physical-contact/slip trials and is
+not qualified. A maintainer can build two
 local, deterministic, clearly unqualified archives:
 
 ```console

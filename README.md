@@ -11,11 +11,17 @@ built on [mjlab](https://github.com/mujocolab/mjlab), MuJoCo Warp, native MuJoCo
 _Click the image for a 15-second deterministic native-MuJoCo playback. No learning or exploration
 occurs during playback._
 
-Walking-v1 is under development and has no qualified downloadable policy yet. Its nominal-action
-locomotion bootstrap, 0.4–0.8 m/s command distribution, PPO smoke path, legally redistributable gait
-reference, and frozen anti-shuffle evaluator are implemented. See the
-[walking method decision](docs/walking-method-decision.md); this is infrastructure and experiment
-evidence, not a walking-policy result.
+Walking development now uses the **pre-style walking-v1 bootstrap** as its active baseline. The
+later walking-v2 reference-residual curriculum remains experimental history, not the current
+training route. The bootstrap completed 16/16 trials under an earlier functional gate but failed
+all four trials under a later, stricter physical-contact/slip measurement. It is not a qualified
+walking policy. See the [baseline decision](docs/walking-active-baseline.md) and its
+[hash-bound selection](configs/walking-v1/active-development-baseline.json).
+
+[![Experimental pre-style G1 bootstrap](docs/assets/walking-v1/bootstrap-pre-style-13398.png)](docs/assets/walking-v1/bootstrap-pre-style-13398.mp4)
+
+_15-second deterministic MuJoCo replay of the unqualified pre-style bootstrap; no PPO updates run
+during playback. Foot chatter and slip remain visible limitations._
 
 ## Run the trained policy
 

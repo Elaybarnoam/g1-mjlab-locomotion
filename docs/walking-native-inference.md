@@ -5,9 +5,11 @@ contains the deterministic actor mean and its frozen observation normalizer. MuJ
 only physics authority; the host maps each 29-value normalized action to the contract's joint
 targets exactly once.
 
-The current development artifact is deliberately **not a qualified walking release**. Its status is
+Any walking-v1 development artifact is deliberately **not a qualified walking release**. Its status is
 `unqualified_development`, and loading it requires the explicit
 `--allow-unqualified-development` flag. The supported development command interval is 0–0.6 m/s.
+The active experiment now starts from the [pre-style bootstrap](walking-active-baseline.md); any
+previously exported Stage 19 bundle remains historical rather than becoming the active baseline.
 
 ## Export an exact checkpoint
 

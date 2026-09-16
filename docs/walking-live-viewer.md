@@ -1,5 +1,10 @@
 # Walking development policy: live deterministic viewer
 
+The active development baseline is now the [pre-style walking-v1 bootstrap](walking-active-baseline.md).
+Its [deterministic replay](assets/walking-v1/bootstrap-pre-style-13398.mp4) is the verified visual
+preview. The WSLg live window on this machine has not been reliably visible across launches;
+the command below remains an opt-in development tool, not a verified display workaround.
+
 The live viewer runs one `G1-Walking-Flat-v1` world with the same mjlab environment and
 deterministic actor-mean inference path used by headless evaluation. It does not construct an
 optimizer, sample the Gaussian action distribution, apply domain randomization, or add observation
