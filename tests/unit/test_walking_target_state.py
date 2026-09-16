@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import torch
 
 from g1_mjlab.motion.reference_bank import ReferenceBank, build_reference_bank
 from g1_mjlab.motion.walking_target_state import (
@@ -87,6 +86,7 @@ def test_prediction_is_interval_end_target_and_does_not_mutate_state(
 
 
 def test_numpy_and_torch_transition_are_equivalent(tmp_path: Path) -> None:
+    torch = pytest.importorskip("torch")
     bank = _bank(tmp_path)
     state = WalkingTargetState(
         applied_command=np.asarray([[0.3, 0.0, 0.0], [0.7, 0.0, 0.0]]),
@@ -128,6 +128,7 @@ def test_numpy_and_torch_transition_are_equivalent(tmp_path: Path) -> None:
 
 
 def test_partial_resets_are_isolated_in_numpy_and_torch() -> None:
+    torch = pytest.importorskip("torch")
     state = WalkingTargetState(
         applied_command=np.asarray([[0.2, 0.0, 0.0], [0.4, 0.0, 0.0], [0.6, 0.0, 0.0]]),
         phase=np.asarray([0.1, 0.2, 0.3]),

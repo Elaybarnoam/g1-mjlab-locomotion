@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import torch
 
 from g1_mjlab.motion.reference_bank import ReferenceBank, build_reference_bank
 
@@ -61,6 +60,7 @@ def _metadata(path: Path, npz: Path) -> None:
 
 
 def test_reference_bank_numpy_torch_parity_and_arbitrary_batch(tmp_path: Path) -> None:
+    torch = pytest.importorskip("torch")
     npz = tmp_path / "bank.npz"
     metadata = tmp_path / "bank.json"
     _source(npz)
