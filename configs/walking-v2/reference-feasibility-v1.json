@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "deployment_speeds_m_s": [0.4, 0.6, 0.8],
+  "minimum_joint_margin_rad": 0.019,
+  "minimum_feasible_wrench_fraction": 0.95,
+  "maximum_normalized_base_residual": 0.05,
+  "maximum_torque_p95_ratio": 0.8,
+  "maximum_torque_peak_ratio": 1.0,
+  "maximum_foot_ik_error_m": 0.01,
+  "normalization": {
+    "force": "total_robot_weight",
+    "moment": "total_robot_weight_times_robot_height"
+  },
+  "adaptation_attempt_limit_per_speed": 2,
+  "failure_policy": "block_bank_targets_probes_and_training"
+}

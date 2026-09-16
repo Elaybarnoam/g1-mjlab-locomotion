@@ -27,6 +27,9 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+motion = [
+  "numpy>=2.0,<3",
+]
 native = [
   "mujoco~=3.11.0",
   "numpy>=2.0,<3",
@@ -60,10 +63,12 @@ dev = [
   "build>=1.3,<2",
   "check-wheel-contents>=0.6,<1",
   "mypy>=1.18,<2",
+  "numpy>=2.0,<3",
   "pre-commit>=4.3,<5",
   "pytest>=9,<10",
   "pytest-cov>=7,<8",
   "ruff>=0.16,<1",
+  "scipy>=1.15,<2",
   "twine>=6,<7",
 ]
 
@@ -89,18 +94,39 @@ markers = [
 
 [tool.coverage.run]
 branch = true
+relative_files = true
 source = ["g1_mjlab"]
 omit = [
-  "src/g1_mjlab/cli.py",
-  "src/g1_mjlab/deployment.py",
-  "src/g1_mjlab/diagnostics.py",
-  "src/g1_mjlab/environment.py",
-  "src/g1_mjlab/native_media.py",
-  "src/g1_mjlab/qualification.py",
-  "src/g1_mjlab/rl_adapter.py",
-  "src/g1_mjlab/runtime.py",
-  "src/g1_mjlab/standing_task.py",
-  "src/g1_mjlab/training.py",
+  "*/g1_mjlab/cli.py",
+  "*/g1_mjlab/deployment.py",
+  "*/g1_mjlab/diagnostics.py",
+  "*/g1_mjlab/environment.py",
+  "*/g1_mjlab/native_media.py",
+  "*/g1_mjlab/reporting/policy_spec.py",
+  "*/g1_mjlab/motion/preparation.py",
+  "*/g1_mjlab/motion/reference_adaptation.py",
+  "*/g1_mjlab/motion/reference_dynamics.py",
+  "*/g1_mjlab/motion/reference_feasibility.py",
+  "*/g1_mjlab/motion/reference_kinematics.py",
+  "*/g1_mjlab/motion/reference_repair.py",
+  "*/g1_mjlab/tasks/walking_mdp.py",
+  "*/g1_mjlab/tasks/walking_contact.py",
+  "*/g1_mjlab/tasks/walking_v1.py",
+  "*/g1_mjlab/tasks/walking_v2.py",
+  "*/g1_mjlab/tasks/walking_v2_mdp.py",
+  "*/g1_mjlab/qualification.py",
+  "*/g1_mjlab/rl_adapter.py",
+  "*/g1_mjlab/runtime.py",
+  "*/g1_mjlab/standing_task.py",
+  "*/g1_mjlab/training.py",
+  "*/g1_mjlab/tasks/standing_v1.py",
+  "*/g1_mjlab/walking_diagnostics.py",
+  "*/g1_mjlab/walking_archives.py",
+  "*/g1_mjlab/walking_deployment.py",
+  "*/g1_mjlab/walking_measurement.py",
+  "*/g1_mjlab/walking_viewer.py",
+  "*/g1_mjlab/walking_runtime.py",
+  "*/g1_mjlab/walking_v2_smoke.py",
 ]
 
 [tool.coverage.report]
@@ -135,3 +161,23 @@ module = [
   "warp.*",
 ]
 ignore_missing_imports = true
+
+# The portable CI matrix installs native playback, not the pinned GPU-only
+# mjlab training stack. Limit suppressions to error codes caused by unresolved
+# optional simulator bases and their attributes in these integration modules.
+[[tool.mypy.overrides]]
+module = [
+  "g1_mjlab.rl_adapter",
+  "g1_mjlab.training",
+  "g1_mjlab.tasks.walking_mdp",
+  "g1_mjlab.tasks.walking_v2_mdp",
+  "g1_mjlab.walking_viewer",
+]
+disable_error_code = ["misc", "no-any-return", "has-type", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+module = [
+  "g1_mjlab.motion.reference_bank",
+  "g1_mjlab.walking_measurement",
+]
+disable_error_code = ["unused-ignore"]

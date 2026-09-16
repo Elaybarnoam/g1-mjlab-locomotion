@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "semantics": "post-action-interval-rate-plus-fall-event",
+  "policy_dt_s": 0.02,
+  "imitation": {
+    "joint_pose": {"weight": 0.4, "scale": 0.3},
+    "joint_velocity": {"weight": 0.1, "scale": 3.0},
+    "local_feet": {"weight": 0.25, "scale": 0.1},
+    "orientation": {"weight": 0.15, "scale": 0.25},
+    "contact": {"weight": 0.1}
+  },
+  "imitation_total_weight": 2.0,
+  "task": {
+    "forward_velocity": {"weight": 1.0, "scale": 0.25},
+    "lateral_velocity": {"weight": 0.25, "scale": 0.15},
+    "yaw_rate": {"weight": 0.25, "scale": 0.25}
+  },
+  "stand": {
+    "pose": {"weight": 1.0, "scale": 0.3},
+    "horizontal_velocity": {"weight": 1.0, "scale": 0.1}
+  },
+  "penalties": {
+    "action_rate": -0.1,
+    "normalized_torque": -0.05,
+    "soft_joint_limit": -0.5,
+    "true_fall_event": -2.0
+  }
+}

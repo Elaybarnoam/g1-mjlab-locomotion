@@ -1,0 +1,55 @@
+{
+  "accepted_candidates": {
+    "0.4": "repaired-040",
+    "0.6": "repaired-060",
+    "0.8": "repaired-080"
+  },
+  "candidates": [
+    {
+      "adaptation_sha256": "a0ce27ab2cc778cf999e6bee7a51b007cfec6ee3bcf4c1373f1e637e297d50f9",
+      "admitted": true,
+      "candidate_id": "repaired-040",
+      "dynamics_diagnostic": "failed",
+      "dynamics_sha256": "a5799bf08161254ccdfd66552fa797deee89adca3674cc631f5754dc4bb17953",
+      "kinematics_sha256": "d91f662e186b0b7f7e443ff4eab085697d405a71f9d603e4c1a721cdd23b2bc3",
+      "reasons": [],
+      "reference_sha256": "37b4f9b5964f494f50a410b244840676744d28546be06425b33150b6065df60f",
+      "speed_m_s": 0.4
+    },
+    {
+      "adaptation_sha256": "ca9a4f0f5d7321ecef7f97ee7b832bd6fa59adf4bb1300eb812528944e4cb854",
+      "admitted": true,
+      "candidate_id": "repaired-060",
+      "dynamics_diagnostic": "failed",
+      "dynamics_sha256": "c048e6d794b7692502bca33ed3137c2046bd374ed3502f2627677d1cccff67f9",
+      "kinematics_sha256": "5d888b037d2e7edb27e5fcaf371b14ae1169db417da29184416e203156b1e924",
+      "reasons": [],
+      "reference_sha256": "e7ead537d39befbda7458cafc1e2bfd97f81a2cda1d16303e5df74bcd669469e",
+      "speed_m_s": 0.6
+    },
+    {
+      "adaptation_sha256": "8a799a509130077d195f1599aac5035b9e6522b41a210a1cea2e4110b44f1a7f",
+      "admitted": true,
+      "candidate_id": "repaired-080",
+      "dynamics_diagnostic": "failed",
+      "dynamics_sha256": "30336d8fb384418e96a36ca9607cdb5a3576a8309c35ab1589033bb191cd2c6c",
+      "kinematics_sha256": "97c79b3dd554ddf59ed6a2d154b7fac549a8958a22b8b670e37d2e456e0cf0a6",
+      "reasons": [],
+      "reference_sha256": "957d0d13d309283da8f74a00e54aa94f0488c2bea0f6128a14d88c471f985834",
+      "speed_m_s": 0.8
+    }
+  ],
+  "policy_rollout_dynamics_gate_required": true,
+  "reference_dynamics_claim": "diagnostic-only; no feasibility claim",
+  "required_speeds_m_s": [
+    0.4,
+    0.6,
+    0.8
+  ],
+  "schema_version": 2,
+  "semantics": "soft-reference-training-admission-not-policy-qualification",
+  "source_license": "Apache-2.0 sample motion derivative",
+  "status": "admitted",
+  "training_authorized": true,
+  "unadmitted_speeds_m_s": []
+}

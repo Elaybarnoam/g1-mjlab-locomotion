@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "name": "stage11-balanced-transitions-wide-velocity",
+  "standing_fraction": 0.5,
+  "reference_initialization": false,
+  "randomize_phase": false,
+  "velocity_tracking_std_m_s": 0.7
+}

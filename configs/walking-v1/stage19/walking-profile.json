@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "name": "stage19-common-v1",
+  "objective": "locomotion_bootstrap",
+  "standing_fraction": 0.2,
+  "reference_initialization": false,
+  "randomize_phase": false,
+  "forward_speed_range_m_s": [
+    0.6,
+    0.6
+  ],
+  "velocity_tracking_std_m_s": 0.5,
+  "forward_progress_weight": 0,
+  "reference_foot_position_std_m": 0.12,
+  "host_semantics_version": 2,
+  "domain_randomization": false,
+  "observation_noise": false,
+  "reference_ground_offset_m": 0.03
+}

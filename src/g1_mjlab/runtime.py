@@ -16,12 +16,49 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import RunStore, read_jsonl, sha256_file, snapshot_source
-from .checkpoints import checkpoint_index, ordered_checkpoints
-from .config import PpoProfile, ResolvedRunConfig, StandingRewardProfile
-from .environment import build_standing_train_config
+from .checkpoints import checkpoint_index, ordered_checkpoints, publish_checkpoint
+from .config import (
+    PpoProfile,
+    ResolvedRunConfig,
+    Stage19RewardProfile,
+    StandingRewardProfile,
+    WalkingTrainingProfile,
+    WalkingV2CurriculumProfile,
+)
+from .environment import build_train_config
 from .evaluation import StandingCriteria, TrialAccumulator, wilson_interval
+from .tasks import TaskCapability, get_task
 
 MJLAB_REVISION = "8ee51fbcf806a7419189f706d9e394cbeb7790fa"
+
+
+def summarize_training_metrics(
+    records: list[dict[str, Any]], *, expected_updates: int
+) -> dict[str, Any]:
+    """Fail closed when PPO's required loss telemetry is missing or non-finite."""
+    required = ("Loss/value", "Loss/surrogate", "Loss/entropy")
+    losses = [record for record in records if record.get("metric") in required]
+    seen = {
+        (int(record["update"]), str(record["metric"]))
+        for record in losses
+        if isinstance(record.get("update"), int)
+    }
+    updates = sorted({update for update, _ in seen})
+    expected = {(update, metric) for update in updates for metric in required}
+    if len(updates) != expected_updates:
+        raise RuntimeError("PPO loss telemetry does not cover the requested update count")
+    if seen != expected:
+        raise RuntimeError("PPO loss telemetry is incomplete for the requested updates")
+    if not all(math.isfinite(float(record["value"])) for record in losses):
+        raise FloatingPointError("PPO emitted a non-finite loss")
+    return {
+        "schema_version": 1,
+        "updates": expected_updates,
+        "update_indices": updates,
+        "required_loss_metrics": list(required),
+        "all_losses_finite": True,
+        "losses": losses,
+    }
 
 
 def doctor(output: Path) -> dict[str, Any]:
@@ -96,14 +133,38 @@ def train(
     reward_profile: StandingRewardProfile | None = None,
     ppo_profile: PpoProfile | None = None,
     resume: Path | None = None,
+    initialize_actor: Path | None = None,
+    fine_tune: Path | None = None,
+    walking_profile: WalkingTrainingProfile | None = None,
+    walking_reward_profile: Stage19RewardProfile | None = None,
+    walking_v2_curriculum_profile: WalkingV2CurriculumProfile | None = None,
 ) -> Path:
     """Execute one bounded upstream training run and finalize local evidence."""
+    task = get_task(config.task_id).require(TaskCapability.TRAIN)
     from .training import execute_training
 
+    if sum(value is not None for value in (resume, initialize_actor, fine_tune)) > 1:
+        raise ValueError("resume, initialize_actor, and fine_tune are mutually exclusive")
     if resume is not None:
         from .training import validate_resume
 
-        validate_resume(config, resume, reward_profile, ppo_profile)
+        validate_resume(
+            config,
+            resume,
+            reward_profile,
+            ppo_profile,
+            walking_profile,
+            walking_reward_profile,
+            walking_v2_curriculum_profile,
+        )
+    if initialize_actor is not None:
+        from .training import validate_actor_initialization
+
+        validate_actor_initialization(config, initialize_actor)
+    if fine_tune is not None:
+        from .training import validate_fine_tune_initialization
+
+        validate_fine_tune_initialization(config, fine_tune)
 
     store = RunStore.create(
         run_dir,
@@ -113,6 +174,13 @@ def train(
             "config_sha256": config.sha256,
             "reward_profile_sha256": reward_profile.sha256 if reward_profile else None,
             "ppo_profile_sha256": ppo_profile.sha256 if ppo_profile else None,
+            "walking_profile_sha256": walking_profile.sha256 if walking_profile else None,
+            "walking_reward_profile_sha256": (
+                walking_reward_profile.sha256 if walking_reward_profile else None
+            ),
+            "walking_v2_curriculum_profile_sha256": (
+                walking_v2_curriculum_profile.sha256 if walking_v2_curriculum_profile else None
+            ),
             "max_iterations": config.max_iterations,
             **source,
         },
@@ -130,32 +198,78 @@ def train(
             json.dumps(ppo_profile.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+    if walking_profile is not None:
+        (run_dir / "walking-profile.json").write_text(
+            json.dumps(walking_profile.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    if walking_reward_profile is not None:
+        (run_dir / "walking-reward-profile.json").write_text(
+            json.dumps(walking_reward_profile.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    if walking_v2_curriculum_profile is not None:
+        (run_dir / "walking-v2-curriculum-profile.json").write_text(
+            json.dumps(walking_v2_curriculum_profile.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     store.transition("starting")
     try:
-        snapshot = snapshot_source(Path(__file__).resolve().parents[2], run_dir / "source.zip")
+        snapshot = snapshot_source(
+            Path(__file__).resolve().parents[2],
+            run_dir / "source.zip",
+            config_directory=task.config_directory,
+        )
         (run_dir / "source.json").write_text(
             json.dumps(snapshot, indent=2) + "\n", encoding="utf-8"
         )
-        train_cfg = build_standing_train_config(
+        train_cfg = build_train_config(
             config,
             run_dir / "upstream",
             reward_profile=reward_profile,
             ppo_profile=ppo_profile,
+            walking_profile=walking_profile,
+            walking_reward_profile=walking_reward_profile,
+            walking_v2_curriculum_profile=walking_v2_curriculum_profile,
         )
         (run_dir / "algorithm.json").write_text(
             json.dumps(asdict(train_cfg.agent), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
         store.transition("running")
-        execute_training(config, train_cfg, run_dir, resume=resume)
+        execute_training(
+            config,
+            train_cfg,
+            run_dir,
+            resume=resume,
+            initialize_actor=initialize_actor,
+            fine_tune=fine_tune,
+            ppo_profile=ppo_profile,
+        )
         logs = sorted((run_dir / "upstream").rglob("params/agent.yaml"))
         if not logs:
             raise RuntimeError("training returned without an upstream run directory")
         log_dir = logs[-1].parent.parent
         metric_count = harvest_tensorboard(log_dir, store)
+        metric_records, truncated = read_jsonl(run_dir / "metrics" / "metrics.jsonl")
+        if truncated:
+            raise ValueError("metric journal has a partial tail after training")
+        learning_summary = summarize_training_metrics(
+            metric_records, expected_updates=config.max_iterations
+        )
+        (run_dir / "learning-summary.json").write_text(
+            json.dumps(learning_summary, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
         checkpoints = ordered_checkpoints(log_dir)
+        lineage = _checkpoint_lineage(resume=resume, fine_tune=fine_tune)
         for checkpoint in checkpoints:
-            shutil.copy2(checkpoint, run_dir / "checkpoints" / checkpoint.name)
+            publish_checkpoint(
+                checkpoint,
+                run_dir / "checkpoints",
+                transitions_per_update=config.transitions_per_update,
+                source_lineage=lineage,
+            )
         for exported in sorted(log_dir.glob("*.onnx")):
             shutil.copy2(exported, run_dir / "checkpoints" / exported.name)
         final = checkpoints[-1] if checkpoints else None
@@ -180,9 +294,13 @@ def train(
             + "\n",
             encoding="utf-8",
         )
+        index = checkpoint_index(
+            run_dir / "checkpoints",
+            transitions_per_update=config.transitions_per_update,
+            source_lineage=lineage,
+        )
         (run_dir / "checkpoints" / "index.json").write_text(
-            json.dumps(checkpoint_index(run_dir / "checkpoints"), indent=2) + "\n",
-            encoding="utf-8",
+            json.dumps(index, indent=2) + "\n", encoding="utf-8"
         )
         store.transition(
             "completed",
@@ -212,9 +330,21 @@ def salvage_training(run_dir: Path, store: RunStore) -> dict[str, Any]:
             return {"recovery": "no upstream log directory created"}
         log_dir = logs[-1].parent.parent
         metric_count = harvest_tensorboard(log_dir, store)
+        config = json.loads((run_dir / "config.json").read_text(encoding="utf-8"))
+        transitions_per_update = int(config["transitions_per_update"])
+        lineage = _checkpoint_lineage_from_run(run_dir)
         for checkpoint in ordered_checkpoints(log_dir):
-            shutil.copy2(checkpoint, run_dir / "checkpoints" / checkpoint.name)
-        index = checkpoint_index(run_dir / "checkpoints")
+            publish_checkpoint(
+                checkpoint,
+                run_dir / "checkpoints",
+                transitions_per_update=transitions_per_update,
+                source_lineage=lineage,
+            )
+        index = checkpoint_index(
+            run_dir / "checkpoints",
+            transitions_per_update=transitions_per_update,
+            source_lineage=lineage,
+        )
         (run_dir / "checkpoints" / "index.json").write_text(
             json.dumps(index, indent=2) + "\n", encoding="utf-8"
         )
@@ -225,6 +355,32 @@ def salvage_training(run_dir: Path, store: RunStore) -> dict[str, Any]:
         }
     except Exception as exc:
         return {"recovery_error": f"{type(exc).__name__}: {exc}"}
+
+
+def _checkpoint_lineage(
+    *, resume: Path | None = None, fine_tune: Path | None = None
+) -> dict[str, Any] | None:
+    checkpoint = resume or fine_tune
+    if checkpoint is None:
+        return None
+    return {
+        "mode": "resume" if resume is not None else "fine_tune",
+        "checkpoint": str(checkpoint),
+        "checkpoint_sha256": sha256_file(checkpoint),
+    }
+
+
+def _checkpoint_lineage_from_run(run_dir: Path) -> dict[str, Any] | None:
+    for name in ("resume.json", "fine-tune.json"):
+        path = run_dir / name
+        if path.exists():
+            value = json.loads(path.read_text(encoding="utf-8"))
+            return {
+                "mode": "resume" if name == "resume.json" else "fine_tune",
+                "checkpoint": value["checkpoint"],
+                "checkpoint_sha256": value["sha256"],
+            }
+    return None
 
 
 def git_source_metadata(project_root: Path) -> dict[str, Any]:
@@ -254,6 +410,7 @@ def evaluate(
     phase: str = "development",
 ) -> dict[str, Any]:
     """Measure first episodes before reset; these are development trials."""
+    get_task(config.task_id).require(TaskCapability.STANDING_EVALUATION)
     import torch
     from mjlab.envs import ManagerBasedRlEnv
     from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
@@ -278,7 +435,7 @@ def evaluate(
         raise FileExistsError(f"evaluation output is not empty: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
     eval_config = replace(config, seed=seed, num_envs=trials, episode_length_s=horizon_s)
-    train_cfg = build_standing_train_config(eval_config, output_dir)
+    train_cfg = build_train_config(eval_config, output_dir)
     train_cfg.env.auto_reset = False
     env = ManagerBasedRlEnv(cfg=train_cfg.env, device=config.device, render_mode=None)
     accumulators = [

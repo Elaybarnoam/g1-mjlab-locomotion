@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "ticket": "P06-08",
+  "status": "failed",
+  "failure_policy": "fail_closed",
+  "failure_reason": "repeated_non_learning_at_stand_walk_040",
+  "failed_stage": "stand-walk-040",
+  "method_sha256": "718c61bc8bdae990a4487867fd223febde7cbbb572f2222ac127fb47a43861f3",
+  "selected_checkpoint": null,
+  "qualification_claim": false,
+  "release_authorized": false,
+  "closest_candidate": {
+    "run": ".runtime/plan06-p08-seed42-stage02-foot-001",
+    "checkpoint": "checkpoints/model_200.pt",
+    "checkpoint_sha256": "4e16366699b8e37372d3567f3f514483925deecda52f0e113b8fd545bde7ad77",
+    "training_source_commit": "5f007be7aa76dbfbf2af09ce7a3ebf86a77dd23b",
+    "decision": "gate-u200-fixed/decision.json",
+    "decision_sha256": "dd9d4e5376371440ae26cb26b9373d600b09505a821dca8eba61b59aee400eae",
+    "passed": false,
+    "failed_checks": [
+      "contact_chatter"
+    ],
+    "metrics_at_0_4_m_s": {
+      "survived_seconds": 10.0,
+      "forward_progress_m": 1.6886140730930492,
+      "cadence_steps_s": 1.6,
+      "alternation_fraction": 0.9333333333333333,
+      "contact_transition_rate_s": 6.5,
+      "maximum_torso_tilt_rad": 0.3806512791518778,
+      "torque_ratio_p95": 0.2534746551080183,
+      "torque_ratio_peak": 0.9260707092285156
+    }
+  },
+  "diagnostic_trials": [
+    {
+      "name": "impact-refinement",
+      "result": "chatter improved to 6.3 but alternation regressed to 0.6818"
+    },
+    {
+      "name": "swing-clearance-refinement",
+      "result": "alternation improved to 0.9259 but chatter regressed to 8.7"
+    },
+    {
+      "name": "phase-window-refinement",
+      "result": "chatter 9.1 and alternation 0.6818; no joint improvement"
+    },
+    {
+      "name": "zero-residual-reference",
+      "summary": ".runtime/plan06-p08-zero-residual-reference-001/summary.json",
+      "summary_sha256": "2fd3bb6469ff0271cb8d85bb4bd12d9471caf8eb86f1ce9ec07beed619f03178",
+      "result": "reference plus PD terminated after 1.12 s with 11.6071 raw transitions/s"
+    }
+  ],
+  "downstream": {
+    "P06-09": "blocked_missing_replicated_development_candidates",
+    "P06-10": "blocked_missing_qualified_candidate",
+    "P06-11": "blocked_missing_final_policy_evidence",
+    "P06-12": "blocked_release_forbidden_for_failed_policy"
+  }
+}

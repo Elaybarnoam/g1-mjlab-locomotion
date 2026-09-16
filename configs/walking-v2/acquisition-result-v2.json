@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "task_id": "G1-Walking-Flat-v2",
+  "status": "promoted_for_curriculum_only",
+  "selected_update": 1500,
+  "selected_checkpoint": "model_1499.pt",
+  "selected_checkpoint_sha256": "199c16aebb30140f02c7656cdfe14653931ae72ecf7f493e05ed0bfe0732645d",
+  "decision_sha256": "c97b2e936c2e749d02f695d39aaba67f63b4dd386ea116266bfd0938f17a7dc8",
+  "effective_lineage_transitions": 9216000,
+  "evaluation_horizon_seconds": 5.0,
+  "aggregate": {
+    "functional_pass_count": 4,
+    "terminated_count": 0,
+    "minimum_survival_seconds": 5.0,
+    "moving_command_rms_mean_m_s": 0.21608427272614067,
+    "reference_position_rms_mean_rad": 0.24758606864376599,
+    "torque_ratio_p95_max": 0.2705243072509765,
+    "torque_ratio_peak_max": 0.9267103576660156
+  },
+  "speed_trials": [
+    {
+      "speed_m_s": 0.0,
+      "survival_seconds": 5.0,
+      "command_rms_m_s": 0.0027376384053244022,
+      "cadence_steps_s": 0.4,
+      "alternation_fraction": 1.0
+    },
+    {
+      "speed_m_s": 0.4,
+      "survival_seconds": 5.0,
+      "command_rms_m_s": 0.19578801363747822,
+      "cadence_steps_s": 4.0,
+      "alternation_fraction": 0.5789473684210527
+    },
+    {
+      "speed_m_s": 0.6,
+      "survival_seconds": 5.0,
+      "command_rms_m_s": 0.18408442786434687,
+      "cadence_steps_s": 4.0,
+      "alternation_fraction": 0.5789473684210527
+    },
+    {
+      "speed_m_s": 0.8,
+      "survival_seconds": 5.0,
+      "command_rms_m_s": 0.2683803766765969,
+      "cadence_steps_s": 5.0,
+      "alternation_fraction": 0.5416666666666666
+    }
+  ],
+  "limitations": [
+    "This is a development acquisition gate, not strict qualification.",
+    "Cadence and alternation remain outside the natural-gait objective.",
+    "Evaluation used standing initialization followed by a rate-limited fixed command."
+  ],
+  "qualification_claim": false
+}

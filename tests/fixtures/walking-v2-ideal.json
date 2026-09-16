@@ -1,0 +1,8 @@
+{
+  "schema_version": 2,
+  "description": "Compact deterministic expectations for the synthetic alternating-gait trace.",
+  "step_length_m": 0.3,
+  "stride_length_m": 0.6,
+  "alternation_ratio": 1.0,
+  "physical_slip_rms_m_s": 0.0
+}

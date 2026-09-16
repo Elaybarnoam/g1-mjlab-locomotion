@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "name": "stage10-balanced-stand-walk-transitions",
+  "standing_fraction": 0.5,
+  "reference_initialization": false,
+  "randomize_phase": false
+}

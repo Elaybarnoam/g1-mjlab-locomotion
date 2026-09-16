@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "name": "stage14-bounded-forward-progress",
+  "standing_fraction": 0.5,
+  "reference_initialization": false,
+  "randomize_phase": false,
+  "velocity_tracking_std_m_s": 0.5,
+  "forward_progress_weight": 1.0
+}

@@ -1,0 +1,15 @@
+{
+  "admission_decision_sha256": "5ba98205483d3b0d29c97c419b4deae3b723566fc3617c1c564ca48d222627c0",
+  "policy_qualification_required": true,
+  "reference_bank_metadata": "reference-bank-v2.json",
+  "reference_bank_metadata_sha256": "d6f88d9000d8590a44d457bd3a6884c5e45f21acc7fc36695146bfa1c16290c4",
+  "reference_bank_npz_sha256": "d6d3fb62333e5c6de7c85d0837c8ce69e4afea00f825c750efca2216fc059275",
+  "schema_version": 1,
+  "semantics": "soft-reference-admission-bound-bank",
+  "source_reference_sha256_by_speed": [
+    "37b4f9b5964f494f50a410b244840676744d28546be06425b33150b6065df60f",
+    "e7ead537d39befbda7458cafc1e2bfd97f81a2cda1d16303e5df74bcd669469e",
+    "957d0d13d309283da8f74a00e54aa94f0488c2bea0f6128a14d88c471f985834"
+  ],
+  "training_authorized": true
+}

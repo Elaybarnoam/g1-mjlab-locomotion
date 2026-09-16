@@ -5,8 +5,14 @@ semantic versioning.
 
 ## [Unreleased]
 
-- Walking, perturbation robustness, domain randomization, and deployable state estimation remain
-  future milestones.
+- Added walking-v1 deterministic native ONNX export, 100-state physical/vector parity, native CPU
+  evaluation, and interactive playback with explicit unqualified-development opt-in.
+- Added frozen final-scenario/qualification machinery that correctly blocks execution without a
+  development-qualified 0–0.8 m/s candidate and owner visual acceptance.
+- Added generated tensor-level policy specifications, an offline walking research report, and
+  deterministic inference/resume archive builders.
+- Added a hardened walking installer identity while withholding any default public walking asset;
+  the retained Stage 19 policy passed 16/16 function and 0/16 style gates.
 
 ## [0.2.0] - 2026-09-11
 

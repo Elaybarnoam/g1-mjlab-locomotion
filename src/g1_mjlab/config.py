@@ -10,6 +10,74 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+STAGE19_REWARD_NAMES = frozenset(
+    {
+        "track_linear_velocity",
+        "track_angular_velocity",
+        "upright",
+        "pose",
+        "body_ang_vel",
+        "angular_momentum",
+        "dof_pos_limits",
+        "action_rate_l2",
+        "air_time",
+        "foot_clearance",
+        "foot_swing_height",
+        "foot_slip",
+        "soft_landing",
+        "self_collisions",
+        "commanded_forward_progress",
+        "reference_joint_pose",
+        "reference_joint_velocity",
+        "reference_foot_position",
+        "reference_contact_timing",
+        "crouch",
+        "effort",
+        "termination",
+        "phase_contact_error",
+        "extra_contact_event",
+        "short_stance",
+        "short_swing",
+        "physical_stance_slip",
+        "swing_clearance_error",
+        "touchdown_placement",
+        "bilateral_flight",
+    }
+)
+
+STAGE19_EVENT_REWARDS = frozenset(
+    {"extra_contact_event", "short_stance", "short_swing", "touchdown_placement", "termination"}
+)
+
+STAGE19_REWARD_PARAMETERS: dict[str, frozenset[str]] = {
+    name: frozenset() for name in STAGE19_REWARD_NAMES
+}
+STAGE19_REWARD_PARAMETERS.update(
+    {
+        "track_linear_velocity": frozenset({"std"}),
+        "track_angular_velocity": frozenset({"std"}),
+        "upright": frozenset({"std"}),
+        "phase_contact_error": frozenset({"walk_threshold_m_s"}),
+        "extra_contact_event": frozenset({"phase_tolerance_cycle", "transition_grace_s"}),
+        "short_stance": frozenset({"minimum_duration_s", "transition_grace_s"}),
+        "short_swing": frozenset({"minimum_duration_s", "transition_grace_s"}),
+        "physical_stance_slip": frozenset({"slip_scale_m_s", "squared_error_clip"}),
+        "swing_clearance_error": frozenset(
+            {"reference_clearance_m", "clearance_scale_m", "squared_error_clip"}
+        ),
+        "touchdown_placement": frozenset(
+            {
+                "minimum_root_progress_fraction",
+                "minimum_step_reference_m",
+                "minimum_swing_clearance_m",
+                "placement_scale_m",
+                "step_reference_m",
+            }
+        ),
+        "bilateral_flight": frozenset({"minimum_duration_s"}),
+    }
+)
+
 
 @dataclass(frozen=True)
 class ResolvedRunConfig:
@@ -82,6 +150,8 @@ class PpoProfile:
     schema_version: int
     name: str
     initial_action_std: float
+    entropy_coef: float | None = None
+    reset_action_std_on_transfer: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -90,6 +160,127 @@ class PpoProfile:
     def sha256(self) -> str:
         canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class WalkingTrainingProfile:
+    """One explicit command, reset, and reward curriculum stage for walking-v1."""
+
+    schema_version: int
+    name: str
+    standing_fraction: float
+    reference_initialization: bool
+    randomize_phase: bool
+    objective: str = "reference_style"
+    forward_speed_range_m_s: tuple[float, float] | None = None
+    velocity_tracking_std_m_s: float | None = None
+    forward_progress_weight: float | None = None
+    reference_foot_position_std_m: float | None = None
+    host_semantics_version: int = 2
+    domain_randomization: bool | None = None
+    observation_noise: bool | None = None
+    reference_ground_offset_m: float = 0.03
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @property
+    def sha256(self) -> str:
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class WalkingV2CurriculumProfile:
+    """One immutable walking-v2 curriculum stage and its robustness envelope."""
+
+    schema_version: int
+    name: str
+    stage: str
+    standing_fraction: float
+    forward_speed_range_m_s: tuple[float, float]
+    resampling_time_range_s: tuple[float, float]
+    reference_initialization: bool
+    observation_noise: bool
+    startup_domain_randomization: bool
+    push_disturbance: bool
+    terminate_reference_deviation: bool
+    gait_contact_weight: float
+    gait_foot_trajectory_weight: float
+    gait_alternation_event_weight: float
+    gait_contact_chatter_weight: float
+    gait_forward_progress_weight: float
+    gait_action_rate_weight: float
+    residual_action_filter_alpha: float
+    gait_contact_vertical_velocity_weight: float
+    gait_swing_clearance_weight: float
+    gait_swing_clearance_m: float
+    fall_penalty: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @property
+    def sha256(self) -> str:
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class Stage19RewardTerm:
+    """One allowlisted reward with explicit units and integration semantics."""
+
+    name: str
+    enabled: bool
+    weight: float
+    integration_kind: str
+    parameters: tuple[tuple[str, float], ...]
+    physical_unit: str
+    mask_id: str
+    formula_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "enabled": self.enabled,
+            "weight": self.weight,
+            "integration_kind": self.integration_kind,
+            "parameters": dict(self.parameters),
+            "physical_unit": self.physical_unit,
+            "mask_id": self.mask_id,
+            "formula_id": self.formula_id,
+        }
+
+    def manager_weight(self, control_dt: float) -> float:
+        return self.weight / control_dt if self.integration_kind == "per_event" else self.weight
+
+    @property
+    def parameter_dict(self) -> dict[str, float]:
+        return dict(self.parameters)
+
+
+@dataclass(frozen=True)
+class Stage19RewardProfile:
+    """Complete reward resolution for one controlled Stage 19 arm."""
+
+    schema_version: int
+    name: str
+    terms: tuple[Stage19RewardTerm, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "name": self.name,
+            "terms": [term.to_dict() for term in self.terms],
+        }
+
+    @property
+    def sha256(self) -> str:
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+    def by_name(self) -> dict[str, Stage19RewardTerm]:
+        return {term.name: term for term in self.terms}
 
 
 _FIELDS = set(ResolvedRunConfig.__dataclass_fields__)
@@ -149,14 +340,27 @@ def _validate(data: Mapping[str, Any]) -> ResolvedRunConfig:
 
 
 def load_config(path: Path, overrides: Mapping[str, object] | None = None) -> ResolvedRunConfig:
-    """Load strict JSON configuration and apply explicit field overrides."""
+    """Load source or resolved JSON and verify any serialized derived fields."""
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("configuration root must be an object")
     merged: dict[str, Any] = dict(raw)
+    derived = {
+        name: merged.pop(name)
+        for name in ("control_dt", "transitions_per_update")
+        if name in merged
+    }
     if overrides:
         merged.update(overrides)
-    return _validate(merged)
+    config = _validate(merged)
+    expected = {
+        "control_dt": config.control_dt,
+        "transitions_per_update": config.transitions_per_update,
+    }
+    mismatched = [name for name, value in derived.items() if value != expected[name]]
+    if mismatched:
+        raise ValueError(f"serialized derived configuration fields mismatch: {mismatched}")
+    return config
 
 
 def load_reward_profile(path: Path) -> StandingRewardProfile:
@@ -190,8 +394,9 @@ def load_ppo_profile(path: Path) -> PpoProfile:
     if not isinstance(raw, dict):
         raise ValueError("PPO profile root must be an object")
     expected = set(PpoProfile.__dataclass_fields__)
+    required = expected - {"entropy_coef", "reset_action_std_on_transfer"}
     unknown = set(raw) - expected
-    missing = expected - set(raw)
+    missing = required - set(raw)
     if unknown or missing:
         raise ValueError(
             f"PPO profile fields mismatch; missing={sorted(missing)}, unknown={sorted(unknown)}"
@@ -206,4 +411,251 @@ def load_ppo_profile(path: Path) -> PpoProfile:
         raise ValueError("PPO profile name must contain only letters, digits, '-' and '_'")
     if not math.isfinite(profile.initial_action_std) or profile.initial_action_std <= 0:
         raise ValueError("initial_action_std must be positive and finite")
+    if profile.entropy_coef is not None and (
+        not math.isfinite(profile.entropy_coef) or profile.entropy_coef < 0
+    ):
+        raise ValueError("entropy_coef must be finite and non-negative")
+    if not isinstance(profile.reset_action_std_on_transfer, bool):
+        raise ValueError("reset_action_std_on_transfer must be a boolean")
     return profile
+
+
+def load_walking_training_profile(path: Path) -> WalkingTrainingProfile:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("walking profile root must be an object")
+    expected = set(WalkingTrainingProfile.__dataclass_fields__)
+    required = expected - {
+        "objective",
+        "forward_speed_range_m_s",
+        "velocity_tracking_std_m_s",
+        "forward_progress_weight",
+        "reference_foot_position_std_m",
+        "host_semantics_version",
+        "domain_randomization",
+        "observation_noise",
+        "reference_ground_offset_m",
+    }
+    if not required.issubset(raw) or not set(raw).issubset(expected):
+        raise ValueError("walking profile fields do not match schema")
+    values = dict(raw)
+    if "forward_speed_range_m_s" in values:
+        speed_range = values["forward_speed_range_m_s"]
+        if not isinstance(speed_range, list) or len(speed_range) != 2:
+            raise ValueError("forward_speed_range_m_s must contain [minimum, maximum]")
+        values["forward_speed_range_m_s"] = tuple(speed_range)
+    profile = WalkingTrainingProfile(**values)
+    if profile.schema_version != 1:
+        raise ValueError("only walking profile schema_version 1 is supported")
+    if not profile.name or any(
+        char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        for char in profile.name
+    ):
+        raise ValueError("walking profile name must contain only letters, digits, '-' and '_'")
+    if (
+        isinstance(profile.standing_fraction, bool)
+        or not isinstance(profile.standing_fraction, (int, float))
+        or not math.isfinite(profile.standing_fraction)
+        or not 0 <= profile.standing_fraction <= 1
+    ):
+        raise ValueError("standing_fraction must be finite in [0, 1]")
+    if not isinstance(profile.reference_initialization, bool) or not isinstance(
+        profile.randomize_phase, bool
+    ):
+        raise ValueError("walking reset flags must be boolean")
+    if profile.host_semantics_version not in {1, 2}:
+        raise ValueError("host_semantics_version must be 1 or 2")
+    if any(
+        value is not None and not isinstance(value, bool)
+        for value in (profile.domain_randomization, profile.observation_noise)
+    ):
+        raise ValueError("domain_randomization and observation_noise must be booleans or null")
+    if (
+        not math.isfinite(profile.reference_ground_offset_m)
+        or profile.reference_ground_offset_m < 0
+        or profile.reference_ground_offset_m > 0.05
+    ):
+        raise ValueError("reference_ground_offset_m must be finite in [0, 0.05]")
+    if profile.objective not in {"locomotion_bootstrap", "reference_style"}:
+        raise ValueError("walking objective must be 'locomotion_bootstrap' or 'reference_style'")
+    if profile.forward_speed_range_m_s is not None:
+        low, high = profile.forward_speed_range_m_s
+        if (
+            isinstance(low, bool)
+            or isinstance(high, bool)
+            or not all(isinstance(value, (int, float)) for value in (low, high))
+            or not all(math.isfinite(value) for value in (low, high))
+            or low <= 0
+            or high < low
+        ):
+            raise ValueError("forward_speed_range_m_s must contain finite positive ordered values")
+    if profile.velocity_tracking_std_m_s is not None and (
+        not math.isfinite(profile.velocity_tracking_std_m_s)
+        or profile.velocity_tracking_std_m_s <= 0
+    ):
+        raise ValueError("velocity_tracking_std_m_s must be positive and finite")
+    if profile.forward_progress_weight is not None and (
+        not math.isfinite(profile.forward_progress_weight) or profile.forward_progress_weight < 0
+    ):
+        raise ValueError("forward_progress_weight must be finite and non-negative")
+    if profile.reference_foot_position_std_m is not None and (
+        not math.isfinite(profile.reference_foot_position_std_m)
+        or profile.reference_foot_position_std_m <= 0
+    ):
+        raise ValueError("reference_foot_position_std_m must be positive and finite")
+    return profile
+
+
+def load_walking_v2_curriculum_profile(path: Path) -> WalkingV2CurriculumProfile:
+    """Load a fail-closed walking-v2 stage declaration."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    expected = set(WalkingV2CurriculumProfile.__dataclass_fields__)
+    if not isinstance(raw, dict) or set(raw) != expected:
+        raise ValueError("walking-v2 curriculum profile fields do not match schema")
+    values = dict(raw)
+    for name in ("forward_speed_range_m_s", "resampling_time_range_s"):
+        value = values[name]
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError(f"{name} must contain [minimum, maximum]")
+        values[name] = tuple(value)
+    profile = WalkingV2CurriculumProfile(**values)
+    if profile.schema_version != 2:
+        raise ValueError("only walking-v2 curriculum schema_version 2 is supported")
+    if not profile.name or any(
+        char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        for char in profile.name
+    ):
+        raise ValueError("walking-v2 curriculum profile name is invalid")
+    stages = {"stand", "stand-walk-040", "add-060", "add-080", "transitions", "robustness"}
+    if profile.stage not in stages:
+        raise ValueError(f"walking-v2 curriculum stage must be one of {sorted(stages)}")
+    if (
+        isinstance(profile.standing_fraction, bool)
+        or not isinstance(profile.standing_fraction, (int, float))
+        or not math.isfinite(profile.standing_fraction)
+        or not 0.0 <= profile.standing_fraction <= 1.0
+    ):
+        raise ValueError("standing_fraction must be finite in [0, 1]")
+    for name, bounds in (
+        ("forward_speed_range_m_s", (0.0, 0.8)),
+        ("resampling_time_range_s", (0.02, math.inf)),
+    ):
+        low, high = getattr(profile, name)
+        if (
+            any(
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                for value in (low, high)
+            )
+            or not all(math.isfinite(value) for value in (low, high))
+            or low < bounds[0]
+            or high > bounds[1]
+            or high < low
+        ):
+            raise ValueError(f"{name} contains invalid or unordered bounds")
+    for name in (
+        "reference_initialization",
+        "observation_noise",
+        "startup_domain_randomization",
+        "push_disturbance",
+        "terminate_reference_deviation",
+    ):
+        if not isinstance(getattr(profile, name), bool):
+            raise ValueError(f"{name} must be a boolean")
+    if profile.stage != "robustness" and any(
+        (profile.observation_noise, profile.startup_domain_randomization, profile.push_disturbance)
+    ):
+        raise ValueError("noise, startup randomization, and pushes are robustness-stage only")
+    if profile.stage == "robustness" and not all(
+        (profile.observation_noise, profile.startup_domain_randomization, profile.push_disturbance)
+    ):
+        raise ValueError("robustness stage must enable noise, startup randomization, and pushes")
+    if profile.stage != "stand" and profile.forward_speed_range_m_s[0] <= 0.0:
+        raise ValueError("moving curriculum stages require a positive minimum speed")
+    if (
+        not math.isfinite(profile.gait_contact_weight)
+        or profile.gait_contact_weight < 0.0
+        or not math.isfinite(profile.gait_foot_trajectory_weight)
+        or profile.gait_foot_trajectory_weight < 0.0
+        or not math.isfinite(profile.gait_alternation_event_weight)
+        or profile.gait_alternation_event_weight < 0.0
+        or not math.isfinite(profile.gait_contact_chatter_weight)
+        or profile.gait_contact_chatter_weight < 0.0
+        or not math.isfinite(profile.gait_forward_progress_weight)
+        or profile.gait_forward_progress_weight < 0.0
+        or not math.isfinite(profile.gait_action_rate_weight)
+        or profile.gait_action_rate_weight < 0.0
+        or not math.isfinite(profile.residual_action_filter_alpha)
+        or not 0.0 < profile.residual_action_filter_alpha <= 1.0
+        or not math.isfinite(profile.gait_contact_vertical_velocity_weight)
+        or profile.gait_contact_vertical_velocity_weight < 0.0
+        or not math.isfinite(profile.gait_swing_clearance_weight)
+        or profile.gait_swing_clearance_weight < 0.0
+        or not math.isfinite(profile.gait_swing_clearance_m)
+        or not 0.0 < profile.gait_swing_clearance_m <= 0.15
+        or not math.isfinite(profile.fall_penalty)
+        or profile.fall_penalty > 0.0
+    ):
+        raise ValueError("walking-v2 curriculum reward weights are invalid")
+    return profile
+
+
+def load_stage19_reward_profile(path: Path) -> Stage19RewardProfile:
+    """Load a complete, non-executable Stage 19 reward declaration."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or set(raw) != {"schema_version", "name", "terms"}:
+        raise ValueError("stage19 reward profile fields do not match schema")
+    if raw["schema_version"] != 1 or not isinstance(raw["name"], str) or not raw["name"]:
+        raise ValueError("invalid stage19 reward profile identity")
+    if not isinstance(raw["terms"], list):
+        raise ValueError("stage19 reward terms must be a list")
+    expected = set(Stage19RewardTerm.__dataclass_fields__)
+    terms: list[Stage19RewardTerm] = []
+    for value in raw["terms"]:
+        if not isinstance(value, dict) or set(value) != expected:
+            raise ValueError("stage19 reward term fields do not match schema")
+        if value["name"] not in STAGE19_REWARD_NAMES or value["formula_id"] != value["name"]:
+            raise ValueError("stage19 reward term or formula is not allowlisted")
+        if value["integration_kind"] not in {"rate", "per_event"}:
+            raise ValueError("stage19 integration_kind must be rate or per_event")
+        expected_kind = "per_event" if value["name"] in STAGE19_EVENT_REWARDS else "rate"
+        if value["integration_kind"] != expected_kind:
+            raise ValueError(f"{value['name']} must use {expected_kind} integration")
+        parameters = value["parameters"]
+        if not isinstance(parameters, dict) or any(
+            not isinstance(key, str)
+            or isinstance(number, bool)
+            or not isinstance(number, (int, float))
+            or not math.isfinite(number)
+            for key, number in parameters.items()
+        ):
+            raise ValueError("stage19 parameters must be finite numeric values")
+        expected_parameters = STAGE19_REWARD_PARAMETERS[value["name"]]
+        if set(parameters) != expected_parameters:
+            raise ValueError(
+                f"{value['name']} parameters mismatch; "
+                f"expected={sorted(expected_parameters)}, actual={sorted(parameters)}"
+            )
+        if any(number <= 0 for number in parameters.values()):
+            raise ValueError("stage19 scales and thresholds must be positive")
+        weight = value["weight"]
+        if (
+            isinstance(weight, bool)
+            or not isinstance(weight, (int, float))
+            or not math.isfinite(weight)
+            or not isinstance(value["enabled"], bool)
+        ):
+            raise ValueError("stage19 reward state and weight are invalid")
+        if not value["enabled"] and weight != 0:
+            raise ValueError("disabled stage19 rewards must have zero weight")
+        if not value["physical_unit"] or not value["mask_id"]:
+            raise ValueError("stage19 reward units and mask must be explicit")
+        converted = dict(value)
+        converted["parameters"] = tuple(
+            sorted((key, float(number)) for key, number in parameters.items())
+        )
+        converted["weight"] = float(weight)
+        terms.append(Stage19RewardTerm(**converted))
+    names = [term.name for term in terms]
+    if len(names) != len(set(names)) or set(names) != STAGE19_REWARD_NAMES:
+        raise ValueError("stage19 profile must resolve every reward exactly once")
+    return Stage19RewardProfile(1, raw["name"], tuple(terms))

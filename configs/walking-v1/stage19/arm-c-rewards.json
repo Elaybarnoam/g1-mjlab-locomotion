@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "name": "stage19-arm-c-physical-slip-v1",
+  "terms": [
+    {
+      "name": "action_rate_l2",
+      "enabled": true,
+      "weight": -0.1,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "action_rate_l2"
+    },
+    {
+      "name": "air_time",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "air_time"
+    },
+    {
+      "name": "angular_momentum",
+      "enabled": true,
+      "weight": -0.02,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "angular_momentum"
+    },
+    {
+      "name": "bilateral_flight",
+      "enabled": true,
+      "weight": -1,
+      "integration_kind": "rate",
+      "parameters": {
+        "minimum_duration_s": 0.06
+      },
+      "physical_unit": "1",
+      "mask_id": "walking-after-60ms-flight",
+      "formula_id": "bilateral_flight"
+    },
+    {
+      "name": "body_ang_vel",
+      "enabled": true,
+      "weight": -0.05,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "body_ang_vel"
+    },
+    {
+      "name": "commanded_forward_progress",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "commanded_forward_progress"
+    },
+    {
+      "name": "crouch",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "crouch"
+    },
+    {
+      "name": "dof_pos_limits",
+      "enabled": true,
+      "weight": -1,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "dof_pos_limits"
+    },
+    {
+      "name": "effort",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "effort"
+    },
+    {
+      "name": "extra_contact_event",
+      "enabled": true,
+      "weight": -0.02,
+      "integration_kind": "per_event",
+      "parameters": {
+        "phase_tolerance_cycle": 0.1,
+        "transition_grace_s": 1
+      },
+      "physical_unit": "event",
+      "mask_id": "walking-outside-transition-grace",
+      "formula_id": "extra_contact_event"
+    },
+    {
+      "name": "foot_clearance",
+      "enabled": true,
+      "weight": -2,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "foot_clearance"
+    },
+    {
+      "name": "foot_slip",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "foot_slip"
+    },
+    {
+      "name": "foot_swing_height",
+      "enabled": true,
+      "weight": -0.25,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "foot_swing_height"
+    },
+    {
+      "name": "phase_contact_error",
+      "enabled": true,
+      "weight": -1,
+      "integration_kind": "rate",
+      "parameters": {
+        "walk_threshold_m_s": 0.15
+      },
+      "physical_unit": "1",
+      "mask_id": "blend-and-applied-vx",
+      "formula_id": "phase_contact_error"
+    },
+    {
+      "name": "physical_stance_slip",
+      "enabled": true,
+      "weight": -0.25,
+      "integration_kind": "rate",
+      "parameters": {
+        "slip_scale_m_s": 0.12,
+        "squared_error_clip": 4
+      },
+      "physical_unit": "normalized m^2/s^2",
+      "mask_id": "stable-contact-and-walking",
+      "formula_id": "physical_stance_slip"
+    },
+    {
+      "name": "pose",
+      "enabled": true,
+      "weight": 1,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "pose"
+    },
+    {
+      "name": "reference_contact_timing",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "reference_contact_timing"
+    },
+    {
+      "name": "reference_foot_position",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "reference_foot_position"
+    },
+    {
+      "name": "reference_joint_pose",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "reference_joint_pose"
+    },
+    {
+      "name": "reference_joint_velocity",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "reference_joint_velocity"
+    },
+    {
+      "name": "self_collisions",
+      "enabled": true,
+      "weight": -1,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "self_collisions"
+    },
+    {
+      "name": "short_stance",
+      "enabled": true,
+      "weight": -0.05,
+      "integration_kind": "per_event",
+      "parameters": {
+        "minimum_duration_s": 0.2,
+        "transition_grace_s": 1
+      },
+      "physical_unit": "event",
+      "mask_id": "walking-outside-transition-grace",
+      "formula_id": "short_stance"
+    },
+    {
+      "name": "short_swing",
+      "enabled": true,
+      "weight": -0.05,
+      "integration_kind": "per_event",
+      "parameters": {
+        "minimum_duration_s": 0.12,
+        "transition_grace_s": 1
+      },
+      "physical_unit": "event",
+      "mask_id": "walking-outside-transition-grace",
+      "formula_id": "short_swing"
+    },
+    {
+      "name": "soft_landing",
+      "enabled": true,
+      "weight": -0.00001,
+      "integration_kind": "rate",
+      "parameters": {},
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "soft_landing"
+    },
+    {
+      "name": "swing_clearance_error",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "rate",
+      "parameters": {
+        "reference_clearance_m": 0.03,
+        "clearance_scale_m": 0.03,
+        "squared_error_clip": 4
+      },
+      "physical_unit": "normalized m^2",
+      "mask_id": "expected-swing-and-walking",
+      "formula_id": "swing_clearance_error"
+    },
+    {
+      "name": "termination",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "per_event",
+      "parameters": {},
+      "physical_unit": "event",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "termination"
+    },
+    {
+      "name": "touchdown_placement",
+      "enabled": false,
+      "weight": 0,
+      "integration_kind": "per_event",
+      "parameters": {
+        "step_reference_m": 0.6064067445483481,
+        "placement_scale_m": 0.1,
+        "minimum_swing_clearance_m": 0.025,
+        "minimum_root_progress_fraction": 0.5,
+        "minimum_step_reference_m": 0.18
+      },
+      "physical_unit": "event",
+      "mask_id": "valid-alternating-touchdown",
+      "formula_id": "touchdown_placement"
+    },
+    {
+      "name": "track_angular_velocity",
+      "enabled": true,
+      "weight": 2,
+      "integration_kind": "rate",
+      "parameters": {
+        "std": 0.7071067811865476
+      },
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "track_angular_velocity"
+    },
+    {
+      "name": "track_linear_velocity",
+      "enabled": true,
+      "weight": 2,
+      "integration_kind": "rate",
+      "parameters": {
+        "std": 0.5
+      },
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "track_linear_velocity"
+    },
+    {
+      "name": "upright",
+      "enabled": true,
+      "weight": 1,
+      "integration_kind": "rate",
+      "parameters": {
+        "std": 0.4472135954999579
+      },
+      "physical_unit": "upstream-declared",
+      "mask_id": "upstream-task-mask",
+      "formula_id": "upright"
+    }
+  ]
+}

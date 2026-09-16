@@ -6,7 +6,14 @@ import argparse
 import json
 from pathlib import Path
 
-from .config import load_config, load_ppo_profile, load_reward_profile
+from .config import (
+    load_config,
+    load_ppo_profile,
+    load_reward_profile,
+    load_stage19_reward_profile,
+    load_walking_training_profile,
+    load_walking_v2_curriculum_profile,
+)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -14,12 +21,57 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
     validate = commands.add_parser("validate-config")
     validate.add_argument("--config", required=True, type=Path)
+    prepare_motion = commands.add_parser("prepare-motion")
+    prepare_motion.add_argument("--source-csv", required=True, type=Path)
+    prepare_motion.add_argument("--model-xml", required=True, type=Path)
+    prepare_motion.add_argument("--output", required=True, type=Path)
+    prepare_motion.add_argument("--audit", required=True, type=Path)
+    prepare_motion.add_argument("--source-fps", type=float, default=120.0)
+    prepare_motion.add_argument("--output-fps", type=float, default=50.0)
+    prepare_motion.add_argument("--first-frame", type=int, default=409)
+    prepare_motion.add_argument("--last-frame", type=int, default=537)
+    preview_motion = commands.add_parser("preview-motion")
+    preview_motion.add_argument("--reference", required=True, type=Path)
+    preview_motion.add_argument("--model-xml", required=True, type=Path)
+    preview_motion.add_argument("--output", required=True, type=Path)
+    probe_walking = commands.add_parser("probe-walking")
+    probe_walking.add_argument("--config", required=True, type=Path)
+    probe_walking.add_argument("--output", required=True, type=Path)
+    probe_walking.add_argument("--steps", type=int, default=100)
+    probe_walking.add_argument("--num-envs", type=int)
+    probe_walking.add_argument("--zero-actions", action="store_true")
+    select_parallel = commands.add_parser("select-walking-parallelism")
+    select_parallel.add_argument("--probes", required=True, type=Path, nargs="+")
+    select_parallel.add_argument("--repeats", required=True, type=int)
+    select_parallel.add_argument("--minimum-free-ratio", type=float, default=0.2)
+    select_parallel.add_argument("--output", required=True, type=Path)
     install = commands.add_parser("install-policy")
-    install.add_argument("name", choices=("standing-v1",))
+    install.add_argument("name", choices=("standing-v1", "walking-v1"))
     install.add_argument("--output", type=Path)
+    install.add_argument("--archive-url")
+    install.add_argument("--archive-sha256")
     installed_play = commands.add_parser("play-policy")
     installed_play.add_argument("--policy", required=True, type=Path)
     installed_play.add_argument("--trial-id", type=int, default=0)
+    installed_play.add_argument("--forward-speed", type=float)
+    installed_play.add_argument("--allow-unqualified-development", action="store_true")
+    installed_play.add_argument("--duration-seconds", type=float)
+    export_walking = commands.add_parser("export-walking")
+    export_walking.add_argument("--run", required=True, type=Path)
+    export_walking.add_argument("--checkpoint", required=True, type=Path)
+    export_walking.add_argument("--output", required=True, type=Path)
+    native_walking = commands.add_parser("evaluate-native-walking")
+    native_walking.add_argument("--policy", required=True, type=Path)
+    native_walking.add_argument("--scenarios", required=True, type=Path)
+    native_walking.add_argument("--output", required=True, type=Path)
+    native_walking.add_argument("--allow-unqualified-development", action="store_true")
+    native_walking.add_argument("--minimum-horizon-seconds", type=float)
+    walking_parity = commands.add_parser("check-walking-native-parity")
+    walking_parity.add_argument("--run", required=True, type=Path)
+    walking_parity.add_argument("--checkpoint", required=True, type=Path)
+    walking_parity.add_argument("--policy", required=True, type=Path)
+    walking_parity.add_argument("--output", required=True, type=Path)
+    walking_parity.add_argument("--samples", type=int, default=100)
     doctor = commands.add_parser("doctor")
     doctor.add_argument("--output", required=True, type=Path)
     qualify = commands.add_parser("qualify-controller")
@@ -58,13 +110,58 @@ def parser() -> argparse.ArgumentParser:
     campaign.add_argument("--trials", type=int, default=20)
     campaign.add_argument("--horizon-seconds", type=float, default=10.0)
     campaign.add_argument("--attempts", type=int, default=3)
+    walking_campaign = commands.add_parser("run-walking-campaign")
+    walking_campaign.add_argument("--manifest", required=True, type=Path)
+    walking_campaign.add_argument("--output", required=True, type=Path)
+    walking_checkpoint_evaluation = commands.add_parser("evaluate-walking-checkpoints")
+    walking_checkpoint_evaluation.add_argument("--manifest", required=True, type=Path)
+    walking_checkpoint_evaluation.add_argument("--output", required=True, type=Path)
+    walking_method_audit = commands.add_parser("audit-walking-method")
+    walking_method_audit.add_argument("--manifest", required=True, type=Path)
+    walking_method_audit.add_argument("--output", required=True, type=Path)
+    freeze_walking_scenarios = commands.add_parser("freeze-walking-scenarios")
+    freeze_walking_scenarios.add_argument("--config", required=True, type=Path)
+    freeze_walking_scenarios.add_argument("--output", required=True, type=Path)
+    freeze_walking_scenarios.add_argument("--seed", type=int, default=10042)
+    summarize_stage19 = commands.add_parser("summarize-stage19-experiments")
+    summarize_stage19.add_argument("--source-evaluation", required=True, type=Path)
+    summarize_stage19.add_argument("--decision-rule", required=True, type=Path)
+    summarize_stage19.add_argument("--arm-a", required=True, type=Path)
+    summarize_stage19.add_argument("--arm-b", required=True, type=Path)
+    summarize_stage19.add_argument("--arm-c", required=True, type=Path)
+    summarize_stage19.add_argument("--output", required=True, type=Path)
+    curriculum_gate = commands.add_parser("check-walking-curriculum-prerequisite")
+    curriculum_gate.add_argument("--experiment-table", required=True, type=Path)
+    curriculum_gate.add_argument("--visual-approval", type=Path)
+    curriculum_gate.add_argument("--output", required=True, type=Path)
+    final_gate = commands.add_parser("check-walking-final-prerequisite")
+    final_gate.add_argument("--policy", required=True, type=Path)
+    final_gate.add_argument("--visual-approval", type=Path)
+    final_gate.add_argument("--output", required=True, type=Path)
+    final_freeze = commands.add_parser("freeze-walking-final-suite")
+    final_freeze.add_argument("--policy", required=True, type=Path)
+    final_freeze.add_argument("--base-scenarios", required=True, type=Path)
+    final_freeze.add_argument("--acceptance", required=True, type=Path)
+    final_freeze.add_argument("--visual-approval", required=True, type=Path)
+    final_freeze.add_argument("--output", required=True, type=Path)
+    final_qualification = commands.add_parser("qualify-final-walking")
+    final_qualification.add_argument("--freeze", required=True, type=Path)
+    final_qualification.add_argument("--mjlab-summary", required=True, type=Path)
+    final_qualification.add_argument("--native-summary", required=True, type=Path)
+    final_qualification.add_argument("--output", required=True, type=Path)
     qualify_final = commands.add_parser("qualify-final")
     qualify_final.add_argument("--run", required=True, type=Path)
     train = commands.add_parser("train")
     train.add_argument("--config", required=True, type=Path)
     train.add_argument("--reward-profile", type=Path)
     train.add_argument("--ppo-profile", type=Path)
-    train.add_argument("--resume", type=Path)
+    train.add_argument("--walking-profile", type=Path)
+    train.add_argument("--walking-reward-profile", type=Path)
+    train.add_argument("--walking-v2-curriculum-profile", type=Path)
+    continuation = train.add_mutually_exclusive_group()
+    continuation.add_argument("--resume", type=Path)
+    continuation.add_argument("--initialize-actor", type=Path)
+    continuation.add_argument("--fine-tune", type=Path)
     train.add_argument("--output", required=True, type=Path)
     evaluate = commands.add_parser("evaluate")
     evaluate.add_argument("--config", required=True, type=Path)
@@ -75,6 +172,41 @@ def parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--seed", type=int, default=10042)
     evaluate.add_argument("--min-height-m", type=float, default=0.60)
     evaluate.add_argument("--phase", choices=("development", "final"), default="development")
+    evaluate_walking = commands.add_parser("evaluate-walking")
+    evaluate_walking.add_argument("--config", required=True, type=Path)
+    evaluate_walking.add_argument("--checkpoint", required=True, type=Path)
+    evaluate_walking.add_argument("--schedule", type=Path)
+    evaluate_walking.add_argument("--scenarios", type=Path)
+    evaluate_walking.add_argument("--criteria", type=Path)
+    evaluate_walking.add_argument("--metric-schema", type=int, choices=(1, 2), default=1)
+    evaluate_walking.add_argument("--output", required=True, type=Path)
+    evaluate_walking.add_argument("--trials", type=int, default=16)
+    evaluate_walking.add_argument("--seed", type=int, default=10042)
+    evaluate_walking.add_argument("--video", action="store_true")
+    evaluate_walking.add_argument(
+        "--initialization",
+        choices=("standing", "reference", "reference-fixed"),
+        default="standing",
+    )
+    diagnose_walking = commands.add_parser("diagnose-walking")
+    diagnose_walking.add_argument("--config", required=True, type=Path)
+    diagnose_walking.add_argument("--checkpoint", required=True, type=Path)
+    diagnose_walking.add_argument("--scenarios", required=True, type=Path)
+    diagnose_walking.add_argument("--output", required=True, type=Path)
+    diagnose_walking.add_argument(
+        "--criteria", type=Path, default=Path("configs/walking-v1/evaluation-v2.json")
+    )
+    diagnose_walking.add_argument("--physics-trace", action="store_true")
+    diagnose_walking.add_argument("--video", action="store_true")
+    diagnose_walking.add_argument("--robustness", action="store_true")
+    play_walking = commands.add_parser("play-walking")
+    play_walking.add_argument("--config", required=True, type=Path)
+    play_walking.add_argument("--checkpoint", required=True, type=Path)
+    play_walking.add_argument("--schedule", required=True, type=Path)
+    play_walking.add_argument("--seed", type=int, default=10042)
+    play_walking.add_argument("--viewer", choices=("native",), default="native")
+    play_walking.add_argument("--loop", action="store_true")
+    play_walking.add_argument("--duration-seconds", type=float)
     diagnose = commands.add_parser("diagnose-standing")
     diagnose.add_argument("--config", required=True, type=Path)
     diagnose.add_argument("--checkpoint", required=True, type=Path)
@@ -91,6 +223,26 @@ def parser() -> argparse.ArgumentParser:
     report.add_argument("--run", required=True, type=Path)
     report.add_argument("--output", type=Path)
     report.add_argument("--final", action="store_true")
+    policy_spec = commands.add_parser("generate-walking-policy-spec")
+    policy_spec.add_argument("--run", required=True, type=Path)
+    policy_spec.add_argument("--checkpoint", required=True, type=Path)
+    policy_spec.add_argument("--parity", required=True, type=Path)
+    policy_spec.add_argument("--output", required=True, type=Path)
+    walking_report = commands.add_parser("report-walking-research")
+    walking_report.add_argument("--run", required=True, type=Path)
+    walking_report.add_argument("--experiment-table", required=True, type=Path)
+    walking_report.add_argument("--policy-spec", required=True, type=Path)
+    walking_report.add_argument("--native-summary", required=True, type=Path)
+    walking_report.add_argument("--native-trace", required=True, type=Path)
+    walking_report.add_argument("--parity", required=True, type=Path)
+    walking_report.add_argument("--output", required=True, type=Path)
+    walking_archives = commands.add_parser("build-walking-archives")
+    walking_archives.add_argument("--bundle", required=True, type=Path)
+    walking_archives.add_argument("--source-run", required=True, type=Path)
+    walking_archives.add_argument("--checkpoint", required=True, type=Path)
+    walking_archives.add_argument("--scenarios", required=True, type=Path)
+    walking_archives.add_argument("--policy-spec", required=True, type=Path)
+    walking_archives.add_argument("--output", required=True, type=Path)
     return root
 
 
@@ -100,16 +252,149 @@ def main(argv: list[str] | None = None) -> int:
         config = load_config(args.config)
         print(json.dumps(config.to_dict(), indent=2, sort_keys=True))
         return 0
+    if args.command == "prepare-motion":
+        from .motion.preparation import prepare_reference
+
+        result = prepare_reference(
+            source_csv=args.source_csv,
+            model_xml=args.model_xml,
+            output_npz=args.output,
+            output_audit=args.audit,
+            source_fps=args.source_fps,
+            output_fps=args.output_fps,
+            first_frame=args.first_frame,
+            last_frame=args.last_frame,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+    if args.command == "preview-motion":
+        from .motion.preparation import render_reference_preview
+
+        print(
+            json.dumps(
+                render_reference_preview(
+                    reference_npz=args.reference,
+                    model_xml=args.model_xml,
+                    output_mp4=args.output,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "probe-walking":
+        from .walking_diagnostics import run_walking_probe
+
+        overrides = {"num_envs": args.num_envs} if args.num_envs is not None else None
+        probe_config = load_config(args.config, overrides)
+        print(
+            json.dumps(
+                run_walking_probe(
+                    probe_config,
+                    args.output,
+                    steps=args.steps,
+                    reference_actions=not args.zero_actions,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "select-walking-parallelism":
+        from .walking_diagnostics import select_parallelism
+
+        probes = [json.loads(path.read_text(encoding="utf-8")) for path in args.probes]
+        result = select_parallelism(
+            probes,
+            repeats=args.repeats,
+            minimum_free_ratio=args.minimum_free_ratio,
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
     if args.command == "install-policy":
         from .policy_distribution import install_policy
 
         output = args.output or Path("policies") / args.name
-        print(json.dumps(install_policy(args.name, output), indent=2, sort_keys=True))
+        print(
+            json.dumps(
+                install_policy(
+                    args.name,
+                    output,
+                    archive_url=args.archive_url,
+                    archive_sha256=args.archive_sha256,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "play-policy":
-        from .native_media import play_native
+        if (args.policy / "walking-policy-bundle.json").is_file():
+            if args.forward_speed is None:
+                raise ValueError("walking playback requires --forward-speed")
+            from .walking_deployment import play_native_walking
 
-        play_native(args.policy, args.policy / "scenarios.json", trial_id=args.trial_id)
+            play_native_walking(
+                args.policy,
+                forward_speed_m_s=args.forward_speed,
+                allow_unqualified=args.allow_unqualified_development,
+                duration_s=args.duration_seconds,
+            )
+        else:
+            if args.forward_speed is not None or args.allow_unqualified_development:
+                raise ValueError("walking playback options cannot be used with standing policy")
+            from .native_media import play_native
+
+            play_native(args.policy, args.policy / "scenarios.json", trial_id=args.trial_id)
+        return 0
+    if args.command == "export-walking":
+        from .walking_deployment import export_walking_policy
+
+        print(
+            json.dumps(
+                export_walking_policy(args.run, args.checkpoint, args.output),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "evaluate-native-walking":
+        from .walking_deployment import evaluate_native_walking
+
+        print(
+            json.dumps(
+                evaluate_native_walking(
+                    args.policy,
+                    args.scenarios,
+                    args.output,
+                    allow_unqualified=args.allow_unqualified_development,
+                    minimum_horizon_s=args.minimum_horizon_seconds,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "check-walking-native-parity":
+        from .walking_deployment import check_walking_native_parity
+
+        print(
+            json.dumps(
+                check_walking_native_parity(
+                    args.run,
+                    args.checkpoint,
+                    args.policy,
+                    args.output,
+                    samples=args.samples,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "doctor":
         from .runtime import doctor
@@ -122,6 +407,19 @@ def main(argv: list[str] | None = None) -> int:
         config = load_config(args.config)
         reward_profile = load_reward_profile(args.reward_profile) if args.reward_profile else None
         ppo_profile = load_ppo_profile(args.ppo_profile) if args.ppo_profile else None
+        walking_profile = (
+            load_walking_training_profile(args.walking_profile) if args.walking_profile else None
+        )
+        walking_reward_profile = (
+            load_stage19_reward_profile(args.walking_reward_profile)
+            if args.walking_reward_profile
+            else None
+        )
+        walking_v2_curriculum_profile = (
+            load_walking_v2_curriculum_profile(args.walking_v2_curriculum_profile)
+            if args.walking_v2_curriculum_profile
+            else None
+        )
         project_root = Path(__file__).resolve().parents[2]
         train(
             config,
@@ -130,12 +428,97 @@ def main(argv: list[str] | None = None) -> int:
             reward_profile=reward_profile,
             ppo_profile=ppo_profile,
             resume=args.resume,
+            initialize_actor=args.initialize_actor,
+            fine_tune=args.fine_tune,
+            walking_profile=walking_profile,
+            walking_reward_profile=walking_reward_profile,
+            walking_v2_curriculum_profile=walking_v2_curriculum_profile,
         )
         return 0
     if args.command == "qualify-controller":
         from .qualification import qualify_controller
 
         print(json.dumps(qualify_controller(load_config(args.config), args.output), indent=2))
+        return 0
+    if args.command == "evaluate-walking":
+        from .walking_runtime import diagnose_walking, evaluate_walking
+
+        if args.metric_schema == 2:
+            if args.scenarios is None or args.criteria is None:
+                raise ValueError("metric schema 2 requires --scenarios and --criteria")
+            print(
+                json.dumps(
+                    diagnose_walking(
+                        load_config(args.config),
+                        args.checkpoint,
+                        args.scenarios,
+                        args.output,
+                        criteria_path=args.criteria,
+                        physics_trace=True,
+                        video=args.video,
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 0
+        if args.schedule is None:
+            raise ValueError("metric schema 1 requires --schedule")
+
+        print(
+            json.dumps(
+                evaluate_walking(
+                    load_config(args.config),
+                    args.checkpoint,
+                    args.schedule,
+                    args.output,
+                    trials=args.trials,
+                    seed=args.seed,
+                    video=args.video,
+                    initialization=args.initialization,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "diagnose-walking":
+        from .walking_runtime import diagnose_walking
+
+        print(
+            json.dumps(
+                diagnose_walking(
+                    load_config(args.config),
+                    args.checkpoint,
+                    args.scenarios,
+                    args.output,
+                    criteria_path=args.criteria,
+                    physics_trace=args.physics_trace,
+                    video=args.video,
+                    robustness=args.robustness,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "play-walking":
+        from .walking_viewer import play_walking
+
+        print(
+            json.dumps(
+                play_walking(
+                    load_config(args.config),
+                    args.checkpoint,
+                    args.schedule,
+                    seed=args.seed,
+                    loop=args.loop,
+                    duration_s=args.duration_seconds,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     if args.command == "evaluate-native":
         from .deployment import evaluate_native
@@ -198,6 +581,103 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(result, indent=2))
         return 0
+    if args.command == "run-walking-campaign":
+        from .walking_campaign import run_walking_campaign
+
+        print(
+            json.dumps(run_walking_campaign(args.manifest, args.output), indent=2, sort_keys=True)
+        )
+        return 0
+    if args.command == "evaluate-walking-checkpoints":
+        from .walking_campaign import evaluate_walking_checkpoints
+
+        print(
+            json.dumps(
+                evaluate_walking_checkpoints(args.manifest, args.output),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "audit-walking-method":
+        from .walking_research import audit_walking_method
+
+        print(
+            json.dumps(audit_walking_method(args.manifest, args.output), indent=2, sort_keys=True)
+        )
+        return 0
+    if args.command == "freeze-walking-scenarios":
+        from .walking_experiments import freeze_development_scenarios
+
+        print(
+            json.dumps(
+                freeze_development_scenarios(load_config(args.config), args.output, seed=args.seed),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "summarize-stage19-experiments":
+        from .walking_experiments import build_stage19_experiment_table
+
+        result = build_stage19_experiment_table(
+            args.source_evaluation,
+            {"a": args.arm_a, "b": args.arm_b, "c": args.arm_c},
+            args.decision_rule,
+            args.output,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+    if args.command == "check-walking-curriculum-prerequisite":
+        from .walking_curriculum import assess_curriculum_prerequisite
+
+        result = assess_curriculum_prerequisite(
+            args.experiment_table, args.visual_approval, args.output
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0 if result["training_authorized"] else 2
+    if args.command == "check-walking-final-prerequisite":
+        from .walking_final import assess_final_prerequisite
+
+        result = assess_final_prerequisite(
+            args.policy / "walking-policy-bundle.json", args.visual_approval
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0 if result["final_execution_authorized"] else 2
+    if args.command == "freeze-walking-final-suite":
+        from .walking_final import freeze_final_suite
+
+        print(
+            json.dumps(
+                freeze_final_suite(
+                    args.policy,
+                    args.base_scenarios,
+                    args.acceptance,
+                    args.visual_approval,
+                    args.output,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.command == "qualify-final-walking":
+        from .walking_final import qualify_final_walking_dispatch
+
+        print(
+            json.dumps(
+                qualify_final_walking_dispatch(
+                    args.freeze, args.mjlab_summary, args.native_summary, args.output
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
     if args.command == "qualify-final":
         from .deployment import qualify_final_bundle
 
@@ -250,6 +730,45 @@ def main(argv: list[str] | None = None) -> int:
         from .reporting import render_report
 
         print(render_report(args.run, args.output, final=args.final))
+        return 0
+    if args.command == "generate-walking-policy-spec":
+        from .reporting.policy_spec import generate_walking_policy_spec
+
+        result = generate_walking_policy_spec(args.run, args.checkpoint, args.parity, args.output)
+        print(json.dumps(result["validation"], indent=2, sort_keys=True))
+        return 0
+    if args.command == "report-walking-research":
+        from .reporting.walking import render_walking_research_report
+
+        print(
+            render_walking_research_report(
+                args.run,
+                args.experiment_table,
+                args.policy_spec,
+                args.native_summary,
+                args.native_trace,
+                args.parity,
+                args.output,
+            )
+        )
+        return 0
+    if args.command == "build-walking-archives":
+        from .walking_archives import build_walking_archives
+
+        print(
+            json.dumps(
+                build_walking_archives(
+                    args.bundle,
+                    args.source_run,
+                    args.checkpoint,
+                    args.scenarios,
+                    args.policy_spec,
+                    args.output,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
     raise AssertionError(f"unhandled command {args.command}")
 

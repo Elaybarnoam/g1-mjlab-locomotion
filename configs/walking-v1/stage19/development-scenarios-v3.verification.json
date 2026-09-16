@@ -1,0 +1,11 @@
+{
+  "generation_seed": 10042,
+  "scenario_sha256": "fb8ca998d27e3088eb3f91eb1b2b0fd8234beddb05476ed165d70cdc2d58d6ed",
+  "schema_version": 1,
+  "validation": {
+    "all_finite": true,
+    "minimum_pelvis_height_m": 0.7929999828338623,
+    "self_collision_count": 0,
+    "termination_count": 0
+  }
+}

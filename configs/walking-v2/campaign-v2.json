@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "task_id": "G1-Walking-Flat-v2",
+  "objective": "Qualify deterministic stand-to-natural-walk-to-stand at 0.4, 0.6, and 0.8 m/s.",
+  "method_id": "soft-reference-policy-first-v1",
+  "ppo": {
+    "path": "ppo-v2.json",
+    "sha256": "5f719e8c9fbf4f837e9aacee394195f14cf1ee4525bd1ca90afe72f89cd62620"
+  },
+  "reward": {
+    "path": "reward-v2.json",
+    "sha256": "591ededef8c7db1a6f26eaf9f6823f373024d037b5ef41143cec47bc78959670"
+  },
+  "reference_bank": {
+    "path": "reference/reference-bank-v2.json",
+    "sha256": "d6f88d9000d8590a44d457bd3a6884c5e45f21acc7fc36695146bfa1c16290c4"
+  },
+  "training_seeds": [42, 43, 44],
+  "environment_candidates": [64, 128, 256],
+  "rollout_steps": 24,
+  "evaluation_interval_updates": 100,
+  "first_promotion_check_update": 500,
+  "maximum_acquisition_updates": 4000,
+  "maximum_extension_updates": 2000,
+  "aggregate_transition_budget": 100000000,
+  "curriculum_stages": [
+    "stand",
+    "stand-walk-040",
+    "add-060",
+    "add-080",
+    "transitions",
+    "robustness"
+  ]
+}

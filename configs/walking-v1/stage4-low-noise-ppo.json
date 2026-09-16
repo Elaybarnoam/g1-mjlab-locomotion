@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "name": "walking-reference-residual-low-noise",
+  "initial_action_std": 0.2,
+  "entropy_coef": null
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "reference_id": "nvidia-soma-g1-neutral-walk-a057-cycle-v1",
+  "command_frame": "yaw-aligned body frame; [vx_m_s, vy_m_s, yaw_rate_rad_s]",
+  "profile": {
+    "reference_speed_m_s": 1.16381159304071,
+    "cycle_duration_s": 1.06,
+    "acceleration_m_s2": 0.6,
+    "deceleration_m_s2": 0.8,
+    "blend_rate_s": 1.0,
+    "stand_threshold_m_s": 0.05,
+    "walk_threshold_m_s": 0.15
+  }
+}

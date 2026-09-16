@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "command_threshold_m_s": 0.15,
+  "max_command_rms_m_s": 0.25,
+  "minimum_walk_seconds": 4.0,
+  "minimum_completed_steps": 6,
+  "minimum_step_length_m": 0.18,
+  "maximum_step_length_m": 0.65,
+  "maximum_tiny_step_fraction": 0.2,
+  "minimum_cadence_steps_s": 1.0,
+  "maximum_cadence_steps_s": 3.0,
+  "minimum_alternation_ratio": 0.8,
+  "maximum_stance_slip_rms_m_s": 0.12,
+  "minimum_pelvis_height_m": 0.62,
+  "maximum_torso_tilt_rad": 0.35,
+  "maximum_contact_transitions_s": 6.0,
+  "contact_minimum_duration_s": 0.06,
+  "stop_settling_seconds": 0.5,
+  "maximum_stop_speed_rms_m_s": 0.1
+}

@@ -1,0 +1,62 @@
+{
+  "action_semantics": "reference-centered-residual",
+  "controller_sha256": "4aed5a15255e4c80d2d0ddf15bdc5c07b986c1c1d3dae7c908e38de70145a0cd",
+  "cycle_period_s": [
+    1.2,
+    1.05,
+    0.9500000000000001
+  ],
+  "derivative_rule": "analytic-composed-target-v1",
+  "frame": "heading-local",
+  "interpolation": "periodic-linear-phase-c1-cubic-hermite-speed",
+  "joint_names": [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint",
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "model_sha256": "4aed5a15255e4c80d2d0ddf15bdc5c07b986c1c1d3dae7c908e38de70145a0cd",
+  "npz": "reference-bank-v2.npz",
+  "npz_sha256": "d6d3fb62333e5c6de7c85d0837c8ce69e4afea00f825c750efca2216fc059275",
+  "preprocessing_revision": "plan05-p04-time-warp-v1",
+  "reference_id": "g1-natural-walking-bank-v1",
+  "schema_version": 1,
+  "source_license": "Apache-2.0 for the ten sample BVH files",
+  "source_sha256": "f39d2bc43d696868dd5804f7008625acd21cc4419a22d462c30d3d73e01a99c1",
+  "source_sha256_by_speed": [
+    "37b4f9b5964f494f50a410b244840676744d28546be06425b33150b6065df60f",
+    "e7ead537d39befbda7458cafc1e2bfd97f81a2cda1d16303e5df74bcd669469e",
+    "957d0d13d309283da8f74a00e54aa94f0488c2bea0f6128a14d88c471f985834"
+  ],
+  "speed_knots_m_s": [
+    0.4,
+    0.6,
+    0.8
+  ],
+  "units": "SI"
+}

@@ -11,6 +11,18 @@ built on [mjlab](https://github.com/mujocolab/mjlab), MuJoCo Warp, native MuJoCo
 _Click the image for a 15-second deterministic native-MuJoCo playback. No learning or exploration
 occurs during playback._
 
+Walking development now uses the **pre-style walking-v1 bootstrap** as its active baseline. The
+later walking-v2 reference-residual curriculum remains experimental history, not the current
+training route. The bootstrap completed 16/16 trials under an earlier functional gate but failed
+all four trials under a later, stricter physical-contact/slip measurement. It is not a qualified
+walking policy. See the [baseline decision](docs/walking-active-baseline.md) and its
+[hash-bound selection](configs/walking-v1/active-development-baseline.json).
+
+[![Experimental pre-style G1 bootstrap](docs/assets/walking-v1/bootstrap-pre-style-13398.png)](docs/assets/walking-v1/bootstrap-pre-style-13398.mp4)
+
+_15-second deterministic MuJoCo replay of the unqualified pre-style bootstrap; no PPO updates run
+during playback. Foot chatter and slip remain visible limitations._
+
 ## Run the trained policy
 
 The `standing-v1` release runs deterministically in native MuJoCo on CPU. It does not start PPO or
@@ -23,6 +35,17 @@ uv sync --extra native
 uv run g1-mjlab install-policy standing-v1
 uv run g1-mjlab play-policy --policy policies/standing-v1
 ```
+
+Walking native inference is implemented but the currently retained walking checkpoint is an
+unqualified development artifact, not a release policy. Exact export, parity, CPU evaluation, and
+the explicit opt-in viewer workflow are documented in
+[`docs/walking-native-inference.md`](docs/walking-native-inference.md).
+The complete current walking status, theory, and generated interface are in
+[`docs/walking.md`](docs/walking.md), [`docs/walking-theory.md`](docs/walking-theory.md), and
+[`docs/walking-policy-spec.md`](docs/walking-policy-spec.md).
+Development-only walking inference and resume archives can be built reproducibly, but are not
+published as release assets. See [`docs/using-published-policies.md`](docs/using-published-policies.md)
+for the explicit hash-pinned install workflow and qualification warning.
 
 The installer cryptographically verifies the release archive and every runtime artifact before an
 atomic installation. See [Using published policies](docs/using-published-policies.md) for bundle
@@ -140,6 +163,7 @@ not a safe interchange format for untrusted files.
 | --- | --- |
 | `src/g1_mjlab/` | Standing task, PPO lifecycle, evaluation, qualification, deployment, reports |
 | `configs/standing-v1/` | Canonical train/smoke configuration and qualified runtime lock |
+| `configs/walking-v1/` | Audited walking reference, manifest, and implemented task configuration |
 | `tests/` | Pure boundary tests plus opt-in simulator integration |
 | `evidence/standing-v1/` | Small, reviewed, non-executable result summaries |
 | `docs/assets/standing-v1/` | Curated stills/video and hash manifest |
@@ -154,6 +178,18 @@ not a safe interchange format for untrusted files.
 - [Reproducibility and clean setup](docs/reproducibility.md)
 - [Using published policies](docs/using-published-policies.md)
 - [Limitations and roadmap](docs/limitations-and-roadmap.md)
+- [Walking reference provenance and audit](docs/walking-reference.md)
+- [Walking-v1 command, phase, and policy contract](docs/walking-control-contract.md)
+- [Walking-v1 MDP and incentive design](docs/walking-mdp.md)
+- [Walking method decision and bootstrap](docs/walking-method-decision.md)
+- [Walking PPO lifecycle](docs/walking-training-lifecycle.md)
+- [Walking physical-contact evaluation v2](docs/walking-evaluation-v2.md)
+- [Walking reference semantics v2](docs/walking-reference-v2.md)
+- [Walking deterministic live viewer](docs/walking-live-viewer.md)
+- [Walking Stage 19 contact state and reward profiles](docs/walking-stage19-rewards.md)
+- [Walking campaign execution and recovery](docs/walking-campaigns.md)
+- [Stage 19 controlled experiment matrix](docs/stage19-experiments.md)
+- [Walking speed-curriculum prerequisite](docs/walking-curriculum-gate.md)
 
 ## Contributing and license
 

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Walking-Flat-v1",
+  "checkpoint_sha256": "215f4e316ca6abd687bafe51c1eb718282d8bd6ae80844c528741cb0962db537",
+  "schedule": "stand-walk-stand-v1",
+  "held_out_seed": 10042,
+  "trials": 4,
+  "passed_both": 0,
+  "first_episode_preserved": true,
+  "classification_counts": {"fall": 4},
+  "survived_seconds_per_trial": [1.36, 1.36, 1.36, 1.36],
+  "interpretation": "Expected failure of a two-update smoke checkpoint. This validates deterministic evaluation and first-failure accounting, not walking behavior."
+}

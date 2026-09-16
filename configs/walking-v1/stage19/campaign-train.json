@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Walking-Flat-v1",
+  "run_name": "walking-stage19-campaign-proof",
+  "seed": 42,
+  "num_envs": 64,
+  "max_iterations": 4,
+  "rollout_steps": 24,
+  "save_interval": 2,
+  "physics_dt": 0.005,
+  "decimation": 4,
+  "episode_length_s": 20,
+  "action_clip": null,
+  "device": "cuda:0",
+  "logger": "tensorboard",
+  "video": false
+}

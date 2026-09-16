@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "hypothesis": "Phase-matched contact timing and event-duration shaping improve human-like alternating steps.",
+  "baseline_commit": "67075b40ea7cd158e1891d718c51e046dad17daa",
+  "source_checkpoint": {"path": "../../../.runtime/walking-bootstrap-resume-10600-64/checkpoints/model_13398.pt", "sha256": "e3cbd37746fbfad9d6cce90bcbfc5371d851c619ffcda7b59aac8c3f6783cd64"},
+  "run_config": {"path": "arm-b-train.json", "sha256": "20bb4edb4417b97a8a1deb0624eed8c2dd07305e361894f5e1e0bc622ec84498"},
+  "walking_profile": {"path": "walking-profile.json", "sha256": "9acbf80a564f4e56b8249d4c5fbf47ead391e8b2aada033da68ef15402d061cf"},
+  "reward_profile": {"path": "arm-b-rewards.json", "sha256": "de6dbfb161aade77be77f6b9c7dc55798690080cd00dcbc03b0ad6debd0531e1"},
+  "ppo_profile": {"path": "ppo.json", "sha256": "036409b07a044ee812ab0cc1635cbf54282b08b506f9d78459fe4478179d6b49"},
+  "training_seed": 42,
+  "scenario_set": {"path": "development-scenarios-v3.json", "sha256": "fb8ca998d27e3088eb3f91eb1b2b0fd8234beddb05476ed165d70cdc2d58d6ed"},
+  "checkpoint_interval": 100,
+  "max_updates": 300,
+  "environment_count": 64,
+  "stop_rules": {"segment_updates": 100, "smoke_updates": 2, "max_recovery_attempts": 1, "fatal_nonfinite": true, "cuda_error_codes": [700, 719]},
+  "metric_schema_version": 2,
+  "development_source_evaluation": {"path": "../../../.runtime/plan04-p07-source-eval-001/summary.json", "sha256": "eb19375f611587dd9e1a06faf0aebaca263b8d676efa2d89dd8d86da3c84c135"},
+  "decision_rule": {"path": "decision-rule.json", "sha256": "3bd5323df819409ca3930a387be83af5838995a83785af699719fe044d0c40aa"}
+}

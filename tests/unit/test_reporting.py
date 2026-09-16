@@ -63,3 +63,39 @@ def test_curve_points_are_ordered_by_real_update() -> None:
         [{"metric": "loss", "update": 100, "value": 2}, {"metric": "loss", "update": 2, "value": 3}]
     )
     assert [p["x"] for p in points["loss"]] == [2, 100]
+
+
+def test_walking_report_uses_gait_language_not_standing_claims(tmp_path: Path) -> None:
+    store = RunStore.create(tmp_path / "run", {"run_id": "walking", "max_iterations": 10})
+    store.transition("starting")
+    store.transition("running")
+    store.transition("completed")
+    (store.root / "config.json").write_text(
+        json.dumps({"task_id": "G1-Walking-Flat-v1"}), encoding="utf-8"
+    )
+    evaluation = store.root / "evaluation"
+    evaluation.mkdir(exist_ok=True)
+    (evaluation / "summary.json").write_text(
+        json.dumps(
+            {
+                "phase": "development",
+                "planned": 1,
+                "passed_both": 0,
+                "trials": [
+                    {
+                        "trial_id": 0,
+                        "functional_passed": False,
+                        "style_passed": False,
+                        "survived_seconds": 10,
+                        "completed_steps": 0,
+                        "command_rms_m_s": 1.0,
+                        "classification": "insufficient_steps",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    content = render_report(store.root).read_text(encoding="utf-8")
+    assert "Walking function and style" in content
+    assert "Strict standing passes" not in content

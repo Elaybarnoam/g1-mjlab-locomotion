@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "task_id": "G1-Walking-Flat-v1",
+  "probe_kind": "reviewed W05 summary",
+  "reference_id": "nvidia-soma-g1-neutral-walk-a057-cycle-v1",
+  "short_probe": {
+    "steps": 25,
+    "control_seconds": 0.5,
+    "repeats_per_batch": 2,
+    "all_finite": true,
+    "total_terminations": 0,
+    "results": [
+      {"num_envs": 1, "mean_transitions_per_second": 30.920306569852517, "minimum_free_ratio": 0.842763919668121, "mean_reset_seconds": 0.38166642899999914, "maximum_tracking_rms_rad": 0.06781113541460057, "maximum_actuator_force_nm": 18.40061378479004},
+      {"num_envs": 16, "mean_transitions_per_second": 407.387538836864, "minimum_free_ratio": 0.842763919668121, "mean_reset_seconds": 0.3246501575000025, "maximum_tracking_rms_rad": 0.06780912075591798, "maximum_actuator_force_nm": 18.40069007873535},
+      {"num_envs": 64, "mean_transitions_per_second": 1662.8624609876485, "minimum_free_ratio": 0.8388378102738308, "mean_reset_seconds": 0.3238317460000033, "maximum_tracking_rms_rad": 0.06780825937873099, "maximum_actuator_force_nm": 18.400720596313477},
+      {"num_envs": 128, "mean_transitions_per_second": 3422.214018652896, "minimum_free_ratio": 0.8388378102738308, "mean_reset_seconds": 0.3436613935000068, "maximum_tracking_rms_rad": 0.06780779773551161, "maximum_actuator_force_nm": 18.400720596313477},
+      {"num_envs": 256, "mean_transitions_per_second": 6493.180575901667, "minimum_free_ratio": 0.8385924284366877, "mean_reset_seconds": 0.3042806994999978, "maximum_tracking_rms_rad": 0.06780816866368826, "maximum_actuator_force_nm": 18.400712966918945}
+    ]
+  },
+  "full_cycle_risk_probe": {
+    "num_envs": 1,
+    "requested_steps": 70,
+    "first_termination_step": 67,
+    "first_termination_seconds": 1.34,
+    "cause": "fell_over and low_height",
+    "all_finite": true,
+    "joint_tracking_rms_rad": 0.12709658517254543,
+    "maximum_joint_tracking_error_rad": 0.8313754796981812,
+    "maximum_actuator_force_nm": 139.0,
+    "saturated_joint": "left_knee_joint",
+    "interpretation": "The pose trajectory is short-horizon trackable but is not an open-loop dynamically stable controller. PPO must learn closed-loop balance; W06 must stop on non-finite learning or action blow-up."
+  },
+  "selected_num_envs": 256
+}

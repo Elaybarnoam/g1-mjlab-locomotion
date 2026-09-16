@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "criteria_schema": 2,
+  "implementation": "g1_mjlab.gait_evaluation.acceptance.assess_final_trial",
+  "source": "configs/walking-v2/final-acceptance-v2.json",
+  "rules": {
+    "aggregate": "At least 95/100 overall and 23/25 in each of slow, medium, fast and start_stop, independently in each backend.",
+    "horizon": "The planned and completed horizons are at least 60 s; early termination fails.",
+    "steady_walk": "At least 4 s and six valid alternating steps after command settling.",
+    "tracking": "RMS heading-frame forward and lateral velocity errors over settled moving samples.",
+    "heading": "Maximum absolute unwrapped pelvis-yaw change from the frozen initial heading.",
+    "tilt": "Peak tilt is always checked; tilt above 15 degrees continuously for 0.2 s fails.",
+    "stop": "Maximum post-settle horizontal-speed RMS and displacement from each stop segment's settled start.",
+    "gait": "Worst speed-segment cadence and step-length relative errors, bilateral asymmetry, alternation and tiny-step fraction.",
+    "slip": "Force-weighted physical contact-point slip RMS and sample p95 over settled moving stance.",
+    "contact": "Unmatched expected/actual contact fraction and bilateral-flight fraction over settled walking.",
+    "safety": "Nonfinite state, fall, forbidden non-foot ground contact, missing metrics or insufficient evidence fail closed."
+  },
+  "tests": [
+    "tests/unit/test_walking_acceptance.py::test_final_acceptance_applies_every_frozen_threshold_at_the_boundary",
+    "tests/unit/test_walking_acceptance.py::test_final_acceptance_fails_each_numerical_limit",
+    "tests/unit/test_walking_acceptance.py::test_final_acceptance_fails_tilt_above_limit_for_the_sustained_interval",
+    "tests/unit/test_walking_acceptance.py::test_final_acceptance_fails_unsafe_or_insufficient_trials",
+    "tests/unit/test_walking_final.py::test_v2_qualification_recomputes_acceptance_and_binds_exact_trial_identities"
+  ]
+}
